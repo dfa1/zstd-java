@@ -7,18 +7,32 @@ The differentiator is **dictionary compression** — trained from your own data 
 ZDICT — plus a **zero-copy `MemorySegment` API** for callers whose bytes are
 already off-heap (e.g. an mmap slice in, an arena buffer out).
 
+A core goal is a **hermetic build with no binary blobs**: the native library is
+never checked in or downloaded prebuilt. It is compiled from the pinned
+`third_party/zstd` source on every build via `zig cc`, which bundles its own
+clang + libc for every target. Anyone with the repo and Zig reproduces the exact
+`.dylib/.so/.dll` from source — no vendored binaries to trust, audit, or keep in
+sync, and no host toolchain or sysroot to provision.
+
 ## Layout
 
-Multi-module Maven build (`io.github.dfa1:zstd-java`):
+Multi-module Maven build. Root aggregator artifactId is `parent`; the published
+library is `io.github.dfa1:zstd-java`.
 
-- `zstd/` — the library module, artifactId `zstd-java`, pure-Java FFM bindings
-  (package `io.github.dfa1.zstdffm`). The only module with Java sources.
-- `native/<classifier>/` — one module per platform; each packages a
-  `libzstd.{dylib,so,dll}` built from the `third_party/zstd` submodule. No Java.
-  Classifiers: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
+```
+zstd-java/                 root pom, artifactId: parent
+├─ zstd/                   library module, artifactId: zstd-java (only Java sources)
+├─ native/<classifier>/    one module per platform, packages libzstd.<ext>
+├─ bom/                    dependency BOM
+├─ third_party/zstd/       vendored facebook/zstd submodule (C source of truth)
+└─ scripts/build-zstd.sh   zig cc build, invoked by each native module
+```
+
+- `zstd/` — pure-Java FFM bindings, package `io.github.dfa1.zstdffm`.
+- `native/<classifier>/` — no Java; each builds + bundles the shared library for
+  one classifier: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
   `windows-x86_64`, `windows-aarch64`.
-- `bom/` — dependency BOM.
-- `third_party/zstd/` — vendored `facebook/zstd` git submodule (the C source of truth).
+- `third_party/zstd/` — pinned submodule; the only source of native code.
 
 ## Native build
 

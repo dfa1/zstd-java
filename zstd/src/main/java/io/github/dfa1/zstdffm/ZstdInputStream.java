@@ -44,11 +44,22 @@ public final class ZstdInputStream extends InputStream {
     ///
     /// @param in the stream to read the compressed frame from
     public ZstdInputStream(InputStream in) {
+        this(in, null);
+    }
+
+    /// Wraps `in`, decompressing a frame compressed against `dictionary`.
+    ///
+    /// @param in         the stream to read the compressed frame from
+    /// @param dictionary the dictionary the frame was compressed against, or `null` for none
+    public ZstdInputStream(InputStream in, ZstdDictionary dictionary) {
         this.in = in;
         try {
             this.dctx = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
             if (MemorySegment.NULL.equals(dctx)) {
                 throw new ZstdException("ZSTD_createDCtx returned NULL");
+            }
+            if (dictionary != null) {
+                loadDictionary(dictionary);
             }
             this.inCap = (long) Bindings.DSTREAM_IN_SIZE.invokeExact();
             this.outCap = (long) Bindings.DSTREAM_OUT_SIZE.invokeExact();
@@ -60,6 +71,15 @@ public final class ZstdInputStream extends InputStream {
         this.outSeg = arena.allocate(outCap);
         this.feed = new byte[Math.toIntExact(inCap)];
         this.hold = new byte[Math.toIntExact(outCap)];
+    }
+
+    private void loadDictionary(ZstdDictionary dictionary) {
+        try (Arena staging = Arena.ofConfined()) {
+            byte[] raw = dictionary.raw();
+            MemorySegment dictSeg = Zstd.copyIn(staging, raw);
+            Zstd.call(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
+                    dctx, dictSeg, (long) raw.length));
+        }
     }
 
     @Override

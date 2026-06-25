@@ -55,6 +55,23 @@ public final class ZstdOutputStream extends OutputStream {
     /// @param out   the stream to write the compressed frame to
     /// @param level the compression level
     public ZstdOutputStream(OutputStream out, int level) {
+        this(out, level, null);
+    }
+
+    /// Wraps `out`, compressing against `dictionary` at the default level.
+    ///
+    /// @param out        the stream to write the compressed frame to
+    /// @param dictionary the dictionary to compress against
+    public ZstdOutputStream(OutputStream out, ZstdDictionary dictionary) {
+        this(out, Zstd.defaultCompressionLevel(), dictionary);
+    }
+
+    /// Wraps `out`, compressing against `dictionary` at `level`.
+    ///
+    /// @param out        the stream to write the compressed frame to
+    /// @param level      the compression level
+    /// @param dictionary the dictionary to compress against, or `null` for none
+    public ZstdOutputStream(OutputStream out, int level, ZstdDictionary dictionary) {
         this.out = out;
         try {
             this.cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
@@ -63,6 +80,9 @@ public final class ZstdOutputStream extends OutputStream {
             }
             Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     cctx, ZSTD_C_COMPRESSION_LEVEL, level));
+            if (dictionary != null) {
+                loadDictionary(dictionary);
+            }
             this.inCap = (long) Bindings.CSTREAM_IN_SIZE.invokeExact();
             this.outCap = (long) Bindings.CSTREAM_OUT_SIZE.invokeExact();
         } catch (Throwable t) {
@@ -72,6 +92,15 @@ public final class ZstdOutputStream extends OutputStream {
         this.inSeg = arena.allocate(inCap);
         this.outSeg = arena.allocate(outCap);
         this.drain = new byte[Math.toIntExact(outCap)];
+    }
+
+    private void loadDictionary(ZstdDictionary dictionary) {
+        try (Arena staging = Arena.ofConfined()) {
+            byte[] raw = dictionary.raw();
+            MemorySegment dictSeg = Zstd.copyIn(staging, raw);
+            Zstd.call(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
+                    cctx, dictSeg, (long) raw.length));
+        }
     }
 
     @Override

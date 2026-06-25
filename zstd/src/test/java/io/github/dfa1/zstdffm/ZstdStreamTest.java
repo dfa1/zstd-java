@@ -81,6 +81,73 @@ class ZstdStreamTest {
         }
     }
 
+    @Nested
+    class Dictionary {
+
+        @Test
+        void roundTripsWithDictionary() throws IOException {
+            // Given a dictionary and a small record
+            ZstdDictionary dict = trainDict();
+            byte[] record = record(42);
+
+            // When streamed through compress and decompress with the same dictionary
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = new ZstdOutputStream(sink, dict)) {
+                zout.write(record);
+            }
+            byte[] restored;
+            try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(sink.toByteArray()), dict)) {
+                restored = zin.readAllBytes();
+            }
+
+            // Then the record is recovered
+            assertThat(restored).isEqualTo(record);
+        }
+
+        @Test
+        void dictionaryShrinksStreamedRecord() throws IOException {
+            ZstdDictionary dict = trainDict();
+            byte[] record = record(123);
+
+            ByteArrayOutputStream withDict = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = new ZstdOutputStream(withDict, dict)) {
+                zout.write(record);
+            }
+
+            // a dictionary frame of a tiny record is smaller than a plain stream frame
+            assertThat(withDict.size()).isLessThan(streamCompress(record, Zstd.defaultCompressionLevel()).length);
+        }
+
+        @Test
+        void streamWithDictionaryDecodesWithOneShot() throws IOException {
+            // Given a dictionary frame produced by the streaming compressor
+            ZstdDictionary dict = trainDict();
+            byte[] record = record(7);
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = new ZstdOutputStream(sink, dict)) {
+                zout.write(record);
+            }
+
+            // Then the one-shot context decodes it with the same dictionary
+            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
+                assertThat(ctx.decompress(sink.toByteArray(), record.length, dict)).isEqualTo(record);
+            }
+        }
+
+        private ZstdDictionary trainDict() {
+            java.util.List<byte[]> samples = new java.util.ArrayList<>();
+            for (int i = 0; i < 3000; i++) {
+                samples.add(record(i));
+            }
+            return ZstdDictionary.train(samples, 8 * 1024);
+        }
+
+        private byte[] record(int i) {
+            return ("{\"id\":" + i + ",\"user\":\"user_" + (i % 40) + "\",\"event\":\"click\"}")
+                    .getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
     private static byte[] streamCompress(byte[] data, int level) throws IOException {
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         try (ZstdOutputStream zout = new ZstdOutputStream(sink, level)) {

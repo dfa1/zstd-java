@@ -9,6 +9,7 @@ import java.lang.foreign.MemorySegment;
 /// state allocation. Not thread-safe: confine an instance to one thread or pool it.
 public final class ZstdDecompressCtx extends NativeObject {
 
+    /// Creates a new decompression context.
     public ZstdDecompressCtx() {
         super(create());
     }
@@ -26,6 +27,10 @@ public final class ZstdDecompressCtx extends NativeObject {
     }
 
     /// Decompresses a frame into a buffer of at most `maxSize` bytes.
+    ///
+    /// @param compressed a complete zstd frame
+    /// @param maxSize    upper bound on the decompressed length
+    /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
@@ -41,6 +46,11 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// The dictionary is re-digested on every call; for repeated use digest it
     /// once into a {@link ZstdDecompressDict} and use
     /// {@link #decompress(byte[], int, ZstdDecompressDict)}.
+    ///
+    /// @param compressed a complete zstd frame
+    /// @param maxSize    upper bound on the decompressed length
+    /// @param dict       the dictionary the frame was compressed against
+    /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize, ZstdDictionary dict) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
@@ -54,6 +64,11 @@ public final class ZstdDecompressCtx extends NativeObject {
     }
 
     /// Decompresses a frame against a pre-digested `dict`.
+    ///
+    /// @param compressed a complete zstd frame
+    /// @param maxSize    upper bound on the decompressed length
+    /// @param dict       the pre-digested decompression dictionary
+    /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize, ZstdDecompressDict dict) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
@@ -75,6 +90,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// Size `dst` to the decompressed length (read it from the frame with
     /// {@link Zstd#decompress(byte[])}'s header logic, or known out-of-band).
     ///
+    /// @param dst the native destination buffer to write the result into
+    /// @param src the native source frame to decompress
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or the frame is invalid
     public long decompress(MemorySegment dst, MemorySegment src) {
@@ -84,6 +101,9 @@ public final class ZstdDecompressCtx extends NativeObject {
 
     /// Zero-copy decompression against a pre-digested `dict`, segment to segment.
     ///
+    /// @param dst  the native destination buffer to write the result into
+    /// @param src  the native source frame to decompress
+    /// @param dict the pre-digested decompression dictionary
     /// @return the number of bytes written into `dst`
     public long decompress(MemorySegment dst, MemorySegment src, ZstdDecompressDict dict) {
         MemorySegment ddict = dict.ptr();
@@ -100,6 +120,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// library do); for size-less frames use {@link #decompress(MemorySegment, MemorySegment)}
     /// with a destination you size yourself.
     ///
+    /// @param arena the arena to allocate the output segment in
+    /// @param frame a complete zstd frame storing its decompressed size
     /// @return a segment of exactly the decompressed length, allocated in `arena`
     /// @throws ZstdException if the frame is invalid or stores no size
     public MemorySegment decompress(Arena arena, MemorySegment frame) {
@@ -112,6 +134,9 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// Zero-copy decompression against a pre-digested `dict`, allocating the
     /// exact-sized output in `arena`.
     ///
+    /// @param arena the arena to allocate the output segment in
+    /// @param frame a complete zstd frame storing its decompressed size
+    /// @param dict  the pre-digested decompression dictionary
     /// @return a segment of exactly the decompressed length, allocated in `arena`
     public MemorySegment decompress(Arena arena, MemorySegment frame, ZstdDecompressDict dict) {
         long size = Zstd.decompressedSize(frame);

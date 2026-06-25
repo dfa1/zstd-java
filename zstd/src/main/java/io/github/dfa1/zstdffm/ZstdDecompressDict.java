@@ -12,6 +12,8 @@ import java.lang.foreign.MemorySegment;
 public final class ZstdDecompressDict extends NativeObject {
 
     /// Digests `dict` for decompression.
+    ///
+    /// @param dict the dictionary to digest
     public ZstdDecompressDict(ZstdDictionary dict) {
         super(create(dict));
     }

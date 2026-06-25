@@ -17,6 +17,7 @@ import java.nio.file.StandardCopyOption;
 /// The library is resolved from the platform-specific native JAR on the
 /// classpath, extracted to a temp file, and loaded once at class-init time.
 /// Override with `-Dzstd.lib.path=/path/to/libzstd.so`.
+@SuppressWarnings("restricted") // libraryLookup / downcallHandle are restricted FFM methods
 final class NativeLibrary {
 
     private static final Linker LINKER = Linker.nativeLinker();

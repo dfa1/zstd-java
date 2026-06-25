@@ -15,12 +15,17 @@ public final class ZstdCompressDict extends NativeObject {
     private final int level;
 
     /// Digests `dict` for compression at the given level.
+    ///
+    /// @param dict  the dictionary to digest
+    /// @param level the compression level to fix for this digested dictionary
     public ZstdCompressDict(ZstdDictionary dict, int level) {
         super(create(dict, level));
         this.level = level;
     }
 
     /// Digests `dict` for compression at the library default level.
+    ///
+    /// @param dict the dictionary to digest
     public ZstdCompressDict(ZstdDictionary dict) {
         this(dict, Zstd.defaultCompressionLevel());
     }
@@ -40,6 +45,8 @@ public final class ZstdCompressDict extends NativeObject {
     }
 
     /// The level this dictionary was digested at.
+    ///
+    /// @return the fixed compression level
     public int level() {
         return level;
     }

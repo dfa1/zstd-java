@@ -12,10 +12,15 @@ public abstract class NativeObject implements AutoCloseable {
 
     private final AtomicReference<MemorySegment> ptr;
 
+    /// Takes ownership of a freshly created native pointer.
+    ///
+    /// @param owningPointer the non-NULL native pointer this object now owns
     protected NativeObject(MemorySegment owningPointer) {
         this.ptr = new AtomicReference<>(owningPointer);
     }
 
+    /// Returns the live native pointer, failing if this object is already closed.
+    ///
     /// @return the live native pointer
     /// @throws IllegalStateException if this object has been closed
     protected final MemorySegment ptr() {
@@ -39,5 +44,8 @@ public abstract class NativeObject implements AutoCloseable {
     }
 
     /// Releases the native resource. Called exactly once with a non-NULL pointer.
+    ///
+    /// @param ptr the non-NULL native pointer to free
+    /// @throws Throwable if the native free call fails; the exception is swallowed by {@link #close()}
     protected abstract void tryClose(MemorySegment ptr) throws Throwable;
 }

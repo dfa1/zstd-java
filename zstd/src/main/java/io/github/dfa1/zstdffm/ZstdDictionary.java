@@ -36,6 +36,7 @@ public final class ZstdDictionary {
     /// dictionary shipped with your application).
     ///
     /// @param raw dictionary bytes; defensively copied
+    /// @return a dictionary wrapping a copy of `raw`
     public static ZstdDictionary of(byte[] raw) {
         return new ZstdDictionary(raw.clone());
     }
@@ -87,6 +88,8 @@ public final class ZstdDictionary {
 
     /// The dictionary id zstd stamps into frames compressed with this dictionary,
     /// or `0` for a raw/content-only dictionary with no header.
+    ///
+    /// @return the dictionary id, or `0` if none
     public int id() {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment seg = Zstd.copyIn(arena, bytes);
@@ -96,11 +99,15 @@ public final class ZstdDictionary {
         }
     }
 
+    /// Serialises this dictionary to a fresh byte array.
+    ///
     /// @return a copy of the raw dictionary bytes, suitable for persisting
     public byte[] toByteArray() {
         return bytes.clone();
     }
 
+    /// The size of this dictionary.
+    ///
     /// @return the dictionary size in bytes
     public int size() {
         return bytes.length;
@@ -119,6 +126,7 @@ public final class ZstdDictionary {
         }
     }
 
+    @SuppressWarnings("restricted") // reinterpret needed to read a C string of unknown length
     private static String zdictErrorName(long code) {
         try {
             MemorySegment p = (MemorySegment) Bindings.ZDICT_GET_ERROR_NAME.invokeExact(code);

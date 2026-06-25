@@ -20,6 +20,7 @@ public final class ZstdCompressCtx extends NativeObject {
 
     private int level = Zstd.defaultCompressionLevel();
 
+    /// Creates a new compression context at the default level.
     public ZstdCompressCtx() {
         super(create());
     }
@@ -38,6 +39,7 @@ public final class ZstdCompressCtx extends NativeObject {
 
     /// Sets the compression level for subsequent {@link #compress} calls.
     ///
+    /// @param level the compression level to use
     /// @return `this`, for chaining
     public ZstdCompressCtx level(int level) {
         this.level = level;
@@ -45,6 +47,9 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     /// Compresses `src` into a new zstd frame using this context.
+    ///
+    /// @param src the bytes to compress
+    /// @return a self-describing zstd frame
     public byte[] compress(byte[] src) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, src);
@@ -61,6 +66,10 @@ public final class ZstdCompressCtx extends NativeObject {
     /// The dictionary is re-digested on every call; for repeated compression
     /// against the same dictionary, digest it once into a {@link ZstdCompressDict}
     /// and use {@link #compress(byte[], ZstdCompressDict)}.
+    ///
+    /// @param src  the bytes to compress
+    /// @param dict the dictionary to compress against
+    /// @return a self-describing zstd frame
     public byte[] compress(byte[] src, ZstdDictionary dict) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, src);
@@ -76,6 +85,10 @@ public final class ZstdCompressCtx extends NativeObject {
 
     /// Compresses `src` against a pre-digested `dict` (the level was
     /// fixed when the {@link ZstdCompressDict} was built).
+    ///
+    /// @param src  the bytes to compress
+    /// @param dict the pre-digested compression dictionary
+    /// @return a self-describing zstd frame
     public byte[] compress(byte[] src, ZstdCompressDict dict) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, src);
@@ -96,6 +109,8 @@ public final class ZstdCompressCtx extends NativeObject {
     ///
     /// Size `dst` with {@link Zstd#compressBound(long)} to guarantee it fits.
     ///
+    /// @param dst the native destination buffer to write the frame into
+    /// @param src the native source bytes to compress
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or compression fails
     public long compress(MemorySegment dst, MemorySegment src) {
@@ -105,6 +120,9 @@ public final class ZstdCompressCtx extends NativeObject {
 
     /// Zero-copy compression against a pre-digested `dict`, segment to segment.
     ///
+    /// @param dst  the native destination buffer to write the frame into
+    /// @param src  the native source bytes to compress
+    /// @param dict the pre-digested compression dictionary
     /// @return the number of bytes written into `dst`
     public long compress(MemorySegment dst, MemorySegment src, ZstdCompressDict dict) {
         MemorySegment cdict = dict.ptr();
@@ -117,6 +135,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// compresses into it, and returns a slice trimmed to the actual frame length.
     /// The returned segment is owned by `arena`.
     ///
+    /// @param arena the arena to allocate the output segment in
+    /// @param src   the native source bytes to compress
     /// @return the zstd frame, a slice of an `arena`-owned segment
     public MemorySegment compress(Arena arena, MemorySegment src) {
         MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
@@ -127,6 +147,9 @@ public final class ZstdCompressCtx extends NativeObject {
     /// Zero-copy compression against a pre-digested `dict`, allocating the
     /// output in `arena` and returning a slice trimmed to the frame length.
     ///
+    /// @param arena the arena to allocate the output segment in
+    /// @param src   the native source bytes to compress
+    /// @param dict  the pre-digested compression dictionary
     /// @return the zstd frame, a slice of an `arena`-owned segment
     public MemorySegment compress(Arena arena, MemorySegment src, ZstdCompressDict dict) {
         MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));

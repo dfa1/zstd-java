@@ -7,6 +7,8 @@ package io.github.dfa1.zstdffm;
 /// recoverable I/O condition.
 public final class ZstdException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     ZstdException(String message) {
         super(message);
     }

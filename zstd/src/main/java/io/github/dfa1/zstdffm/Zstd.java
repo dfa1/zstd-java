@@ -108,6 +108,9 @@ public final class Zstd {
 
     /// Maximum compressed size for an input of `srcSize` bytes — the buffer
     /// size guaranteed to never overflow during compression.
+    ///
+    /// @param srcSize the uncompressed input length in bytes
+    /// @return the worst-case compressed size for that input
     public static long compressBound(long srcSize) {
         try {
             return (long) Bindings.COMPRESS_BOUND.invokeExact(srcSize);
@@ -127,6 +130,8 @@ public final class Zstd {
     }
 
     /// Highest supported compression level.
+    ///
+    /// @return the maximum valid compression level
     public static int maxCompressionLevel() {
         try {
             return (int) Bindings.MAX_C_LEVEL.invokeExact();
@@ -136,6 +141,8 @@ public final class Zstd {
     }
 
     /// Lowest supported compression level (negative levels trade ratio for speed).
+    ///
+    /// @return the minimum valid compression level
     public static int minCompressionLevel() {
         try {
             return (int) Bindings.MIN_C_LEVEL.invokeExact();
@@ -145,6 +152,8 @@ public final class Zstd {
     }
 
     /// The level used by {@link #compress(byte[])}.
+    ///
+    /// @return the default compression level
     public static int defaultCompressionLevel() {
         try {
             return (int) Bindings.DEFAULT_C_LEVEL.invokeExact();
@@ -154,6 +163,9 @@ public final class Zstd {
     }
 
     /// Runtime zstd version, e.g. `"1.6.0"`.
+    ///
+    /// @return the linked zstd library version as an `x.y.z` string
+    @SuppressWarnings("restricted") // reinterpret needed to read a C string of unknown length
     public static String version() {
         try {
             MemorySegment p = (MemorySegment) Bindings.VERSION_STRING.invokeExact();
@@ -194,6 +206,7 @@ public final class Zstd {
         }
     }
 
+    @SuppressWarnings("restricted") // reinterpret needed to read a C string of unknown length
     private static String errorName(long code) {
         try {
             MemorySegment p = (MemorySegment) Bindings.GET_ERROR_NAME.invokeExact(code);

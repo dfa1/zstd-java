@@ -102,6 +102,21 @@
 					<version>3.15.0</version>
 					<configuration>
 						<release>25</release>
+						<failOnWarning>true</failOnWarning>
+						<compilerArgs>
+							<arg>-Xlint:all</arg>
+						</compilerArgs>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<version>3.12.0</version>
+					<configuration>
+						<release>25</release>
+						<failOnError>true</failOnError>
+						<failOnWarnings>true</failOnWarnings>
+						<quiet>true</quiet>
 					</configuration>
 				</plugin>
 				<plugin>
@@ -153,6 +168,19 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>javadoc-no-warnings</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>javadoc</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

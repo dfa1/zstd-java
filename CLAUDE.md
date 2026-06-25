@@ -7,51 +7,18 @@ The differentiator is **dictionary compression** — trained from your own data 
 ZDICT — plus a **zero-copy `MemorySegment` API** for callers whose bytes are
 already off-heap (e.g. an mmap slice in, an arena buffer out).
 
-A core goal is a **hermetic build with no binary blobs**: the native library is
-never checked in or downloaded prebuilt. It is compiled from the pinned
-`third_party/zstd` source on every build via `zig cc`, which bundles its own
-clang + libc for every target. Anyone with the repo and Zig reproduces the exact
-`.dylib/.so/.dll` from source — no vendored binaries to trust, audit, or keep in
-sync, and no host toolchain or sysroot to provision.
-
 ## Layout
 
-Multi-module Maven build. Root aggregator artifactId is `parent`; the published
-library is `io.github.dfa1:zstd-java`.
+Multi-module Maven build (`io.github.dfa1:zstd-java`):
 
-```
-zstd-java/                 root pom, artifactId: parent
-├─ zstd/                   library module, artifactId: zstd-java (only Java sources)
-├─ native/<classifier>/    one module per platform, packages libzstd.<ext>
-├─ bom/                    dependency BOM
-├─ third_party/zstd/       vendored facebook/zstd submodule (C source of truth)
-└─ scripts/build-zstd.sh   zig cc build, invoked by each native module
-```
-
-- `zstd/` — pure-Java FFM bindings, package `io.github.dfa1.zstdffm`.
-- `native/<classifier>/` — no Java; each builds + bundles the shared library for
-  one classifier: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
+- `zstd/` — the library module, artifactId `zstd-java`, pure-Java FFM bindings
+  (package `io.github.dfa1.zstdffm`). The only module with Java sources.
+- `native/<classifier>/` — one module per platform; each packages a
+  `libzstd.{dylib,so,dll}` built from the `third_party/zstd` submodule. No Java.
+  Classifiers: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
   `windows-x86_64`, `windows-aarch64`.
-- `third_party/zstd/` — pinned submodule; the only source of native code.
-
-## Build requirements
-
-Deliberately minimal — part of the hermetic goal is a tiny prerequisite set:
-
-- **JDK 25+** — required for the stable `java.lang.foreign` API. Tested on
-  Temurin/Zulu 25.
-- **Zig** on `PATH` — the C cross-compiler for the native library; this is the
-  only native-toolchain dependency (no system clang/gcc, no CMake, no sysroot).
-  Tested with `zig 0.16.0`.
-- **Git** — to fetch the `third_party/zstd` submodule
-  (`git clone --recurse-submodules`, or `git submodule update --init`).
-- **A POSIX shell** — `scripts/build-zstd.sh` is bash; cross-builds run from a
-  Unix host (macOS/Linux). Windows targets are produced by cross-compiling, not
-  by building on Windows.
-
-Maven itself is **not** required: use the bundled wrapper `./mvnw`, which pins
-Maven 3.9.16. Runtime needs `--enable-native-access=ALL-UNNAMED` (already set for
-the test run via the surefire `argLine`).
+- `bom/` — dependency BOM.
+- `zstd/` — vendored `facebook/zstd` git submodule (the C source of truth).
 
 ## Native build
 
@@ -98,9 +65,6 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
 
 - 4-space indent, **zero SonarQube bugs/smells**, no `sun.misc.Unsafe` or internal JDK APIs.
 - Prefer explicit over clever; fail fast on unhandled cases.
-- Idiomatic modern Java: reuse the JDK (override `Iterator.forEachRemaining`, don't invent
-  `forEachChunk`; use `Optional`, records, sealed types, pattern switches, virtual threads, FFM).
-  New APIs should feel like JDK APIs.
 - Always braces for `if`/`else`/`for`/`while`, even one-liners (`if (c) { return a; }`).
 - **Time quantities use `java.time.Duration`, never `long`** (no `long timeoutMs`/`delayNanos`).
   Exception: low-level JDK interop taking `long ns` (`Thread.sleep`, `LockSupport.parkNanos`,
@@ -114,4 +78,4 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
   `<strong>`,`<pre>`,`<table>`, …). Use blank `///` for paragraphs, `- ` lists, ` ```java ``` `,
   `**bold**`. Cross-refs `[ClassName#method(ParamType)]` — verify the target exists (wrong refs are
   **errors**).
-- Check: `./mvnw javadoc:javadoc -pl zstd` must produce zero output.
+- Check: `./mvnw javadoc:javadoc -pl core` must produce zero output.

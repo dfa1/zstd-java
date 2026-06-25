@@ -2,6 +2,8 @@ package io.github.dfa1.zstd;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.nio.charset.StandardCharsets;
 
@@ -66,6 +68,71 @@ class ZstdParameterTest {
                 frame = ctx.compress(PAYLOAD);
             }
             assertThat(Zstd.decompress(frame)).isEqualTo(PAYLOAD);
+        }
+    }
+
+    @Nested
+    class Bounds {
+
+        @Test
+        void compressionLevelBoundsMatchTheLibrary() {
+            ZstdBounds bounds = ZstdCompressParameter.COMPRESSION_LEVEL.bounds();
+            assertThat(bounds.lowerBound()).isEqualTo(Zstd.minCompressionLevel());
+            assertThat(bounds.upperBound()).isEqualTo(Zstd.maxCompressionLevel());
+        }
+
+        @ParameterizedTest
+        @EnumSource(ZstdCompressParameter.class)
+        void everyCompressionParameterReportsBounds(ZstdCompressParameter parameter) {
+            ZstdBounds bounds = parameter.bounds();
+            assertThat(bounds.upperBound()).isGreaterThanOrEqualTo(bounds.lowerBound());
+        }
+
+        @Test
+        void decompressionParameterReportsBounds() {
+            ZstdBounds bounds = ZstdDecompressParameter.WINDOW_LOG_MAX.bounds();
+            assertThat(bounds.upperBound()).isGreaterThan(bounds.lowerBound());
+        }
+    }
+
+    @Nested
+    class MoreParameters {
+
+        @ParameterizedTest
+        @EnumSource(value = ZstdCompressParameter.class,
+                names = {"TARGET_C_BLOCK_SIZE", "LDM_HASH_LOG", "LDM_MIN_MATCH",
+                        "LDM_BUCKET_SIZE_LOG", "STRATEGY"})
+        void settingAParameterAtItsLowerBoundRoundTrips(ZstdCompressParameter parameter) {
+            // Given a parameter set to a valid in-range value
+            int value = Math.max(parameter.bounds().lowerBound(), 1);
+            byte[] frame;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx().parameter(parameter, value)) {
+                frame = ctx.compress(PAYLOAD);
+            }
+            // Then the frame still decompresses
+            assertThat(Zstd.decompress(frame)).isEqualTo(PAYLOAD);
+        }
+    }
+
+    @Nested
+    class Decompress {
+
+        @Test
+        void windowLogMaxIsAccepted() {
+            // Given a decompressor configured with a raised window limit
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx().windowLogMax(31)) {
+                // Then normal frames still decode
+                assertThat(ctx.decompress(frame, PAYLOAD.length)).isEqualTo(PAYLOAD);
+            }
+        }
+
+        @Test
+        void rejectsOutOfRangeValue() {
+            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
+                assertThatThrownBy(() -> ctx.parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, 99))
+                        .isInstanceOf(ZstdException.class);
+            }
         }
     }
 

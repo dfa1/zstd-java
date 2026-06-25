@@ -198,7 +198,7 @@ public final class Zstd {
         return code;
     }
 
-    private static boolean isError(long code) {
+    static boolean isError(long code) {
         try {
             return ((int) Bindings.IS_ERROR.invokeExact(code)) != 0;
         } catch (Throwable t) {

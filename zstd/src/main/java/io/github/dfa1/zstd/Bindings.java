@@ -1,6 +1,7 @@
 package io.github.dfa1.zstd;
 
 import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandle;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
@@ -132,6 +133,20 @@ final class Bindings {
     static final MethodHandle COMPRESS2 =
             NativeLibrary.lookup("ZSTD_compress2",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG));
+
+    // size_t ZSTD_DCtx_setParameter(ZSTD_DCtx*, ZSTD_dParameter, int value)
+    static final MethodHandle DCTX_SET_PARAMETER =
+            NativeLibrary.lookup("ZSTD_DCtx_setParameter",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT, JAVA_INT));
+
+    // ZSTD_bounds { size_t error; int lowerBound; int upperBound; } — returned by value
+    private static final MemoryLayout BOUNDS_LAYOUT =
+            MemoryLayout.structLayout(JAVA_LONG, JAVA_INT, JAVA_INT);
+    // ZSTD_bounds ZSTD_cParam_getBounds(ZSTD_cParameter) / ZSTD_dParam_getBounds(ZSTD_dParameter)
+    static final MethodHandle CPARAM_GET_BOUNDS =
+            NativeLibrary.lookup("ZSTD_cParam_getBounds", FunctionDescriptor.of(BOUNDS_LAYOUT, JAVA_INT));
+    static final MethodHandle DPARAM_GET_BOUNDS =
+            NativeLibrary.lookup("ZSTD_dParam_getBounds", FunctionDescriptor.of(BOUNDS_LAYOUT, JAVA_INT));
 
     // size_t ZSTD_compressStream2(ZSTD_CCtx*, ZSTD_outBuffer*, ZSTD_inBuffer*, ZSTD_EndDirective)
     static final MethodHandle COMPRESS_STREAM2 =

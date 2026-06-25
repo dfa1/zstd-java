@@ -26,6 +26,26 @@ public final class ZstdDecompressCtx extends NativeObject {
         }
     }
 
+    /// Sets an advanced decompression parameter, sticky across subsequent calls.
+    ///
+    /// @param parameter the parameter to set
+    /// @param value     the value, validated natively against the parameter's bounds
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the value is out of range for the parameter
+    public ZstdDecompressCtx parameter(ZstdDecompressParameter parameter, int value) {
+        Zstd.call(() -> (long) Bindings.DCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
+        return this;
+    }
+
+    /// Sets the largest back-reference window the decoder will accept, as a
+    /// power of two. Raise it to decode frames built with a large `windowLog`.
+    ///
+    /// @param windowLogMax the base-2 log of the maximum accepted window size
+    /// @return `this`, for chaining
+    public ZstdDecompressCtx windowLogMax(int windowLogMax) {
+        return parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, windowLogMax);
+    }
+
     /// Decompresses a frame into a buffer of at most `maxSize` bytes.
     ///
     /// @param compressed a complete zstd frame

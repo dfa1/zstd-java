@@ -21,7 +21,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ZSTD_LIB="$PROJECT_DIR/zstd/lib"
+ZSTD_LIB="$PROJECT_DIR/third_party/zstd/lib"
 mkdir -p "$1"
 OUTPUT_RESOURCES="$(cd "$1" && pwd)"
 CLASSIFIER="$2"

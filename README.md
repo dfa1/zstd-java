@@ -22,7 +22,8 @@ libc for every target, enabling hermetic cross-compilation without a sysroot.
 
 ## Supported platforms
 
-The library ships as pure-Java `core` plus one native artifact per platform:
+The library — `io.github.dfa1:zstd-java` — ships as a pure-Java module plus one
+native artifact per platform:
 
 | OS      | aarch64 | x86_64 |
 |---------|:-------:|:------:|
@@ -118,7 +119,7 @@ mvn test
 ```
 
 The `mvn` build invokes `scripts/build-zstd.sh`, which compiles
-`libzstd.{dylib,so,dll}` from the `zstd/` submodule with `zig cc`. The script
+`libzstd.{dylib,so,dll}` from the `third_party/zstd` submodule with `zig cc`. The script
 cross-compiles any of the six targets from any host:
 
 ```bash

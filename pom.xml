@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>io.github.dfa1</groupId>
-	<artifactId>zstd-java</artifactId>
+	<artifactId>parent</artifactId>
 	<version>0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
@@ -34,7 +34,7 @@
 		<module>native/linux-aarch64</module>
 		<module>native/windows-x86_64</module>
 		<module>native/windows-aarch64</module>
-		<module>core</module>
+		<module>zstd</module>
 		<module>bom</module>
 	</modules>
 
@@ -47,7 +47,7 @@
 		<dependencies>
 			<dependency>
 				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-core</artifactId>
+				<artifactId>zstd-java</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>

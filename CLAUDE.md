@@ -11,14 +11,14 @@ already off-heap (e.g. an mmap slice in, an arena buffer out).
 
 Multi-module Maven build (`io.github.dfa1:zstd-java`):
 
-- `core/` — pure-Java FFM bindings (package `io.github.dfa1.zstdffm`). The only
-  module with Java sources.
+- `zstd/` — the library module, artifactId `zstd-java`, pure-Java FFM bindings
+  (package `io.github.dfa1.zstdffm`). The only module with Java sources.
 - `native/<classifier>/` — one module per platform; each packages a
-  `libzstd.{dylib,so,dll}` built from the `zstd/` submodule. No Java.
+  `libzstd.{dylib,so,dll}` built from the `third_party/zstd` submodule. No Java.
   Classifiers: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
   `windows-x86_64`, `windows-aarch64`.
 - `bom/` — dependency BOM.
-- `zstd/` — vendored `facebook/zstd` git submodule (the C source of truth).
+- `third_party/zstd/` — vendored `facebook/zstd` git submodule (the C source of truth).
 
 ## Native build
 
@@ -81,4 +81,4 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
   `<strong>`,`<pre>`,`<table>`, …). Use blank `///` for paragraphs, `- ` lists, ` ```java ``` `,
   `**bold**`. Cross-refs `[ClassName#method(ParamType)]` — verify the target exists (wrong refs are
   **errors**).
-- Check: `./mvnw javadoc:javadoc -pl core` must produce zero output.
+- Check: `./mvnw javadoc:javadoc -pl zstd` must produce zero output.

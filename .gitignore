@@ -1,0 +1,8 @@
+target/
+# built native libraries — regenerated from the zstd submodule by build-zstd.sh
+native/*/src/main/resources/native/
+*.dylib
+*.so
+*.o
+.idea/
+*.iml

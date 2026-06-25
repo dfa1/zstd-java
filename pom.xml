@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>io.github.dfa1</groupId>
+	<artifactId>zstd-java</artifactId>
+	<version>0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<name>zstd FFM</name>
+	<description>Java FFM (Foreign Function &amp; Memory) bindings for zstd</description>
+	<url>https://github.com/dfa1/zstd-java</url>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<id>dfa1</id>
+			<name>Davide Angelocola</name>
+			<url>https://github.com/dfa1</url>
+		</developer>
+	</developers>
+
+	<modules>
+		<module>native/osx-aarch64</module>
+		<module>native/osx-x86_64</module>
+		<module>native/linux-x86_64</module>
+		<module>native/linux-aarch64</module>
+		<module>native/windows-x86_64</module>
+		<module>native/windows-aarch64</module>
+		<module>core</module>
+		<module>bom</module>
+	</modules>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.release>25</maven.compiler.release>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-native-osx-aarch64</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-native-linux-x86_64</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-native-linux-aarch64</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-native-osx-x86_64</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-native-windows-x86_64</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1</groupId>
+				<artifactId>zstd-java-native-windows-aarch64</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.junit.jupiter</groupId>
+				<artifactId>junit-jupiter</artifactId>
+				<version>6.1.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.assertj</groupId>
+				<artifactId>assertj-core</artifactId>
+				<version>3.27.7</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.15.0</version>
+					<configuration>
+						<release>25</release>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>3.5.6</version>
+					<configuration>
+						<argLine>--enable-native-access=ALL-UNNAMED</argLine>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>exec-maven-plugin</artifactId>
+					<version>3.6.3</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+</project>

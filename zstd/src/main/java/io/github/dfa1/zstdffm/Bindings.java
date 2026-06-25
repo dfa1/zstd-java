@@ -9,6 +9,9 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /// Central registry of bound zstd C functions.
 ///
+/// Signatures and semantics follow the
+/// [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
+///
 /// `size_t` and `unsigned long long` are modelled as
 /// {@link java.lang.foreign.ValueLayout#JAVA_LONG} (LP64); the public API guards
 /// against negative interpretations where zstd uses sentinel values.

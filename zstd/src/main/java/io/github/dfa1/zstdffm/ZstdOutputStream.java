@@ -24,9 +24,11 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// }
 public final class ZstdOutputStream extends OutputStream {
 
-    // ZSTD_cParameter / ZSTD_EndDirective values from zstd.h
+    // ZSTD_cParameter / ZSTD_EndDirective values from zstd.h — see
+    // https://facebook.github.io/zstd/doc/api_manual_latest.html
     private static final int ZSTD_C_COMPRESSION_LEVEL = 100;
     private static final int ZSTD_E_CONTINUE = 0;
+    private static final int ZSTD_E_FLUSH = 1;
     private static final int ZSTD_E_END = 2;
 
     private final OutputStream out;
@@ -101,7 +103,7 @@ public final class ZstdOutputStream extends OutputStream {
         in.set(inSeg, 0, 0);
         long remainingHint;
         do {
-            remainingHint = drainOutput(1 /* ZSTD_e_flush */);
+            remainingHint = drainOutput(ZSTD_E_FLUSH);
         } while (remainingHint != 0);
         out.flush();
     }

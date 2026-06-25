@@ -91,6 +91,12 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_CCtx_setParameter",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT, JAVA_INT));
 
+    // size_t ZSTD_compress2(ZSTD_CCtx*, void* dst, size_t dstCap, const void* src, size_t srcSize)
+    // Uses the advanced parameters set on the context (unlike ZSTD_compressCCtx).
+    static final MethodHandle COMPRESS2 =
+            NativeLibrary.lookup("ZSTD_compress2",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG));
+
     // size_t ZSTD_compressStream2(ZSTD_CCtx*, ZSTD_outBuffer*, ZSTD_inBuffer*, ZSTD_EndDirective)
     static final MethodHandle COMPRESS_STREAM2 =
             NativeLibrary.lookup("ZSTD_compressStream2",

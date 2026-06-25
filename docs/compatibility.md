@@ -5,7 +5,7 @@ and semantics follow the [official manual](https://facebook.github.io/zstd/doc/a
 
 - zstd version: **1.6.0** (vendored `third_party/zstd`)
 - Public symbols exported by `libzstd`: **186**
-- Bound so far: **36** (~19%)
+- Bound so far: **37** (~20%)
 
 "Bound" means the symbol has a `MethodHandle` in `Bindings` and is reachable
 through the public Java API. The rest are reachable from native code but not yet
@@ -27,7 +27,7 @@ low-level variants that an idiomatic Java API does not need.
 | Dictionary training (ZDICT) | 4 / 12 | `trainFromBuffer`; cover/fastCover optimizers not bound |
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
-| Advanced parameters | 1 / 38 | only `CCtx_setParameter` (level), used by the streams; bounds/MT/LDM not bound |
+| Advanced parameters | 2 / 38 | `CCtx_setParameter` + `compress2` via `ZstdCompressCtx` (level, checksum, LDM, windowLog…); MT/getBounds not bound |
 | Frame inspection | 1 / 13 | only `getFrameContentSize`; header/skippable/dictID-from-frame not bound |
 | Memory sizing | 0 / 14 | `sizeof_*` / `estimate*` accounting not bound |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
@@ -54,11 +54,12 @@ low-level variants that an idiomatic Java API does not need.
 | `ZDICT_isError`, `ZDICT_getErrorName` | internal error mapping in `ZstdDictionary` |
 | `ZSTD_compressStream2`, `ZSTD_CStreamInSize`, `ZSTD_CStreamOutSize`, `ZSTD_CCtx_setParameter` | `ZstdOutputStream` |
 | `ZSTD_decompressStream`, `ZSTD_DStreamInSize`, `ZSTD_DStreamOutSize` | `ZstdInputStream` |
+| `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressCtx.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (+ `ZstdCompressParameter`) |
 
 ## Roadmap (priority order)
 
 1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`compressStream2`, `decompressStream`, bounded buffers). Remaining: dictionary-on-stream, `MemorySegment`-buffer driver, `pledgedSrcSize`.
-2. **Advanced parameters** — `ZSTD_CCtx_setParameter` (level is bound; expose the rest) + `cParam_getBounds`: checksums, `nbWorkers`, long-distance matching, window log, `pledgedSrcSize`.
+2. **Advanced parameters** — done for compression: `CCtx_setParameter` + `compress2` via `ZstdCompressCtx` (`checksum`, `longDistanceMatching`, `windowLog`, generic `parameter`). Remaining: `cParam_getBounds`, `pledgedSrcSize`, and `nbWorkers` (needs a multithreaded native build).
 3. **Frame inspection** — `getFrameHeader`, `isFrame`, `findFrameCompressedSize`, `decompressBound`, `getDictID_from*`, skippable frames.
 4. **Better dictionaries** — `ZDICT_optimizeTrainFromBuffer_cover` / `_fastCover`, `finalizeDictionary`.
 5. **Typed errors** — `ZSTD_getErrorCode` / `ZSTD_getErrorString`.
@@ -200,7 +201,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_resetDStream` | — |
 | `ZSTD_sizeof_DStream` | — |
 
-### Advanced parameters (1/38)
+### Advanced parameters (2/38)
 
 | Symbol | Bound |
 |---|:---:|
@@ -237,7 +238,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_DCtx_setMaxWindowSize` | — |
 | `ZSTD_DCtx_setParameter` | — |
 | `ZSTD_cParam_getBounds` | — |
-| `ZSTD_compress2` | — |
+| `ZSTD_compress2` | ✅ |
 | `ZSTD_createCCtxParams` | — |
 | `ZSTD_dParam_getBounds` | — |
 | `ZSTD_estimateCCtxSize_usingCCtxParams` | — |

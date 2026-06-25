@@ -43,10 +43,54 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @return `this`, for chaining
     public ZstdCompressCtx level(int level) {
         this.level = level;
+        setParam(ZstdCompressParameter.COMPRESSION_LEVEL, level);
         return this;
     }
 
-    /// Compresses `src` into a new zstd frame using this context.
+    /// Sets an advanced compression parameter for subsequent
+    /// {@link #compress(byte[])} / {@link #compress(MemorySegment, MemorySegment)}
+    /// calls. The setting is sticky across calls until changed.
+    ///
+    /// Advanced parameters do not apply to the dictionary `compress` overloads.
+    ///
+    /// @param parameter the parameter to set
+    /// @param value     the value, validated natively against the parameter's bounds
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the value is out of range for the parameter
+    public ZstdCompressCtx parameter(ZstdCompressParameter parameter, int value) {
+        setParam(parameter, value);
+        return this;
+    }
+
+    /// Appends a 32-bit content checksum to each frame, which decompression
+    /// verifies and rejects on mismatch. Off by default.
+    ///
+    /// @param enabled whether to write a checksum
+    /// @return `this`, for chaining
+    public ZstdCompressCtx checksum(boolean enabled) {
+        return parameter(ZstdCompressParameter.CHECKSUM_FLAG, enabled ? 1 : 0);
+    }
+
+    /// Enables long-distance matching for a better ratio on large, repetitive inputs.
+    ///
+    /// @param enabled whether to enable long-distance matching
+    /// @return `this`, for chaining
+    public ZstdCompressCtx longDistanceMatching(boolean enabled) {
+        return parameter(ZstdCompressParameter.ENABLE_LONG_DISTANCE_MATCHING, enabled ? 1 : 0);
+    }
+
+    /// Sets the maximum back-reference distance as a power of two (larger window =
+    /// better ratio, more memory). Decompression of large windows may require
+    /// raising the decompressor's window limit.
+    ///
+    /// @param windowLog the base-2 log of the window size
+    /// @return `this`, for chaining
+    public ZstdCompressCtx windowLog(int windowLog) {
+        return parameter(ZstdCompressParameter.WINDOW_LOG, windowLog);
+    }
+
+    /// Compresses `src` into a new zstd frame using this context and its
+    /// advanced parameters.
     ///
     /// @param src the bytes to compress
     /// @return a self-describing zstd frame
@@ -55,10 +99,14 @@ public final class ZstdCompressCtx extends NativeObject {
             MemorySegment in = Zstd.copyIn(arena, src);
             long bound = Zstd.compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
-            long written = Zstd.call(() -> (long) Bindings.COMPRESS_CCTX.invokeExact(
-                    ptr(), out, bound, in, (long) src.length, level));
+            long written = Zstd.call(() -> (long) Bindings.COMPRESS2.invokeExact(
+                    ptr(), out, bound, in, (long) src.length));
             return Zstd.copyOut(out, written);
         }
+    }
+
+    private void setParam(ZstdCompressParameter parameter, int value) {
+        Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
     }
 
     /// Compresses `src` against `dict` at this context's level.
@@ -114,8 +162,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or compression fails
     public long compress(MemorySegment dst, MemorySegment src) {
-        return Zstd.call(() -> (long) Bindings.COMPRESS_CCTX.invokeExact(
-                ptr(), dst, dst.byteSize(), src, src.byteSize(), level));
+        return Zstd.call(() -> (long) Bindings.COMPRESS2.invokeExact(
+                ptr(), dst, dst.byteSize(), src, src.byteSize()));
     }
 
     /// Zero-copy compression against a pre-digested `dict`, segment to segment.

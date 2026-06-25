@@ -99,6 +99,39 @@ scale linearly with payload size.
   regardless of binding; the segment path additionally avoids the off-heap↔heap copy.
   aircompressor *compress* still allocates internal hash tables per call.
 
+## Where the work goes (async-profiler, 64 MiB)
+
+Profiling the cache-busting 64 MiB case with async-profiler corroborates the
+allocation counters from two angles — allocation flamegraph (what hits the heap)
+and itimer/CPU flamegraph (what burns cycles).
+
+**Allocation flamegraph** — dominant heap-allocation site per benchmark:
+
+| benchmark | dominant alloc site |
+|-----------|---------------------|
+| Compress `zstdJavaSegment` | **none — no heap allocation sampled** |
+| Compress `zstdJavaBytes` | `byte[]` in `Zstd.copyOut` (the returned frame array) |
+| Compress `zstdJni` | `byte[]` inside `luben…Zstd.compress` |
+| Compress `aircompressor` | `byte[]` + `BlockCompressionState.<init>` (internal tables) |
+| Decompress `zstdJavaSegment` | **none — no heap allocation sampled** |
+| Decompress `zstdJavaBytes` / `zstdJni` | `byte[]` (the returned output array) |
+
+**CPU (itimer) flamegraph** — the heap paths additionally pay a memcpy bounce and
+GC work that the segment path does not:
+
+- `zstdJavaBytes`: `MemorySegment.copy` → `ScopedMemoryAccess.copyMemory` →
+  `Unsafe.copyMemory` (heap↔native in/out), **plus** `G1ParCopyClosure::do_oop_work`
+  (GC triggered by the output allocation).
+- `zstdJni`: `byte_disjoint_arraycopy` + `Arrays.copyOfRange` (the JNI copy and the
+  trim copy).
+- `zstdJavaSegment`: **neither** — no copy frames, no GC frames. Only codec work
+  (`ZSTD_*`, `FSE_buildCTable_wksp`, `encodeSequences`, `FSE_readNCount`).
+
+So the segment API does strictly less work: no per-op heap allocation (hence no GC)
+and no memcpy bounce. At 64 MiB this overhead is a small fraction of total codec
+time — which is why throughput ties — but it is pure waste the zero-copy path
+removes entirely, and it dominates under sustained, allocation-sensitive load.
+
 ## Reproduce
 
 ```bash
@@ -109,4 +142,11 @@ java -jar benchmark/target/benchmarks.jar -prof gc
 
 # single size
 java -jar benchmark/target/benchmarks.jar -prof gc -p size=67108864
+
+# async-profiler flamegraphs for the 64 MiB case (macOS: itimer; Linux: cpu)
+LIB=/opt/homebrew/lib/libasyncProfiler.dylib
+java -jar benchmark/target/benchmarks.jar -p size=67108864 \
+  -prof "async:libPath=$LIB;output=flamegraph;event=alloc;dir=benchmark/target/async-alloc"
+java -jar benchmark/target/benchmarks.jar -p size=67108864 \
+  -prof "async:libPath=$LIB;output=flamegraph;event=itimer;dir=benchmark/target/async-cpu"
 ```

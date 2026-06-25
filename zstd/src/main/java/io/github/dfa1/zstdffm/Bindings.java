@@ -51,6 +51,22 @@ final class Bindings {
     static final MethodHandle GET_DICT_ID_FROM_FRAME =
             NativeLibrary.lookup("ZSTD_getDictID_fromFrame",
                     FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
+    // size_t ZSTD_getFrameHeader(ZSTD_FrameHeader* zfh, const void* src, size_t srcSize)
+    static final MethodHandle GET_FRAME_HEADER =
+            NativeLibrary.lookup("ZSTD_getFrameHeader",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG));
+    // unsigned ZSTD_isSkippableFrame(const void* buffer, size_t size)
+    static final MethodHandle IS_SKIPPABLE_FRAME =
+            NativeLibrary.lookup("ZSTD_isSkippableFrame",
+                    FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
+    // size_t ZSTD_writeSkippableFrame(void* dst, size_t dstCap, const void* src, size_t srcSize, unsigned magicVariant)
+    static final MethodHandle WRITE_SKIPPABLE_FRAME =
+            NativeLibrary.lookup("ZSTD_writeSkippableFrame",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT));
+    // size_t ZSTD_readSkippableFrame(void* dst, size_t dstCap, unsigned* magicVariant, const void* src, size_t srcSize)
+    static final MethodHandle READ_SKIPPABLE_FRAME =
+            NativeLibrary.lookup("ZSTD_readSkippableFrame",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG));
 
     // unsigned ZSTD_isError(size_t code)
     static final MethodHandle IS_ERROR =

@@ -3,6 +3,9 @@ package io.github.dfa1.zstdffm;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.JAVA_LONG;
+
 /// Inspection of zstd frames without decompressing them — useful for parsing a
 /// stream of concatenated frames, sizing buffers, or routing by dictionary id.
 ///
@@ -90,6 +93,105 @@ public final class ZstdFrame {
     /// @return the dictionary id, or `0` if none
     public static int dictId(MemorySegment data) {
         return dictId(data, data.byteSize());
+    }
+
+    /// Parses the header of the first frame in `data` without decompressing it.
+    ///
+    /// @param data a complete zstd frame (or at least its header)
+    /// @return the parsed frame header
+    /// @throws ZstdException if the input is not a valid frame or the header is incomplete
+    public static ZstdFrameHeader header(byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            return header(Zstd.copyIn(arena, data), data.length);
+        }
+    }
+
+    /// Parses the header of the first frame in native `data`.
+    ///
+    /// @param data a complete zstd frame (or at least its header)
+    /// @return the parsed frame header
+    /// @throws ZstdException if the input is not a valid frame or the header is incomplete
+    public static ZstdFrameHeader header(MemorySegment data) {
+        return header(data, data.byteSize());
+    }
+
+    /// Tests whether `data` begins with a skippable frame (user data a decoder ignores).
+    ///
+    /// @param data the bytes to inspect
+    /// @return `true` if `data` starts with a skippable frame
+    public static boolean isSkippableFrame(byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            return isSkippableFrame(Zstd.copyIn(arena, data), data.length);
+        }
+    }
+
+    /// Tests whether native `data` begins with a skippable frame.
+    ///
+    /// @param data the native bytes to inspect
+    /// @return `true` if `data` starts with a skippable frame
+    public static boolean isSkippableFrame(MemorySegment data) {
+        return isSkippableFrame(data, data.byteSize());
+    }
+
+    /// Wraps `content` in a skippable frame — arbitrary metadata that a zstd
+    /// decoder skips over, letting you interleave it with compressed frames.
+    ///
+    /// @param content      the user bytes to embed
+    /// @param magicVariant the variant 0..15 selecting one of the skippable magic numbers
+    /// @return the skippable frame bytes
+    /// @throws ZstdException if `magicVariant` is out of range
+    public static byte[] writeSkippableFrame(byte[] content, int magicVariant) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment src = Zstd.copyIn(arena, content);
+            long cap = content.length + 8L;
+            MemorySegment dst = arena.allocate(cap);
+            long written = Zstd.call(() -> (long) Bindings.WRITE_SKIPPABLE_FRAME.invokeExact(
+                    dst, cap, src, (long) content.length, magicVariant));
+            return Zstd.copyOut(dst, written);
+        }
+    }
+
+    /// Reads the content of a skippable frame produced by
+    /// [#writeSkippableFrame(byte[], int)].
+    ///
+    /// @param frame a skippable frame
+    /// @return the embedded content and its magic variant
+    /// @throws ZstdException if `frame` is not a skippable frame
+    public static ZstdSkippableContent readSkippableFrame(byte[] frame) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment src = Zstd.copyIn(arena, frame);
+            MemorySegment magic = arena.allocate(JAVA_INT);
+            MemorySegment dst = arena.allocate(Math.max(frame.length, 1));
+            long written = Zstd.call(() -> (long) Bindings.READ_SKIPPABLE_FRAME.invokeExact(
+                    dst, (long) frame.length, magic, src, (long) frame.length));
+            return new ZstdSkippableContent(Zstd.copyOut(dst, written), magic.get(JAVA_INT, 0));
+        }
+    }
+
+    private static ZstdFrameHeader header(MemorySegment data, long size) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment zfh = arena.allocate(48);
+            long remaining = Zstd.call(() -> (long) Bindings.GET_FRAME_HEADER.invokeExact(zfh, data, size));
+            if (remaining != 0) {
+                throw new ZstdException("incomplete frame header: need " + remaining + " more bytes");
+            }
+            return new ZstdFrameHeader(
+                    zfh.get(JAVA_LONG, 0),                       // frameContentSize
+                    zfh.get(JAVA_LONG, 8),                       // windowSize
+                    zfh.get(JAVA_INT, 16) & 0xFFFFFFFFL,         // blockSizeMax
+                    ZstdFrameType.of(zfh.get(JAVA_INT, 20)),     // frameType
+                    zfh.get(JAVA_INT, 24),                       // headerSize
+                    zfh.get(JAVA_INT, 28),                       // dictID
+                    zfh.get(JAVA_INT, 32) != 0);                 // checksumFlag
+        }
+    }
+
+    private static boolean isSkippableFrame(MemorySegment data, long size) {
+        try {
+            return ((int) Bindings.IS_SKIPPABLE_FRAME.invokeExact(data, size)) != 0;
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
     }
 
     private static boolean isZstdFrame(MemorySegment data, long size) {

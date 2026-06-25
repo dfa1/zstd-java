@@ -79,6 +79,56 @@ class ZstdFrameTest {
     }
 
     @Nested
+    class Header {
+
+        @Test
+        void reportsContentSizeAndNoChecksumByDefault() {
+            // Given a default frame
+            ZstdFrameHeader header = ZstdFrame.header(Zstd.compress(PAYLOAD));
+
+            // Then it is a standard frame storing the content size, no checksum, no dict
+            assertThat(header.frameType()).isEqualTo(ZstdFrameType.STANDARD);
+            assertThat(header.contentSize()).hasValue(PAYLOAD.length);
+            assertThat(header.hasChecksum()).isFalse();
+            assertThat(header.dictId()).isZero();
+            assertThat(header.windowSize()).isPositive();
+        }
+
+        @Test
+        void reflectsChecksumFlag() {
+            byte[] frame;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx().checksum(true)) {
+                frame = ctx.compress(PAYLOAD);
+            }
+            assertThat(ZstdFrame.header(frame).hasChecksum()).isTrue();
+        }
+    }
+
+    @Nested
+    class Skippable {
+
+        @Test
+        void roundTripsContentAndMagicVariant() {
+            // Given user metadata wrapped in a skippable frame
+            byte[] meta = "sidecar metadata".getBytes(StandardCharsets.UTF_8);
+            byte[] frame = ZstdFrame.writeSkippableFrame(meta, 7);
+
+            // Then it is recognised as skippable and decodes back with its variant
+            assertThat(ZstdFrame.isSkippableFrame(frame)).isTrue();
+            assertThat(ZstdFrame.header(frame).frameType()).isEqualTo(ZstdFrameType.SKIPPABLE);
+
+            ZstdSkippableContent read = ZstdFrame.readSkippableFrame(frame);
+            assertThat(read.content()).isEqualTo(meta);
+            assertThat(read.magicVariant()).isEqualTo(7);
+        }
+
+        @Test
+        void standardFrameIsNotSkippable() {
+            assertThat(ZstdFrame.isSkippableFrame(Zstd.compress(PAYLOAD))).isFalse();
+        }
+    }
+
+    @Nested
     class DictId {
 
         @Test

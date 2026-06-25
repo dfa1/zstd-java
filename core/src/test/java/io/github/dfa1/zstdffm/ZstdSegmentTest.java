@@ -1,95 +1,120 @@
 package io.github.dfa1.zstdffm;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ZstdSegmentTest {
 
-	@Test
-	void zeroCopySegmentRoundTrip() {
-		byte[] original = "segment payload ".repeat(200).getBytes(StandardCharsets.UTF_8);
+	@Nested
+	class ExplicitDestination {
 
-		try (Arena arena = Arena.ofConfined();
-		     ZstdCompressCtx cctx = new ZstdCompressCtx();
-		     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+		@Test
+		void roundTripsNativeToNative() {
+			// Given a payload in a native source segment
+			byte[] original = "segment payload ".repeat(200).getBytes(StandardCharsets.UTF_8);
 
-			MemorySegment src = arena.allocate(original.length);
-			MemorySegment.copy(original, 0, src, JAVA_BYTE, 0, original.length);
+			try (Arena arena = Arena.ofConfined();
+			     ZstdCompressCtx cctx = new ZstdCompressCtx();
+			     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
 
-			MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
-			long packedLen = cctx.compress(dst, src);
-			MemorySegment frame = dst.asSlice(0, packedLen);
+				MemorySegment src = segmentOf(arena, original);
+				MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
 
-			// size the output from the frame header — no copy
-			long outLen = Zstd.decompressedSize(frame);
-			assertThat(outLen).isEqualTo(original.length);
+				// When compressed into a caller-sized destination
+				long packedLen = cctx.compress(dst, src);
+				MemorySegment frame = dst.asSlice(0, packedLen);
 
-			MemorySegment out = arena.allocate(outLen);
-			long written = dctx.decompress(out, frame);
+				// Then the frame header reports the original size, and it decodes back
+				long outLen = Zstd.decompressedSize(frame);
+				assertThat(outLen).isEqualTo(original.length);
 
-			byte[] restored = new byte[Math.toIntExact(written)];
-			MemorySegment.copy(out, JAVA_BYTE, 0, restored, 0, restored.length);
-			assertThat(restored).isEqualTo(original);
+				MemorySegment out = arena.allocate(outLen);
+				long written = dctx.decompress(out, frame);
+				assertThat(bytesOf(out, written)).isEqualTo(original);
+			}
 		}
 	}
 
-	@Test
-	void arenaAllocatingRoundTrip() {
-		byte[] original = "arena-sized payload ".repeat(100).getBytes(StandardCharsets.UTF_8);
+	@Nested
+	class ArenaAllocating {
 
-		try (Arena arena = Arena.ofConfined();
-		     ZstdCompressCtx cctx = new ZstdCompressCtx();
-		     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+		@Test
+		void codecSizesAndAllocatesOutput() {
+			// Given a payload in a native source segment
+			byte[] original = "arena-sized payload ".repeat(100).getBytes(StandardCharsets.UTF_8);
 
-			MemorySegment src = arena.allocate(original.length);
-			MemorySegment.copy(original, 0, src, JAVA_BYTE, 0, original.length);
+			try (Arena arena = Arena.ofConfined();
+			     ZstdCompressCtx cctx = new ZstdCompressCtx();
+			     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
 
-			// codec sizes and allocates both output buffers from the caller's arena
-			MemorySegment frame = cctx.compress(arena, src);
-			MemorySegment out = dctx.decompress(arena, frame);
+				MemorySegment src = segmentOf(arena, original);
 
-			assertThat(out.byteSize()).isEqualTo(original.length);
-			byte[] restored = new byte[Math.toIntExact(out.byteSize())];
-			MemorySegment.copy(out, JAVA_BYTE, 0, restored, 0, restored.length);
-			assertThat(restored).isEqualTo(original);
+				// When the codec sizes and allocates both buffers from the caller's arena
+				MemorySegment frame = cctx.compress(arena, src);
+				MemorySegment out = dctx.decompress(arena, frame);
+
+				// Then the output is exactly the original
+				assertThat(out.byteSize()).isEqualTo(original.length);
+				assertThat(bytesOf(out, out.byteSize())).isEqualTo(original);
+			}
 		}
 	}
 
-	@Test
-	void zeroCopySegmentWithDigestedDict() {
-		byte[] record = "{\"id\":42,\"user\":\"u\",\"active\":true}".getBytes(StandardCharsets.UTF_8);
-		// minimal dictionary built from the record family
-		java.util.List<byte[]> samples = new java.util.ArrayList<>();
+	@Nested
+	class WithDictionary {
+
+		@Test
+		void roundTripsWithDigestedDictionary() {
+			// Given a digested dictionary and a record in a native segment
+			ZstdDictionary dict = trainSmallDictionary();
+			byte[] record = "{\"id\":42,\"user\":\"u\",\"active\":true}".getBytes(StandardCharsets.UTF_8);
+
+			try (Arena arena = Arena.ofConfined();
+			     ZstdCompressCtx cctx = new ZstdCompressCtx();
+			     ZstdDecompressCtx dctx = new ZstdDecompressCtx();
+			     ZstdCompressDict cdict = new ZstdCompressDict(dict);
+			     ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
+
+				MemorySegment src = segmentOf(arena, record);
+
+				// When round-tripped segment-to-segment against the dictionary
+				MemorySegment frame = cctx.compress(arena, src, cdict);
+				MemorySegment out = arena.allocate(record.length);
+				long written = dctx.decompress(out, frame, ddict);
+
+				// Then the record is recovered
+				assertThat(bytesOf(out, written)).isEqualTo(record);
+			}
+		}
+	}
+
+	private static MemorySegment segmentOf(Arena arena, byte[] bytes) {
+		MemorySegment seg = arena.allocate(Math.max(bytes.length, 1));
+		MemorySegment.copy(bytes, 0, seg, JAVA_BYTE, 0, bytes.length);
+		return seg;
+	}
+
+	private static byte[] bytesOf(MemorySegment seg, long len) {
+		byte[] out = new byte[Math.toIntExact(len)];
+		MemorySegment.copy(seg, JAVA_BYTE, 0, out, 0, out.length);
+		return out;
+	}
+
+	private static ZstdDictionary trainSmallDictionary() {
+		List<byte[]> samples = new ArrayList<>();
 		for (int i = 0; i < 2000; i++) {
 			samples.add(("{\"id\":" + i + ",\"user\":\"u\",\"active\":" + (i % 2 == 0) + "}")
 					.getBytes(StandardCharsets.UTF_8));
 		}
-		ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
-
-		try (Arena arena = Arena.ofConfined();
-		     ZstdCompressCtx cctx = new ZstdCompressCtx();
-		     ZstdDecompressCtx dctx = new ZstdDecompressCtx();
-		     ZstdCompressDict cdict = new ZstdCompressDict(dict);
-		     ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
-
-			MemorySegment src = arena.allocate(record.length);
-			MemorySegment.copy(record, 0, src, JAVA_BYTE, 0, record.length);
-
-			MemorySegment dst = arena.allocate(Zstd.compressBound(record.length));
-			long packedLen = cctx.compress(dst, src, cdict);
-
-			MemorySegment out = arena.allocate(record.length);
-			long written = dctx.decompress(out, dst.asSlice(0, packedLen), ddict);
-
-			byte[] restored = new byte[Math.toIntExact(written)];
-			MemorySegment.copy(out, JAVA_BYTE, 0, restored, 0, restored.length);
-			assertThat(restored).isEqualTo(record);
-		}
+		return ZstdDictionary.train(samples, 8 * 1024);
 	}
 }

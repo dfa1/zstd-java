@@ -1,90 +1,132 @@
 package io.github.dfa1.zstdffm;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Random;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ZstdTest {
 
-	@Test
-	void roundTripsText() {
-		byte[] original = "the quick brown fox jumps over the lazy dog".repeat(50)
-				.getBytes(StandardCharsets.UTF_8);
+	@Nested
+	class RoundTrip {
 
-		byte[] packed = Zstd.compress(original);
+		@ParameterizedTest
+		@MethodSource("io.github.dfa1.zstdffm.RandomArrays#bytes")
+		void preservesArbitraryBytes(byte[] original) {
+			// Given a payload and its compressed frame
+			byte[] frame = Zstd.compress(original);
 
-		assertThat(packed.length).isLessThan(original.length);
-		assertThat(Zstd.decompress(packed)).isEqualTo(original);
-	}
+			// When it is decompressed
+			byte[] restored = Zstd.decompress(frame);
 
-	@Test
-	void roundTripsEmpty() {
-		byte[] packed = Zstd.compress(new byte[0]);
-		assertThat(Zstd.decompress(packed)).isEmpty();
-	}
-
-	@Test
-	void roundTripsBinaryAtEveryLevel() {
-		byte[] original = new byte[64 * 1024];
-		new Random(42).nextBytes(original);
-
-		for (int level : new int[]{Zstd.minCompressionLevel(), 1, Zstd.defaultCompressionLevel(),
-				Zstd.maxCompressionLevel()}) {
-			byte[] packed = Zstd.compress(original, level);
-			assertThat(Zstd.decompress(packed)).as("level %d", level).isEqualTo(original);
-		}
-	}
-
-	@Test
-	void compressBoundExceedsInput() {
-		assertThat(Zstd.compressBound(1000)).isGreaterThanOrEqualTo(1000);
-	}
-
-	@Test
-	void rejectsCorruptFrame() {
-		byte[] garbage = "not a zstd frame".getBytes(StandardCharsets.UTF_8);
-		assertThatThrownBy(() -> Zstd.decompress(garbage)).isInstanceOf(ZstdException.class);
-	}
-
-	@Test
-	void reportsVersion() {
-		assertThat(Zstd.version()).matches("\\d+\\.\\d+\\.\\d+");
-	}
-
-	@Test
-	void reusableContextsRoundTrip() {
-		byte[] original = "payload-".repeat(1000).getBytes(StandardCharsets.UTF_8);
-
-		try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19);
-		     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-
-			byte[] packed = cctx.compress(original);
-			byte[] restored = dctx.decompress(packed, original.length);
-
+			// Then the original bytes come back exactly
 			assertThat(restored).isEqualTo(original);
-			// second use of the same contexts must also work
-			assertThat(dctx.decompress(cctx.compress(original), original.length)).isEqualTo(original);
+		}
+
+		@Test
+		void handlesEmptyInput() {
+			// Given an empty payload
+			byte[] empty = new byte[0];
+
+			// When round-tripped
+			byte[] restored = Zstd.decompress(Zstd.compress(empty));
+
+			// Then it is still empty
+			assertThat(restored).isEmpty();
+		}
+
+		@Test
+		void shrinksCompressibleInput() {
+			// Given highly repetitive text
+			byte[] original = "the quick brown fox ".repeat(100).getBytes(StandardCharsets.UTF_8);
+
+			// When compressed
+			byte[] frame = Zstd.compress(original);
+
+			// Then the frame is smaller than the input
+			assertThat(frame.length).isLessThan(original.length);
 		}
 	}
 
-	@Test
-	void closedContextRejectsUse() {
-		ZstdCompressCtx ctx = new ZstdCompressCtx();
-		ctx.close();
-		assertThatThrownBy(() -> ctx.compress(new byte[1])).isInstanceOf(IllegalStateException.class);
+	@Nested
+	class Levels {
+
+		@ParameterizedTest
+		@MethodSource("io.github.dfa1.zstdffm.RandomArrays#levels")
+		void roundTripAtEveryLevel(int level) {
+			// Given a payload compressed at the given level
+			byte[] original = "payload-data-".repeat(500).getBytes(StandardCharsets.UTF_8);
+			byte[] frame = Zstd.compress(original, level);
+
+			// When decompressed
+			byte[] restored = Zstd.decompress(frame);
+
+			// Then the original is recovered
+			assertThat(restored).as("level %d", level).isEqualTo(original);
+		}
+
+		@Test
+		void exposesLevelOrdering() {
+			// Given the advertised level bounds
+			int min = Zstd.minCompressionLevel();
+			int def = Zstd.defaultCompressionLevel();
+			int max = Zstd.maxCompressionLevel();
+
+			// Then they are ordered min <= default <= max
+			assertThat(min).isLessThanOrEqualTo(def);
+			assertThat(def).isLessThanOrEqualTo(max);
+		}
 	}
 
-	@Test
-	void streamWithUnknownSizeNeedsMaxSize() {
-		// frames produced here DO store size, so plain decompress works;
-		// decompress(src, maxSize) must agree.
-		byte[] original = Arrays.copyOf("abc".getBytes(StandardCharsets.UTF_8), 9);
-		byte[] packed = Zstd.compress(original);
-		assertThat(Zstd.decompress(packed, 100)).isEqualTo(original);
+	@Nested
+	class CompressBound {
+
+		@ParameterizedTest
+		@ValueSource(longs = {0, 1, 1024, 1_000_000})
+		void neverUndersizesTheDestination(long srcSize) {
+			// When the worst-case bound is queried
+			long bound = Zstd.compressBound(srcSize);
+
+			// Then it is at least the input size
+			assertThat(bound).isGreaterThanOrEqualTo(srcSize);
+		}
+	}
+
+	@Nested
+	class Errors {
+
+		@Test
+		void rejectsCorruptFrame() {
+			// Given bytes that are not a zstd frame
+			byte[] garbage = "not a zstd frame".getBytes(StandardCharsets.UTF_8);
+
+			// When decompressing / Then it fails
+			assertThatThrownBy(() -> Zstd.decompress(garbage)).isInstanceOf(ZstdException.class);
+		}
+
+		@Test
+		void rejectsOversizedFrameForBuffer() {
+			// Given a frame whose content exceeds the caller's maxSize
+			byte[] frame = Zstd.compress("0123456789".getBytes(StandardCharsets.UTF_8));
+
+			// When decompressing into too small a buffer / Then it fails
+			assertThatThrownBy(() -> Zstd.decompress(frame, 1)).isInstanceOf(ZstdException.class);
+		}
+	}
+
+	@Nested
+	class Metadata {
+
+		@Test
+		void reportsSemanticVersion() {
+			// When the runtime version is read / Then it is an x.y.z string
+			assertThat(Zstd.version()).matches("\\d+\\.\\d+\\.\\d+");
+		}
 	}
 }

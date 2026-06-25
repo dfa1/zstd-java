@@ -81,6 +81,34 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_decompressDCtx",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG));
 
+    // --- streaming (CStream == CCtx, DStream == DCtx) ---
+
+    // size_t ZSTD_CCtx_setParameter(ZSTD_CCtx*, ZSTD_cParameter, int value)
+    static final MethodHandle CCTX_SET_PARAMETER =
+            NativeLibrary.lookup("ZSTD_CCtx_setParameter",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT, JAVA_INT));
+
+    // size_t ZSTD_compressStream2(ZSTD_CCtx*, ZSTD_outBuffer*, ZSTD_inBuffer*, ZSTD_EndDirective)
+    static final MethodHandle COMPRESS_STREAM2 =
+            NativeLibrary.lookup("ZSTD_compressStream2",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, ADDRESS, JAVA_INT));
+
+    // size_t ZSTD_decompressStream(ZSTD_DCtx*, ZSTD_outBuffer*, ZSTD_inBuffer*)
+    static final MethodHandle DECOMPRESS_STREAM =
+            NativeLibrary.lookup("ZSTD_decompressStream",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, ADDRESS));
+
+    // size_t ZSTD_CStreamInSize(void) / ZSTD_CStreamOutSize(void)
+    static final MethodHandle CSTREAM_IN_SIZE =
+            NativeLibrary.lookup("ZSTD_CStreamInSize", FunctionDescriptor.of(JAVA_LONG));
+    static final MethodHandle CSTREAM_OUT_SIZE =
+            NativeLibrary.lookup("ZSTD_CStreamOutSize", FunctionDescriptor.of(JAVA_LONG));
+    // size_t ZSTD_DStreamInSize(void) / ZSTD_DStreamOutSize(void)
+    static final MethodHandle DSTREAM_IN_SIZE =
+            NativeLibrary.lookup("ZSTD_DStreamInSize", FunctionDescriptor.of(JAVA_LONG));
+    static final MethodHandle DSTREAM_OUT_SIZE =
+            NativeLibrary.lookup("ZSTD_DStreamOutSize", FunctionDescriptor.of(JAVA_LONG));
+
     // --- dictionaries: raw (re-digested per call) ---
 
     // size_t ZSTD_compress_usingDict(ZSTD_CCtx*, dst, dstCap, src, srcSize, dict, dictSize, int level)

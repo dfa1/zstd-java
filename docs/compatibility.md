@@ -1,6 +1,6 @@
 # Symbol compatibility
 
-Coverage of the zstd C API by the `io.github.dfa1.zstdffm` bindings. Signatures
+Coverage of the zstd C API by the `io.github.dfa1.zstd` bindings. Signatures
 and semantics follow the [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
 
 - zstd version: **1.6.0** (vendored `third_party/zstd`)

@@ -36,6 +36,22 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_getFrameContentSize",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
 
+    // unsigned ZSTD_isFrame(const void* buffer, size_t size)
+    static final MethodHandle IS_FRAME =
+            NativeLibrary.lookup("ZSTD_isFrame", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
+    // size_t ZSTD_findFrameCompressedSize(const void* src, size_t srcSize)
+    static final MethodHandle FIND_FRAME_COMPRESSED_SIZE =
+            NativeLibrary.lookup("ZSTD_findFrameCompressedSize",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
+    // unsigned long long ZSTD_decompressBound(const void* src, size_t srcSize)
+    static final MethodHandle DECOMPRESS_BOUND =
+            NativeLibrary.lookup("ZSTD_decompressBound",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
+    // unsigned ZSTD_getDictID_fromFrame(const void* src, size_t srcSize)
+    static final MethodHandle GET_DICT_ID_FROM_FRAME =
+            NativeLibrary.lookup("ZSTD_getDictID_fromFrame",
+                    FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
+
     // unsigned ZSTD_isError(size_t code)
     static final MethodHandle IS_ERROR =
             NativeLibrary.lookup("ZSTD_isError", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));

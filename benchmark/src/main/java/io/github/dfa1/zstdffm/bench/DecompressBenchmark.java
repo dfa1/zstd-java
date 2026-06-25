@@ -35,7 +35,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @Measurement(iterations = 5)
 public class DecompressBenchmark {
 
-    @Param({"1024", "65536", "1048576"})
+    @Param({"1024", "65536", "1048576", "67108864"})
     private int size;
 
     private int originalSize;

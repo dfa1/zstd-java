@@ -10,34 +10,34 @@ import java.util.concurrent.atomic.AtomicReference;
 /// exactly once even under concurrent or repeated close calls.
 public abstract class NativeObject implements AutoCloseable {
 
-	private final AtomicReference<MemorySegment> ptr;
+    private final AtomicReference<MemorySegment> ptr;
 
-	protected NativeObject(MemorySegment owningPointer) {
-		this.ptr = new AtomicReference<>(owningPointer);
-	}
+    protected NativeObject(MemorySegment owningPointer) {
+        this.ptr = new AtomicReference<>(owningPointer);
+    }
 
-	/// @return the live native pointer
-	/// @throws IllegalStateException if this object has been closed
-	protected final MemorySegment ptr() {
-		MemorySegment p = ptr.get();
-		if (MemorySegment.NULL.equals(p)) {
-			throw new IllegalStateException("native object is closed");
-		}
-		return p;
-	}
+    /// @return the live native pointer
+    /// @throws IllegalStateException if this object has been closed
+    protected final MemorySegment ptr() {
+        MemorySegment p = ptr.get();
+        if (MemorySegment.NULL.equals(p)) {
+            throw new IllegalStateException("native object is closed");
+        }
+        return p;
+    }
 
-	@Override
-	public final void close() {
-		MemorySegment p = ptr.getAndSet(MemorySegment.NULL);
-		if (!MemorySegment.NULL.equals(p)) {
-			try {
-				tryClose(p);
-			} catch (Throwable ignored) {
-				// destructors must not throw
-			}
-		}
-	}
+    @Override
+    public final void close() {
+        MemorySegment p = ptr.getAndSet(MemorySegment.NULL);
+        if (!MemorySegment.NULL.equals(p)) {
+            try {
+                tryClose(p);
+            } catch (Throwable ignored) {
+                // destructors must not throw
+            }
+        }
+    }
 
-	/// Releases the native resource. Called exactly once with a non-NULL pointer.
-	protected abstract void tryClose(MemorySegment ptr) throws Throwable;
+    /// Releases the native resource. Called exactly once with a non-NULL pointer.
+    protected abstract void tryClose(MemorySegment ptr) throws Throwable;
 }

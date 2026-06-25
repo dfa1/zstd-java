@@ -7,7 +7,7 @@ package io.github.dfa1.zstdffm;
 /// recoverable I/O condition.
 public final class ZstdException extends RuntimeException {
 
-	ZstdException(String message) {
-		super(message);
-	}
+    ZstdException(String message) {
+        super(message);
+    }
 }

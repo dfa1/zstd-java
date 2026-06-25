@@ -117,7 +117,43 @@
 					<artifactId>exec-maven-plugin</artifactId>
 					<version>3.6.3</version>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-checkstyle-plugin</artifactId>
+					<version>3.6.0</version>
+					<executions>
+						<execution>
+							<phase>validate</phase>
+							<goals>
+								<goal>check</goal>
+							</goals>
+							<configuration>
+								<configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
+								<failsOnError>true</failsOnError>
+								<consoleOutput>true</consoleOutput>
+								<sourceDirectories>
+									<sourceDirectory>src/main/java</sourceDirectory>
+									<sourceDirectory>src/test/java</sourceDirectory>
+								</sourceDirectories>
+								<excludes>**/module-info.java</excludes>
+							</configuration>
+						</execution>
+					</executions>
+					<dependencies>
+						<dependency>
+							<groupId>com.puppycrawl.tools</groupId>
+							<artifactId>checkstyle</artifactId>
+							<version>13.6.0</version>
+						</dependency>
+					</dependencies>
+				</plugin>
 			</plugins>
 		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+			</plugin>
+		</plugins>
 	</build>
 </project>

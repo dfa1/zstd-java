@@ -34,6 +34,25 @@ zstd-java/                 root pom, artifactId: parent
   `windows-x86_64`, `windows-aarch64`.
 - `third_party/zstd/` — pinned submodule; the only source of native code.
 
+## Build requirements
+
+Deliberately minimal — part of the hermetic goal is a tiny prerequisite set:
+
+- **JDK 25+** — required for the stable `java.lang.foreign` API. Tested on
+  Temurin/Zulu 25.
+- **Zig** on `PATH` — the C cross-compiler for the native library; this is the
+  only native-toolchain dependency (no system clang/gcc, no CMake, no sysroot).
+  Tested with `zig 0.16.0`.
+- **Git** — to fetch the `third_party/zstd` submodule
+  (`git clone --recurse-submodules`, or `git submodule update --init`).
+- **A POSIX shell** — `scripts/build-zstd.sh` is bash; cross-builds run from a
+  Unix host (macOS/Linux). Windows targets are produced by cross-compiling, not
+  by building on Windows.
+
+Maven itself is **not** required: use the bundled wrapper `./mvnw`, which pins
+Maven 3.9.16. Runtime needs `--enable-native-access=ALL-UNNAMED` (already set for
+the test run via the surefire `argLine`).
+
 ## Native build
 
 `scripts/build-zstd.sh <output-resources-dir> <classifier>` compiles the zstd

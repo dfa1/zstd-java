@@ -40,6 +40,28 @@ class ZstdSegmentTest {
 	}
 
 	@Test
+	void arenaAllocatingRoundTrip() {
+		byte[] original = "arena-sized payload ".repeat(100).getBytes(StandardCharsets.UTF_8);
+
+		try (Arena arena = Arena.ofConfined();
+		     ZstdCompressCtx cctx = new ZstdCompressCtx();
+		     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+
+			MemorySegment src = arena.allocate(original.length);
+			MemorySegment.copy(original, 0, src, JAVA_BYTE, 0, original.length);
+
+			// codec sizes and allocates both output buffers from the caller's arena
+			MemorySegment frame = cctx.compress(arena, src);
+			MemorySegment out = dctx.decompress(arena, frame);
+
+			assertThat(out.byteSize()).isEqualTo(original.length);
+			byte[] restored = new byte[Math.toIntExact(out.byteSize())];
+			MemorySegment.copy(out, JAVA_BYTE, 0, restored, 0, restored.length);
+			assertThat(restored).isEqualTo(original);
+		}
+	}
+
+	@Test
 	void zeroCopySegmentWithDigestedDict() {
 		byte[] record = "{\"id\":42,\"user\":\"u\",\"active\":true}".getBytes(StandardCharsets.UTF_8);
 		// minimal dictionary built from the record family

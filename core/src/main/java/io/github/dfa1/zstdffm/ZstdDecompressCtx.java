@@ -91,6 +91,35 @@ public final class ZstdDecompressCtx extends NativeObject {
 				ptr(), dst, dst.byteSize(), src, src.byteSize(), ddict));
 	}
 
+	/// Zero-copy decompression that sizes and allocates the output for you: reads
+	/// the decompressed length from {@code frame}'s header, allocates a segment of
+	/// exactly that size in {@code arena}, and decompresses into it. The returned
+	/// segment is owned by {@code arena} and ready to use as a backing buffer.
+	///
+	/// Requires the frame to store its decompressed size (frames produced by this
+	/// library do); for size-less frames use {@link #decompress(MemorySegment, MemorySegment)}
+	/// with a destination you size yourself.
+	///
+	/// @return a segment of exactly the decompressed length, allocated in {@code arena}
+	/// @throws ZstdException if the frame is invalid or stores no size
+	public MemorySegment decompress(Arena arena, MemorySegment frame) {
+		long size = Zstd.decompressedSize(frame);
+		MemorySegment out = arena.allocate(size);
+		decompress(out, frame);
+		return out;
+	}
+
+	/// Zero-copy decompression against a pre-digested {@code dict}, allocating the
+	/// exact-sized output in {@code arena}.
+	///
+	/// @return a segment of exactly the decompressed length, allocated in {@code arena}
+	public MemorySegment decompress(Arena arena, MemorySegment frame, ZstdDecompressDict dict) {
+		long size = Zstd.decompressedSize(frame);
+		MemorySegment out = arena.allocate(size);
+		decompress(out, frame, dict);
+		return out;
+	}
+
 	@Override
 	protected void tryClose(MemorySegment ptr) throws Throwable {
 		long ignored = (long) Bindings.FREE_DCTX.invokeExact(ptr);

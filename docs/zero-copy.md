@@ -65,6 +65,26 @@ zero-copy fast path, with a thin `byte[]` overload** for the rare heap caller.
 | decompress + dict      | `ZstdDecompressCtx.decompress(byte[], int, ZstdDecompressDict)` | `ZstdDecompressCtx.decompress(dst, src, ZstdDecompressDict)` |
 | size output (no copy)  | frame header via `Zstd.decompress(byte[])`      | `Zstd.decompressedSize(MemorySegment)`             |
 
-The segment methods return the number of bytes written into `dst`. Size `dst`
-with `Zstd.compressBound(srcSize)` for compression, or
-`Zstd.decompressedSize(frame)` for decompression.
+The explicit-`dst` methods return the number of bytes written. Size `dst` with
+`Zstd.compressBound(srcSize)` for compression, or `Zstd.decompressedSize(frame)`
+for decompression.
+
+### Let the codec allocate
+
+If you don't want to size the destination yourself, pass an `Arena` and the codec
+sizes, allocates, and writes the output for you — still zero-copy, since the
+output is allocated in *your* arena and zstd writes into it directly. The
+returned segment is owned by that arena.
+
+```java
+MemorySegment frame   = cctx.compress(arena, src);    // bound-sized, trimmed to frame length
+MemorySegment decoded = dctx.decompress(arena, frame); // header-sized, exact length
+```
+
+| Operation   | explicit dst (you size)                       | arena (codec sizes)                        |
+|-------------|-----------------------------------------------|--------------------------------------------|
+| compress    | `compress(dst, src)` → bytes written          | `compress(arena, src)` → frame segment     |
+| decompress  | `decompress(dst, src)` → bytes written        | `decompress(arena, frame)` → output segment |
+
+The arena form of `decompress` requires the frame to store its decompressed size
+(frames this library produces do). For size-less frames, size `dst` yourself.

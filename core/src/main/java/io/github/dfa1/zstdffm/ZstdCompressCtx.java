@@ -112,6 +112,28 @@ public final class ZstdCompressCtx extends NativeObject {
 				ptr(), dst, dst.byteSize(), src, src.byteSize(), cdict));
 	}
 
+	/// Zero-copy compression that allocates the output for you: reserves a
+	/// worst-case buffer ({@link Zstd#compressBound(long)}) in {@code arena},
+	/// compresses into it, and returns a slice trimmed to the actual frame length.
+	/// The returned segment is owned by {@code arena}.
+	///
+	/// @return the zstd frame, a slice of an {@code arena}-owned segment
+	public MemorySegment compress(Arena arena, MemorySegment src) {
+		MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
+		long written = compress(dst, src);
+		return dst.asSlice(0, written);
+	}
+
+	/// Zero-copy compression against a pre-digested {@code dict}, allocating the
+	/// output in {@code arena} and returning a slice trimmed to the frame length.
+	///
+	/// @return the zstd frame, a slice of an {@code arena}-owned segment
+	public MemorySegment compress(Arena arena, MemorySegment src, ZstdCompressDict dict) {
+		MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
+		long written = compress(dst, src, dict);
+		return dst.asSlice(0, written);
+	}
+
 	@Override
 	protected void tryClose(MemorySegment ptr) throws Throwable {
 		long ignored = (long) Bindings.FREE_CCTX.invokeExact(ptr);

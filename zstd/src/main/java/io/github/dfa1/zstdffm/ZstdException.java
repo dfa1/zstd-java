@@ -9,7 +9,23 @@ public final class ZstdException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
+    /// The zstd error category for this failure.
+    private final ZstdErrorCode code;
+
     ZstdException(String message) {
+        this(message, ZstdErrorCode.UNKNOWN);
+    }
+
+    ZstdException(String message, ZstdErrorCode code) {
         super(message);
+        this.code = code;
+    }
+
+    /// The category of this error, for programmatic branching.
+    ///
+    /// @return the zstd error category, or [ZstdErrorCode#UNKNOWN] if the failure
+    ///         did not originate from a zstd error code
+    public ZstdErrorCode code() {
+        return code;
     }
 }

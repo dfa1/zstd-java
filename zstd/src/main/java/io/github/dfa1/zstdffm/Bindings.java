@@ -60,6 +60,10 @@ final class Bindings {
     static final MethodHandle GET_ERROR_NAME =
             NativeLibrary.lookup("ZSTD_getErrorName", FunctionDescriptor.of(ADDRESS, JAVA_LONG));
 
+    // ZSTD_ErrorCode ZSTD_getErrorCode(size_t functionResult)
+    static final MethodHandle GET_ERROR_CODE =
+            NativeLibrary.lookup("ZSTD_getErrorCode", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+
     // int ZSTD_maxCLevel(void) / ZSTD_minCLevel(void) / ZSTD_defaultCLevel(void)
     static final MethodHandle MAX_C_LEVEL =
             NativeLibrary.lookup("ZSTD_maxCLevel", FunctionDescriptor.of(JAVA_INT));

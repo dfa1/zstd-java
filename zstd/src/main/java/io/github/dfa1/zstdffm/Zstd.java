@@ -193,7 +193,7 @@ public final class Zstd {
             throw sneaky(t);
         }
         if (isError(code)) {
-            throw new ZstdException(errorName(code));
+            throw new ZstdException(errorName(code), ZstdErrorCode.of(errorCode(code)));
         }
         return code;
     }
@@ -201,6 +201,14 @@ public final class Zstd {
     private static boolean isError(long code) {
         try {
             return ((int) Bindings.IS_ERROR.invokeExact(code)) != 0;
+        } catch (Throwable t) {
+            throw sneaky(t);
+        }
+    }
+
+    private static int errorCode(long code) {
+        try {
+            return (int) Bindings.GET_ERROR_CODE.invokeExact(code);
         } catch (Throwable t) {
             throw sneaky(t);
         }

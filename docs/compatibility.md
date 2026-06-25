@@ -5,7 +5,7 @@ and semantics follow the [official manual](https://facebook.github.io/zstd/doc/a
 
 - zstd version: **1.6.0** (vendored `third_party/zstd`)
 - Public symbols exported by `libzstd`: **186**
-- Bound so far: **43** (~23%)
+- Bound so far: **44** (~24%)
 
 "Bound" means the symbol has a `MethodHandle` in `Bindings` and is reachable
 through the public Java API. The rest are reachable from native code but not yet
@@ -21,7 +21,7 @@ low-level variants that an idiomatic Java API does not need.
 |---|:---:|---|
 | Core one-shot | 6 / 7 | compress/decompress/bound/levels — complete for practical use |
 | Version | 2 / 2 | complete |
-| Errors | 2 / 4 | name-based; typed `getErrorCode`/`getErrorString` not bound |
+| Errors | 3 / 4 | name + typed `ZstdErrorCode` (via `getErrorCode`); `getErrorString` not bound |
 | Reusable contexts | 6 / 8 | CCtx/DCtx create/free/compress/decompress |
 | Dictionary — simple | 8 / 23 | raw + digested (CDict/DDict); `_advanced`/`_byReference` variants not bound |
 | Dictionary training (ZDICT) | 4 / 12 | `trainFromBuffer`; cover/fastCover optimizers not bound |
@@ -57,6 +57,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressCtx.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (+ `ZstdCompressParameter`) |
 | `ZSTD_CCtx_loadDictionary`, `ZSTD_DCtx_loadDictionary` | `ZstdOutputStream` / `ZstdInputStream` dictionary constructors |
 | `ZSTD_isFrame`, `ZSTD_findFrameCompressedSize`, `ZSTD_decompressBound`, `ZSTD_getDictID_fromFrame` | `ZstdFrame` |
+| `ZSTD_getErrorCode` | `ZstdException.code()` (+ `ZstdErrorCode`) |
 
 ## Roadmap (priority order)
 
@@ -64,7 +65,7 @@ low-level variants that an idiomatic Java API does not need.
 2. **Advanced parameters** — done for compression: `CCtx_setParameter` + `compress2` via `ZstdCompressCtx` (`checksum`, `longDistanceMatching`, `windowLog`, generic `parameter`). Remaining: `cParam_getBounds`, `pledgedSrcSize`, and `nbWorkers` (needs a multithreaded native build).
 3. **Frame inspection** — done: `ZstdFrame` (`isFrame`, `compressedSize`, `decompressedBound`, `dictId`). Remaining: `getFrameHeader` (struct out-param), skippable frames, `getDictID_fromDict/CDict/DDict`.
 4. **Better dictionaries** — `ZDICT_optimizeTrainFromBuffer_cover` / `_fastCover`, `finalizeDictionary`.
-5. **Typed errors** — `ZSTD_getErrorCode` / `ZSTD_getErrorString`.
+5. ~~**Typed errors**~~ — done: `ZstdException.code()` returns `ZstdErrorCode` (via `getErrorCode`).
 
 ## Full symbol table
 
@@ -89,13 +90,13 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_versionNumber` | ✅ |
 | `ZSTD_versionString` | ✅ |
 
-### Errors (2/4)
+### Errors (3/4)
 
 | Symbol | Bound |
 |---|:---:|
 | `ZSTD_getErrorName` | ✅ |
 | `ZSTD_isError` | ✅ |
-| `ZSTD_getErrorCode` | — |
+| `ZSTD_getErrorCode` | ✅ |
 | `ZSTD_getErrorString` | — |
 
 ### Reusable contexts (6/8)

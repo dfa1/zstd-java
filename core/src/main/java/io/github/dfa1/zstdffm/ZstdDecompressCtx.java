@@ -65,6 +65,32 @@ public final class ZstdDecompressCtx extends NativeObject {
 		}
 	}
 
+	/// Zero-copy decompression: reads the frame from {@code src} and writes the
+	/// result straight into {@code dst}, both native {@link MemorySegment}s the
+	/// caller owns. No heap {@code byte[]} bounce — the segment addresses go
+	/// directly to zstd. This is the fast path when input is an mmap slice and
+	/// output is an arena buffer that becomes the materialized array as-is;
+	/// see {@code docs/zero-copy.md}.
+	///
+	/// Size {@code dst} to the decompressed length (read it from the frame with
+	/// {@link Zstd#decompress(byte[])}'s header logic, or known out-of-band).
+	///
+	/// @return the number of bytes written into {@code dst}
+	/// @throws ZstdException if {@code dst} is too small or the frame is invalid
+	public long decompress(MemorySegment dst, MemorySegment src) {
+		return Zstd.call(() -> (long) Bindings.DECOMPRESS_DCTX.invokeExact(
+				ptr(), dst, dst.byteSize(), src, src.byteSize()));
+	}
+
+	/// Zero-copy decompression against a pre-digested {@code dict}, segment to segment.
+	///
+	/// @return the number of bytes written into {@code dst}
+	public long decompress(MemorySegment dst, MemorySegment src, ZstdDecompressDict dict) {
+		MemorySegment ddict = dict.ptr();
+		return Zstd.call(() -> (long) Bindings.DECOMPRESS_USING_DDICT.invokeExact(
+				ptr(), dst, dst.byteSize(), src, src.byteSize(), ddict));
+	}
+
 	@Override
 	protected void tryClose(MemorySegment ptr) throws Throwable {
 		long ignored = (long) Bindings.FREE_DCTX.invokeExact(ptr);

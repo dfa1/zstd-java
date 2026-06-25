@@ -83,6 +83,29 @@ public final class Zstd {
 		}
 	}
 
+	/// Decompressed size recorded in a zstd frame's header, read directly from a
+	/// native {@link MemorySegment} with no copy — use it to size the destination
+	/// for the zero-copy {@link ZstdDecompressCtx#decompress(MemorySegment, MemorySegment)}.
+	///
+	/// @param frame a complete zstd frame
+	/// @return the decompressed length in bytes
+	/// @throws ZstdException if the frame is invalid or does not store its size
+	public static long decompressedSize(MemorySegment frame) {
+		long size;
+		try {
+			size = (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(frame, frame.byteSize());
+		} catch (Throwable t) {
+			throw sneaky(t);
+		}
+		if (size == CONTENTSIZE_UNKNOWN) {
+			throw new ZstdException("decompressed size not stored in frame");
+		}
+		if (size == CONTENTSIZE_ERROR) {
+			throw new ZstdException("not a valid zstd frame");
+		}
+		return size;
+	}
+
 	/// Maximum compressed size for an input of {@code srcSize} bytes — the buffer
 	/// size guaranteed to never overflow during compression.
 	public static long compressBound(long srcSize) {

@@ -88,6 +88,30 @@ public final class ZstdCompressCtx extends NativeObject {
 		}
 	}
 
+	/// Zero-copy compression: reads {@code src} and writes the frame straight into
+	/// {@code dst}, both native {@link MemorySegment}s the caller owns. No heap
+	/// {@code byte[]} bounce — hand zstd the segment addresses directly. This is
+	/// the fast path when your bytes are already off-heap (e.g. an mmap slice and
+	/// an arena-allocated output); see {@code docs/zero-copy.md}.
+	///
+	/// Size {@code dst} with {@link Zstd#compressBound(long)} to guarantee it fits.
+	///
+	/// @return the number of bytes written into {@code dst}
+	/// @throws ZstdException if {@code dst} is too small or compression fails
+	public long compress(MemorySegment dst, MemorySegment src) {
+		return Zstd.call(() -> (long) Bindings.COMPRESS_CCTX.invokeExact(
+				ptr(), dst, dst.byteSize(), src, src.byteSize(), level));
+	}
+
+	/// Zero-copy compression against a pre-digested {@code dict}, segment to segment.
+	///
+	/// @return the number of bytes written into {@code dst}
+	public long compress(MemorySegment dst, MemorySegment src, ZstdCompressDict dict) {
+		MemorySegment cdict = dict.ptr();
+		return Zstd.call(() -> (long) Bindings.COMPRESS_USING_CDICT.invokeExact(
+				ptr(), dst, dst.byteSize(), src, src.byteSize(), cdict));
+	}
+
 	@Override
 	protected void tryClose(MemorySegment ptr) throws Throwable {
 		long ignored = (long) Bindings.FREE_CCTX.invokeExact(ptr);

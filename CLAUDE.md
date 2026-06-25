@@ -36,7 +36,7 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
 
 ## Code conventions
 
-- Tabs for indentation (match existing files); checkstyle-clean.
+- Checkstyle-clean (`./mvnw validate` runs it); see the Code style section below.
 - Native pointers wrap in `NativeObject` (`AutoCloseable`, idempotent close).
 - All native handles live in `Bindings`; `size_t`/`unsigned long long` map to
   `JAVA_LONG`. Public methods guard zstd's negative sentinels.
@@ -60,3 +60,25 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
   when the test does file I/O or JNI.
 - `@Nested` groups related scenarios (`@BeforeEach` in a nested class applies only to it). Private
   helpers go after all `@Test` methods.
+
+# Code style
+
+- 4-space indent, **zero SonarQube bugs/smells**, no `sun.misc.Unsafe` or internal JDK APIs.
+- Prefer explicit over clever; fail fast on unhandled cases.
+- Idiomatic modern Java: reuse the JDK (override `Iterator.forEachRemaining`, don't invent
+  `forEachChunk`; use `Optional`, records, sealed types, pattern switches, virtual threads, FFM).
+  New APIs should feel like JDK APIs.
+- Always braces for `if`/`else`/`for`/`while`, even one-liners (`if (c) { return a; }`).
+- **Time quantities use `java.time.Duration`, never `long`** (no `long timeoutMs`/`delayNanos`).
+  Exception: low-level JDK interop taking `long ns` (`Thread.sleep`, `LockSupport.parkNanos`,
+  `System.nanoTime` math) — convert at the call site via `duration.toNanos()`/`toMillis()`.
+
+### Javadoc (build-enforced: `failOnError` + `failOnWarnings`)
+
+- Every public method: main prose description, `@param` per parameter, `@return` (unless `void`).
+  Every public record: `@param` per component on the class doc. `@see`-only counts as no description.
+- All `///` Markdown — **no HTML** (checkstyle `RegexpSingleline` blocks `<p>`,`<ul>`,`<li>`,
+  `<strong>`,`<pre>`,`<table>`, …). Use blank `///` for paragraphs, `- ` lists, ` ```java ``` `,
+  `**bold**`. Cross-refs `[ClassName#method(ParamType)]` — verify the target exists (wrong refs are
+  **errors**).
+- Check: `./mvnw javadoc:javadoc -pl core` must produce zero output.

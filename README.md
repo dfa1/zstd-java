@@ -1,12 +1,13 @@
 # zstd-java
 
 [![CI](https://github.com/dfa1/zstd-java/actions/workflows/ci.yml/badge.svg)](https://github.com/dfa1/zstd-java/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.dfa1.zstd/zstd.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.dfa1.zstd/zstd)
 ![zstd](https://img.shields.io/badge/zstd-1.5.7-green.svg)
 ![Java](https://img.shields.io/badge/Java-25%2B-orange.svg)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
 
 **zstd-java** is a Java wrapper for [Zstandard](https://github.com/facebook/zstd)
-built on the **Foreign Function & Memory (FFM) API** — no JNI, no hand-written C.
+built on the **Foreign Function & Memory (FFM) API** — no JNI, no `sun.misc.Unsafe`.
 It targets **JDK 25+** (for stable `java.lang.foreign`) and leads with the
 feature missing from most JVM zstd bindings: **dictionary compression**, trained
 straight from your own data.

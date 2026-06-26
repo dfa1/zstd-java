@@ -40,7 +40,11 @@ jobs:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./mvnw deploy -Prelease -DskipTests --batch-mode -ntp
+        # Exclude internal modules from the published reactor. The
+        # central-publishing plugin aggregates the whole reactor and does not
+        # honor maven.deploy.skip, so drop them here (belt-and-suspenders with
+        # the plugin's excludeArtifacts in the root pom).
+        run: ./mvnw deploy -Prelease -DskipTests --batch-mode -ntp -pl '!integration-tests,!benchmark'
 
       - name: Create GitHub release
         env:

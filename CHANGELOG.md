@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [0.2]
+
+### Added
+- `zstd-platform` aggregator artifact: one dependency pulls the bindings plus
+  every platform's native library, so a build runs on any OS/arch without
+  choosing a classifier.
+- `MemorySegment` constructors on `ZstdCompressDict` / `ZstdDecompressDict` to
+  digest a dictionary straight from off-heap memory (e.g. an mmap slice) with no
+  heap `byte[]` copy.
+
 ## [0.1]
 
 First release. Java 25 Foreign Function & Memory (FFM) bindings for

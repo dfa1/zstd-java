@@ -12,6 +12,12 @@ through the public Java API. The rest are reachable from native code but not yet
 surfaced. Many unbound symbols are deprecated, experimental, or static-buffer /
 low-level variants that an idiomatic Java API does not need.
 
+**25** of the unbound symbols are deprecated upstream (carry `ZSTD_DEPRECATED` in
+`zstd.h`) and will never be bound — each is superseded by API already listed here.
+In the per-area tables below they are flagged **ᵈ** in the Bound column; the same
+list is recorded in `Bindings.java`. Notably this binds `ZSTD_getFrameContentSize`
+rather than the deprecated `ZSTD_getDecompressedSize`.
+
 > Regenerate the symbol list with
 > `nm -gjU libzstd.dylib | sed 's/^_//' | grep -E '^(ZSTD|ZDICT)_'`.
 

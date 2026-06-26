@@ -23,6 +23,12 @@
 			</dependency>
 			<dependency>
 				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-platform</artifactId>
+				<version>${project.version}</version>
+				<type>pom</type>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1.zstd</groupId>
 				<artifactId>zstd-native-osx-aarch64</artifactId>
 				<version>${project.version}</version>
 			</dependency>

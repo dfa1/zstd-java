@@ -42,6 +42,7 @@
 		<module>native/windows-x86_64</module>
 		<module>native/windows-aarch64</module>
 		<module>zstd</module>
+		<module>zstd-platform</module>
 		<module>bom</module>
 		<module>integration-tests</module>
 		<module>benchmark</module>
@@ -64,6 +65,12 @@
 				<groupId>io.github.dfa1.zstd</groupId>
 				<artifactId>zstd</artifactId>
 				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-platform</artifactId>
+				<version>${project.version}</version>
+				<type>pom</type>
 			</dependency>
 			<dependency>
 				<groupId>io.github.dfa1.zstd</groupId>

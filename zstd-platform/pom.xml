@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>io.github.dfa1.zstd</groupId>
+		<artifactId>zstd-parent</artifactId>
+		<version>0.2-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
+	<artifactId>zstd-platform</artifactId>
+	<name>zstd-platform</name>
+	<description>zstd-java bindings bundled with every platform's native library</description>
+	<packaging>pom</packaging>
+
+	<!-- Convenience aggregator: one dependency pulls the bindings plus all six
+	     native libraries, so a build runs on any OS/arch without choosing a
+	     classifier. Costs ~3.8 MB of natives (five unused per platform); for a
+	     known single target depend on zstd + the one zstd-native-<classifier>
+	     directly. Versions come from the parent's dependencyManagement. -->
+	<dependencies>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-osx-aarch64</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-osx-x86_64</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-linux-x86_64</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-linux-aarch64</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-windows-x86_64</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-windows-aarch64</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+	</dependencies>
+</project>

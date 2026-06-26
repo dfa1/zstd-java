@@ -1,20 +1,70 @@
 # Tutorial: Getting started
 
-This walks you from a clean checkout to your first compress/decompress round-trip.
+This walks you from adding the dependency to your first compress/decompress
+round-trip.
 
-## 1. Clone and build
+## 1. Add the dependency
 
-You need JDK 25+, Maven, and [Zig](https://ziglang.org/) on `PATH` (Zig is the C
-compiler for the native lib).
+zstd-java is on Maven Central. The `zstd` jar is pure Java and ships no `libzstd`
+itself — you also need a native artifact. Simplest: depend on `zstd-platform`,
+which bundles the bindings plus every platform's native library, so the build
+runs on any OS/arch:
 
-```bash
-git clone --recurse-submodules https://github.com/dfa1/zstd-java.git
-cd zstd-java
-mvn install
+```xml
+<dependency>
+  <groupId>io.github.dfa1.zstd</groupId>
+  <artifactId>zstd-platform</artifactId>
+  <version>0.2</version>
+  <type>pom</type>
+</dependency>
 ```
 
-The build invokes `scripts/build-zstd.sh`, compiling `libzstd` from the vendored
-source — no autotools or CMake needed.
+```groovy
+implementation("io.github.dfa1.zstd:zstd-platform:0.2")
+```
+
+That pulls all six natives (~3.8 MB, five unused per platform). When you target a
+known platform and want only its native, import the BOM to pin versions and pick
+the matching classifier:
+
+```xml
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.github.dfa1.zstd</groupId>
+      <artifactId>zstd-bom</artifactId>
+      <version>0.2</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+
+<dependencies>
+  <dependency>
+    <groupId>io.github.dfa1.zstd</groupId>
+    <artifactId>zstd</artifactId>
+  </dependency>
+  <dependency>
+    <groupId>io.github.dfa1.zstd</groupId>
+    <artifactId>zstd-native-osx-aarch64</artifactId>
+    <scope>runtime</scope>
+  </dependency>
+</dependencies>
+```
+
+```groovy
+implementation(platform("io.github.dfa1.zstd:zstd-bom:0.2"))
+implementation("io.github.dfa1.zstd:zstd")
+runtimeOnly("io.github.dfa1.zstd:zstd-native-osx-aarch64")
+```
+
+Classifiers: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
+`windows-x86_64`, `windows-aarch64`. Need JDK 25+. Building the native lib from
+source is only for contributors — see the [reference](reference.md).
+
+Every artifact has **zero transitive dependencies** — the bindings are the JDK's
+FFM API plus the bundled `libzstd`, nothing else on your classpath.
 
 ## 2. Your first round-trip
 
@@ -81,5 +131,5 @@ try (var in = new ZstdInputStream(Files.newInputStream(packed));
 They are plain `OutputStream` / `InputStream` subclasses — drop them into any code
 that already speaks `java.io`.
 
-That's the whole loop. From here, pick a [how-to guide](../README.md#how-to-guides)
-for your actual task, or browse the [reference](../README.md#reference).
+That's the whole loop. From here, pick a [how-to guide](how-to.md) for your actual
+task, or browse the [reference](reference.md).

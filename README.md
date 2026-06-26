@@ -27,12 +27,19 @@ The docs follow the [Diátaxis](https://diataxis.fr) framework:
 | **[Reference](docs/reference.md)** | Looking up facts | Platforms, API surface, symbol coverage, build |
 | **[Explanation](docs/explanation.md)** | Understanding the why | Why FFM + Zig, when zero-copy pays, benchmarks |
 
-```bash
-git clone --recurse-submodules https://github.com/dfa1/zstd-java.git
-cd zstd-java && mvn test
+```xml
+<dependency>
+  <groupId>io.github.dfa1.zstd</groupId>
+  <artifactId>zstd-platform</artifactId>
+  <version>0.2</version>
+  <type>pom</type>
+</dependency>
 ```
 
-Requires JDK 25+ and `--enable-native-access=ALL-UNNAMED` at runtime.
+`zstd-platform` bundles the bindings plus every platform's native library. For a
+single-platform, leaner setup (one native), see the [tutorial](docs/tutorial.md).
+Requires JDK 25+ and `--enable-native-access=ALL-UNNAMED` at runtime. Building
+from source is for contributors — see the [reference](docs/reference.md).
 
 ## License
 

@@ -71,17 +71,19 @@ this pays off, see the [explanation](zero-copy.md).
 
 ## Run against a self-built libzstd
 
-To use a `libzstd` you built yourself instead of the bundled one, point the
-loader at it:
+The loader only ever loads the library bundled in the platform native jar on the
+classpath — there is no path override. Loading a caller-supplied native library
+would be arbitrary native code execution in the JVM, so to use a `libzstd` you
+built yourself, build it *into* that resource and rebuild the jar:
 
 ```bash
-java -Dzstd.lib.path=/path/to/libzstd.dylib --enable-native-access=ALL-UNNAMED ...
-```
-
-Build any of the six targets from any host:
-
-```bash
-./scripts/build-zstd.sh <output-resources-dir> <classifier>
+# write the library into the matching native module's resources
+./scripts/build-zstd.sh native/<classifier>/src/main/resources <classifier>
 # classifier: osx-aarch64 | osx-x86_64 | linux-x86_64 | linux-aarch64
 #           | windows-x86_64 | windows-aarch64
+
+./mvnw -pl native/<classifier> install   # repackage the native jar
 ```
+
+The bundled `.dylib/.so/.dll` are git-ignored and regenerated from the submodule,
+so this just overwrites the artifact the loader already trusts.

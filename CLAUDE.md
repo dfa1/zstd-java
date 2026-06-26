@@ -49,8 +49,11 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
 
 - Cover happy path, negative cases (invalid input / errors), and corners (empty, zero, max,
   boundaries). Unit tests must be fast — no file I/O, network, or sleep; mock or use in-memory data.
-- **Integration tests are ground truth** (no formal spec): interop with the Rust reference. Write
-  one for every encoding round-trip and file-format boundary.
+- **Integration tests are ground truth** (no formal spec): interop with the `zstd-jni` reference
+  binding (luben, the zstd C library via JNI) and the vendored golden corpus under
+  `third_party/zstd/tests/` (`golden-compression`, `golden-decompression`,
+  `golden-decompression-errors`, `golden-dictionaries`). Write one for every encoding round-trip
+  and file-format boundary.
 - JUnit 5 + Mockito (BDDMockito) + AssertJ. Class under test named `sut`. Every test has
   `// Given` / `// When` / `// Then`. BDDMockito only: `given(mock.m()).willReturn(v)` /
   `then(...)` (static-import only `given`/`then`, never `willReturn`/`willThrow`).

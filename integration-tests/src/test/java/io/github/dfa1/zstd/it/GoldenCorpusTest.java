@@ -1,7 +1,11 @@
 package io.github.dfa1.zstd.it;
 
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdCompressCtx;
+import io.github.dfa1.zstd.ZstdDecompressCtx;
+import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
+import io.github.dfa1.zstd.ZstdFrame;
 import io.github.dfa1.zstd.ZstdInputStream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -168,6 +172,83 @@ class GoldenCorpusTest {
 
             // Then
             assertThatThrownBy(result).isInstanceOfAny(ZstdException.class, UncheckedIOException.class);
+        }
+    }
+
+    /// Raw dictionaries the C project ships under `golden-dictionaries/`. These
+    /// are adversarial dictionaries that surfaced real encoder bugs (e.g.
+    /// `http-dict-missing-symbols`, where the dictionary omits symbols the entropy
+    /// tables expect). zstd's own suite pairs them with `golden-compression/http`
+    /// and asserts a dict round-trip survives, so we drive the same payload across
+    /// the FFM/JNI boundary in both directions and check the dictionary id rides
+    /// along with the frame.
+    @Nested
+    class GoldenDictionaries {
+
+        static Stream<Arguments> dictionaries() {
+            return filesIn("golden-dictionaries", "");
+        }
+
+        private byte[] payload() {
+            return read(TESTS.resolve("golden-compression/http"));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("dictionaries")
+        void javaDictCompressJniDictDecompress(String name, Path file) {
+            // Given
+            byte[] raw = read(file);
+            byte[] data = payload();
+            ZstdDictionary dict = ZstdDictionary.of(raw);
+            byte[] frame;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                frame = ctx.compress(data, dict);
+            }
+
+            // When
+            var jniDict = new com.github.luben.zstd.ZstdDictDecompress(raw);
+            byte[] restored = com.github.luben.zstd.Zstd.decompress(frame, jniDict, data.length);
+
+            // Then
+            assertThat(restored).isEqualTo(data);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("dictionaries")
+        void jniDictCompressJavaDictDecompress(String name, Path file) {
+            // Given
+            byte[] raw = read(file);
+            byte[] data = payload();
+            var jniDict = new com.github.luben.zstd.ZstdDictCompress(raw, Zstd.defaultCompressionLevel());
+            byte[] frame = com.github.luben.zstd.Zstd.compress(data, jniDict);
+
+            // When
+            byte[] restored;
+            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
+                restored = ctx.decompress(frame, data.length, ZstdDictionary.of(raw));
+            }
+
+            // Then
+            assertThat(restored).isEqualTo(data);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("dictionaries")
+        void dictIdRidesWithFrame(String name, Path file) {
+            // Given
+            byte[] raw = read(file);
+            ZstdDictionary dict = ZstdDictionary.of(raw);
+            byte[] frame;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                frame = ctx.compress(payload(), dict);
+            }
+
+            // When
+            int frameDictId = ZstdFrame.dictId(frame);
+
+            // Then
+            assertThat(frameDictId).isEqualTo(dict.id());
+            assertThat(frameDictId).isNotZero();
         }
     }
 }

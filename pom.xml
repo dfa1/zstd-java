@@ -36,6 +36,7 @@
 		<module>native/windows-aarch64</module>
 		<module>zstd</module>
 		<module>bom</module>
+		<module>integration-tests</module>
 		<module>benchmark</module>
 	</modules>
 

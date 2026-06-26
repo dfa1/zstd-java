@@ -34,6 +34,7 @@ public final class ZstdDictionary {
 
     private static final String FIELD_NB_THREADS = "nbThreads";
     private static final String FIELD_COMPRESSION_LEVEL = "compressionLevel";
+    private static final String SAMPLES = "samples";
 
     // ZDICT_cover_params_t fields: unsigned k, d, steps, nbThreads; double
     // splitPoint; unsigned shrinkDict, shrinkDictMaxRegression; then a nested
@@ -94,7 +95,7 @@ public final class ZstdDictionary {
     /// @return the trained dictionary
     /// @throws ZstdException if training fails (commonly: not enough sample data)
     public static ZstdDictionary train(List<byte[]> samples, int maxDictBytes) {
-        Objects.requireNonNull(samples, "samples");
+        Objects.requireNonNull(samples, SAMPLES);
         if (samples.isEmpty()) {
             throw new ZstdException("cannot train a dictionary from zero samples");
         }
@@ -178,7 +179,7 @@ public final class ZstdDictionary {
 
     private static ZstdDictionary optimize(List<byte[]> samples, int maxDictBytes,
                                            int compressionLevel, boolean fast) {
-        Objects.requireNonNull(samples, "samples");
+        Objects.requireNonNull(samples, SAMPLES);
         if (samples.isEmpty()) {
             throw new ZstdException("cannot train a dictionary from zero samples");
         }
@@ -233,7 +234,7 @@ public final class ZstdDictionary {
     public static ZstdDictionary finalizeFrom(byte[] content, List<byte[]> samples,
                                               int maxDictBytes, int compressionLevel) {
         Objects.requireNonNull(content, "content");
-        Objects.requireNonNull(samples, "samples");
+        Objects.requireNonNull(samples, SAMPLES);
         if (samples.isEmpty()) {
             throw new ZstdException("cannot finalise a dictionary from zero samples");
         }

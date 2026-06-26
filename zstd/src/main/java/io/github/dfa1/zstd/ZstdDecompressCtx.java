@@ -10,6 +10,8 @@ import java.util.Objects;
 /// state allocation. Not thread-safe: confine an instance to one thread or pool it.
 public final class ZstdDecompressCtx extends NativeObject {
 
+    private static final String COMPRESSED = "compressed";
+
     /// Creates a new decompression context.
     public ZstdDecompressCtx() {
         super(create());
@@ -53,7 +55,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param maxSize    upper bound on the decompressed length
     /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize) {
-        Objects.requireNonNull(compressed, "compressed");
+        Objects.requireNonNull(compressed, COMPRESSED);
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
@@ -74,7 +76,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict       the dictionary the frame was compressed against
     /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize, ZstdDictionary dict) {
-        Objects.requireNonNull(compressed, "compressed");
+        Objects.requireNonNull(compressed, COMPRESSED);
         Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
@@ -94,7 +96,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict       the pre-digested decompression dictionary
     /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize, ZstdDecompressDict dict) {
-        Objects.requireNonNull(compressed, "compressed");
+        Objects.requireNonNull(compressed, COMPRESSED);
         Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);

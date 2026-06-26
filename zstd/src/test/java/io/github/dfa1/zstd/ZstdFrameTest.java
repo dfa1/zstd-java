@@ -143,6 +143,20 @@ class ZstdFrameTest {
         }
 
         @Test
+        void defensivelyCopiesContentInAndOut() {
+            // Given a backing array wrapped in a skippable-content value
+            byte[] backing = "metadata".getBytes(StandardCharsets.UTF_8);
+            ZstdSkippableContent content = new ZstdSkippableContent(backing, 2);
+
+            // When the source array and a value returned by the accessor are mutated
+            backing[0] = 'X';
+            content.content()[1] = 'X';
+
+            // Then the record's own bytes are untouched
+            assertThat(content.content()).isEqualTo("metadata".getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Test
         void contentHasValueEqualityOverTheBytesNotArrayIdentity() {
             // Given two separately built payloads with the same bytes and variant, and one differing
             ZstdSkippableContent a = new ZstdSkippableContent("meta".getBytes(StandardCharsets.UTF_8), 3);

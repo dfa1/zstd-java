@@ -111,7 +111,7 @@ public final class ZstdCompressDict extends NativeObject {
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
-        long ignored = (long) Bindings.FREE_CDICT.invokeExact(ptr);
+        var _ = (long) Bindings.FREE_CDICT.invokeExact(ptr);
     }
 
     @SuppressWarnings("unchecked")

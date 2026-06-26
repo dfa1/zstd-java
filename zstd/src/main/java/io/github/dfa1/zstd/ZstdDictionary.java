@@ -31,18 +31,21 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// }
 public final class ZstdDictionary {
 
-    // ZDICT_cover_params_t { unsigned k,d,steps,nbThreads; double splitPoint;
-    //   unsigned shrinkDict, shrinkDictMaxRegression; ZDICT_params_t zParams; }
-    // ZDICT_params_t { int compressionLevel; unsigned notificationLevel, dictID; }
+    private static final String FIELD_NB_THREADS = "nbThreads";
+    private static final String FIELD_COMPRESSION_LEVEL = "compressionLevel";
+
+    // ZDICT_cover_params_t fields: unsigned k, d, steps, nbThreads; double
+    // splitPoint; unsigned shrinkDict, shrinkDictMaxRegression; then a nested
+    // ZDICT_params_t of int compressionLevel, unsigned notificationLevel, dictID.
     private static final MemoryLayout COVER_PARAMS = MemoryLayout.structLayout(
             JAVA_INT.withName("k"),
             JAVA_INT.withName("d"),
             JAVA_INT.withName("steps"),
-            JAVA_INT.withName("nbThreads"),
+            JAVA_INT.withName(FIELD_NB_THREADS),
             JAVA_DOUBLE.withName("splitPoint"),
             JAVA_INT.withName("shrinkDict"),
             JAVA_INT.withName("shrinkDictMaxRegression"),
-            JAVA_INT.withName("compressionLevel"),
+            JAVA_INT.withName(FIELD_COMPRESSION_LEVEL),
             JAVA_INT.withName("notificationLevel"),
             JAVA_INT.withName("dictID"),
             MemoryLayout.paddingLayout(4)); // trailing pad to the C struct's 8-byte alignment
@@ -54,13 +57,13 @@ public final class ZstdDictionary {
             JAVA_INT.withName("d"),
             JAVA_INT.withName("f"),
             JAVA_INT.withName("steps"),
-            JAVA_INT.withName("nbThreads"),
+            JAVA_INT.withName(FIELD_NB_THREADS),
             MemoryLayout.paddingLayout(4),
             JAVA_DOUBLE.withName("splitPoint"),
             JAVA_INT.withName("accel"),
             JAVA_INT.withName("shrinkDict"),
             JAVA_INT.withName("shrinkDictMaxRegression"),
-            JAVA_INT.withName("compressionLevel"),
+            JAVA_INT.withName(FIELD_COMPRESSION_LEVEL),
             JAVA_INT.withName("notificationLevel"),
             JAVA_INT.withName("dictID"));
 
@@ -192,8 +195,8 @@ public final class ZstdDictionary {
             // zeroed params (auto-tune k/d/steps); set single-threaded + target level.
             MemoryLayout layout = fast ? FASTCOVER_PARAMS : COVER_PARAMS;
             MemorySegment params = arena.allocate(layout);
-            params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement("nbThreads")), 1);
-            params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement("compressionLevel")), compressionLevel);
+            params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement(FIELD_NB_THREADS)), 1);
+            params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement(FIELD_COMPRESSION_LEVEL)), compressionLevel);
             MethodHandle handle = fast ? Bindings.ZDICT_OPTIMIZE_FASTCOVER : Bindings.ZDICT_OPTIMIZE_COVER;
             MemorySegment dictBuf = arena.allocate(maxDictBytes);
             long produced;

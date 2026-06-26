@@ -37,7 +37,7 @@ public abstract class NativeObject implements AutoCloseable {
         if (!MemorySegment.NULL.equals(p)) {
             try {
                 tryClose(p);
-            } catch (Throwable ignored) {
+            } catch (Throwable _) {
                 // destructors must not throw
             }
         }

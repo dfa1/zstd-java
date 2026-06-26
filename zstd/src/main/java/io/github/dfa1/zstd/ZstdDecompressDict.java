@@ -81,7 +81,7 @@ public final class ZstdDecompressDict extends NativeObject {
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
-        long ignored = (long) Bindings.FREE_DDICT.invokeExact(ptr);
+        var _ = (long) Bindings.FREE_DDICT.invokeExact(ptr);
     }
 
     @SuppressWarnings("unchecked")

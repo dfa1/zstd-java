@@ -159,8 +159,8 @@ public final class ZstdInputStream extends InputStream {
         }
         closed = true;
         try {
-            long ignored = (long) Bindings.FREE_DCTX.invokeExact(dctx);
-        } catch (Throwable ignored) {
+            var _ = (long) Bindings.FREE_DCTX.invokeExact(dctx);
+        } catch (Throwable _) {
             // best-effort free
         }
         arena.close();

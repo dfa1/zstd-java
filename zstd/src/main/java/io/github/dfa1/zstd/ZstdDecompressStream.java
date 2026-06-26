@@ -80,7 +80,7 @@ public final class ZstdDecompressStream extends NativeObject {
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         try {
-            long ignored = (long) Bindings.FREE_DCTX.invokeExact(ptr);
+            var _ = (long) Bindings.FREE_DCTX.invokeExact(ptr);
         } finally {
             arena.close();
         }

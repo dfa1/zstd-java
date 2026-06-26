@@ -211,13 +211,18 @@
 	</build>
 
 	<profiles>
-		<!-- Release to Maven Central: ./mvnw deploy -Prelease
+		<!-- Cut a release with maven-release-plugin (configured in build above):
+		       ./mvnw release:prepare
+		     drops -SNAPSHOT, commits, tags v<version> (pushChanges=false), then
+		     bumps to the next snapshot. Push the commits and the tag; the v* tag
+		     triggers .github/workflows/publish.yml, which runs
+		       ./mvnw deploy -Prelease
+		     to sign and upload to Maven Central.
 		     Prerequisites:
 		       1. Register namespace io.github.dfa1 at central.sonatype.com.
-		       2. Generate a user token (Account / User Tokens) and add it to
-		          ~/.m2/settings.xml as a server with id "central".
-		       3. A published GPG key.
-		     CI does this on a v* tag via .github/workflows/publish.yml. -->
+		       2. A Central user token (Account / User Tokens); in CI it comes from
+		          the CENTRAL_USERNAME / CENTRAL_PASSWORD secrets.
+		       3. A published GPG key (GPG_PRIVATE_KEY / GPG_PASSPHRASE secrets). -->
 		<profile>
 			<id>release</id>
 			<build>

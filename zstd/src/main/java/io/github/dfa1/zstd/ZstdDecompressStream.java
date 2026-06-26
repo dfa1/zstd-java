@@ -18,33 +18,44 @@ public final class ZstdDecompressStream extends NativeObject {
 
     /// Creates a streaming decompressor.
     public ZstdDecompressStream() {
-        super(create(null));
+        this(null);
     }
 
     /// Creates a streaming decompressor for frames built with `dictionary`.
     ///
-    /// @param dictionary the dictionary the frames were compressed against
+    /// @param dictionary the dictionary the frames were compressed against, or `null` for none
     public ZstdDecompressStream(ZstdDictionary dictionary) {
-        super(create(dictionary));
+        // Own the context first, so any failure setting it up is cleaned up by
+        // close() — one release path, no leak on a half-built stream.
+        super(createDctx());
+        try {
+            if (dictionary != null) {
+                loadDictionary(dictionary);
+            }
+        } catch (Throwable t) {
+            close();
+            throw rethrow(t);
+        }
     }
 
-    private static MemorySegment create(ZstdDictionary dictionary) {
+    private static MemorySegment createDctx() {
         try {
             MemorySegment dctx = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
             if (MemorySegment.NULL.equals(dctx)) {
                 throw new ZstdException("ZSTD_createDCtx returned NULL");
             }
-            if (dictionary != null) {
-                try (Arena staging = Arena.ofConfined()) {
-                    byte[] raw = dictionary.raw();
-                    MemorySegment d = Zstd.copyIn(staging, raw);
-                    Zstd.call(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
-                            dctx, d, (long) raw.length));
-                }
-            }
             return dctx;
         } catch (Throwable t) {
             throw rethrow(t);
+        }
+    }
+
+    private void loadDictionary(ZstdDictionary dictionary) {
+        try (Arena staging = Arena.ofConfined()) {
+            byte[] raw = dictionary.raw();
+            MemorySegment d = Zstd.copyIn(staging, raw);
+            Zstd.call(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
+                    ptr(), d, (long) raw.length));
         }
     }
 

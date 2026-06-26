@@ -57,24 +57,39 @@ public final class ZstdInputStream extends InputStream {
     /// @param dictionary the dictionary the frame was compressed against, or `null` for none
     public ZstdInputStream(InputStream in, ZstdDictionary dictionary) {
         this.in = in;
+        MemorySegment d = null;
         try {
-            this.dctx = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
-            if (MemorySegment.NULL.equals(dctx)) {
+            d = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
+            if (MemorySegment.NULL.equals(d)) {
                 throw new ZstdException("ZSTD_createDCtx returned NULL");
             }
+            this.dctx = d;
             if (dictionary != null) {
                 loadDictionary(dictionary);
             }
             this.inCap = (long) Bindings.DSTREAM_IN_SIZE.invokeExact();
             this.outCap = (long) Bindings.DSTREAM_OUT_SIZE.invokeExact();
+            this.inSeg = arena.allocate(inCap);
+            this.outSeg = arena.allocate(outCap);
+            this.feed = new byte[Math.toIntExact(inCap)];
+            this.hold = new byte[Math.toIntExact(outCap)];
         } catch (Throwable t) {
+            // Free the context if it was created, then the arena, so a failed
+            // constructor leaks neither the native dctx nor the arena buffers.
+            if (d != null && !MemorySegment.NULL.equals(d)) {
+                freeDctx(d);
+            }
             arena.close();
             throw rethrow(t);
         }
-        this.inSeg = arena.allocate(inCap);
-        this.outSeg = arena.allocate(outCap);
-        this.feed = new byte[Math.toIntExact(inCap)];
-        this.hold = new byte[Math.toIntExact(outCap)];
+    }
+
+    private static void freeDctx(MemorySegment dctx) {
+        try {
+            var _ = (long) Bindings.FREE_DCTX.invokeExact(dctx);
+        } catch (Throwable _) {
+            // best-effort free
+        }
     }
 
     private void loadDictionary(ZstdDictionary dictionary) {
@@ -158,11 +173,7 @@ public final class ZstdInputStream extends InputStream {
             return;
         }
         closed = true;
-        try {
-            var _ = (long) Bindings.FREE_DCTX.invokeExact(dctx);
-        } catch (Throwable _) {
-            // best-effort free
-        }
+        freeDctx(dctx);
         arena.close();
         in.close();
     }

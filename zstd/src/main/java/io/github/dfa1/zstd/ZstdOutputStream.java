@@ -93,11 +93,13 @@ public final class ZstdOutputStream extends OutputStream {
     /// @param dictionary the dictionary to compress against, or `null` for none
     public ZstdOutputStream(OutputStream out, int level, ZstdDictionary dictionary) {
         this.out = out;
+        MemorySegment c = null;
         try {
-            this.cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
-            if (MemorySegment.NULL.equals(cctx)) {
+            c = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
+            if (MemorySegment.NULL.equals(c)) {
                 throw new ZstdException("ZSTD_createCCtx returned NULL");
             }
+            this.cctx = c;
             Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     cctx, ZSTD_C_COMPRESSION_LEVEL, level));
             if (dictionary != null) {
@@ -105,13 +107,26 @@ public final class ZstdOutputStream extends OutputStream {
             }
             this.inCap = (long) Bindings.CSTREAM_IN_SIZE.invokeExact();
             this.outCap = (long) Bindings.CSTREAM_OUT_SIZE.invokeExact();
+            this.inSeg = arena.allocate(inCap);
+            this.outSeg = arena.allocate(outCap);
+            this.drain = new byte[Math.toIntExact(outCap)];
         } catch (Throwable t) {
+            // Free the context if it was created, then the arena, so a failed
+            // constructor leaks neither the native cctx nor the arena buffers.
+            if (c != null && !MemorySegment.NULL.equals(c)) {
+                freeCctx(c);
+            }
             arena.close();
             throw rethrow(t);
         }
-        this.inSeg = arena.allocate(inCap);
-        this.outSeg = arena.allocate(outCap);
-        this.drain = new byte[Math.toIntExact(outCap)];
+    }
+
+    private static void freeCctx(MemorySegment cctx) {
+        try {
+            var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
+        } catch (Throwable _) {
+            // best-effort free
+        }
     }
 
     private void loadDictionary(ZstdDictionary dictionary) {
@@ -172,11 +187,7 @@ public final class ZstdOutputStream extends OutputStream {
             out.flush();
         } finally {
             closed = true;
-            try {
-                var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
-            } catch (Throwable _) {
-                // best-effort free
-            }
+            freeCctx(cctx);
             arena.close();
             out.close();
         }

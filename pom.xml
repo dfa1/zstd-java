@@ -63,6 +63,14 @@
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.organization>dfa11</sonar.organization>
 		<sonar.projectKey>dfa1_zstd-java</sonar.projectKey>
+		<!-- S5443 (temp dir in a publicly-writable location) on NativeLibrary is a
+		     reviewed false positive: the bundled library is extracted into a private
+		     directory created with Files.createTempDirectory, which is owner-only
+		     (0700) on POSIX, closing the swap/symlink window the rule warns about.
+		     There is no further code mitigation, so suppress it for that file. -->
+		<sonar.issue.ignore.multicriteria>tempdir</sonar.issue.ignore.multicriteria>
+		<sonar.issue.ignore.multicriteria.tempdir.ruleKey>java:S5443</sonar.issue.ignore.multicriteria.tempdir.ruleKey>
+		<sonar.issue.ignore.multicriteria.tempdir.resourceKey>**/NativeLibrary.java</sonar.issue.ignore.multicriteria.tempdir.resourceKey>
 		<!-- The benchmark module is a JMH harness, not shipped runtime: its
 		     @Setup/@TearDown lifecycle trips false "resource not closed" reports and
 		     it has no tests by design. Exclude from analysis entirely (which also

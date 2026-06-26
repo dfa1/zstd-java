@@ -9,6 +9,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
@@ -199,6 +202,53 @@ class ZstdStreamTest {
             // Then the frame header carries the size, so size-less decompress works
             assertThat(ZstdFrame.header(frame).contentSize()).hasValue(original.length);
             assertThat(Zstd.decompress(frame)).isEqualTo(original);
+        }
+
+        @Test
+        void plainStreamFrameCannotBeSizedForZeroCopyDecode() throws IOException {
+            // Given a streamed frame with no pledged size
+            byte[] original = "no pledge ".repeat(500).getBytes(StandardCharsets.UTF_8);
+            byte[] frame = streamCompress(original, 6);
+
+            // When the zero-copy decoder asks the frame how big the output is
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment src = Zstd.copyIn(arena, frame);
+                ThrowingCallable result = () -> Zstd.decompressedSize(src);
+
+                // Then it cannot answer — the content size was never recorded
+                assertThatThrownBy(result)
+                        .isInstanceOf(ZstdException.class)
+                        .hasMessageContaining("not stored");
+            }
+        }
+
+        @Test
+        void pledgedFrameDecodesZeroCopyIntoArenaInOneShot() throws IOException {
+            // Given a streamed frame that pledged its total up front
+            byte[] original = "pledge enables zero-copy ".repeat(500).getBytes(StandardCharsets.UTF_8);
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sink, 6, original.length)) {
+                zout.write(original);
+            }
+            byte[] frame = sink.toByteArray();
+
+            // a memory-mapped reader sees the frame as a direct ByteBuffer — no heap copy in
+            ByteBuffer mmap = ByteBuffer.allocateDirect(frame.length).put(frame).flip();
+
+            // When it decodes straight into its arena and hands the result back as a ByteBuffer
+            byte[] restored;
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                MemorySegment src = MemorySegment.ofBuffer(mmap);   // zero-copy input view
+                MemorySegment out = dctx.decompress(arena, src);    // one allocation, zero copies
+                ByteBuffer result = out.asByteBuffer();             // zero-copy hand-off out
+
+                // Then the arena was sized exactly from the header and decode round-trips
+                assertThat(out.byteSize()).isEqualTo(original.length);
+                restored = new byte[result.remaining()];
+                result.get(restored);
+            }
+            assertThat(restored).isEqualTo(original);
         }
     }
 

@@ -29,11 +29,18 @@ public final class ZstdDecompressStream extends NativeObject {
     }
 
     private static MemorySegment create(ZstdDictionary dictionary) {
+        MemorySegment dctx;
         try {
-            MemorySegment dctx = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
-            if (MemorySegment.NULL.equals(dctx)) {
-                throw new ZstdException("ZSTD_createDCtx returned NULL");
-            }
+            dctx = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+        if (MemorySegment.NULL.equals(dctx)) {
+            throw new ZstdException("ZSTD_createDCtx returned NULL");
+        }
+        // From here the context is allocated: if loading the dictionary fails,
+        // free it before propagating so a failed constructor leaks nothing.
+        try {
             if (dictionary != null) {
                 try (Arena staging = Arena.ofConfined()) {
                     byte[] raw = dictionary.raw();
@@ -44,7 +51,16 @@ public final class ZstdDecompressStream extends NativeObject {
             }
             return dctx;
         } catch (Throwable t) {
+            freeQuietly(dctx);
             throw rethrow(t);
+        }
+    }
+
+    private static void freeQuietly(MemorySegment dctx) {
+        try {
+            var _ = (long) Bindings.FREE_DCTX.invokeExact(dctx);
+        } catch (Throwable _) {
+            // best-effort free on an error path
         }
     }
 

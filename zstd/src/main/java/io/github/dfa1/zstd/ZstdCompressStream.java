@@ -53,11 +53,18 @@ public final class ZstdCompressStream extends NativeObject {
     }
 
     private static MemorySegment create(int level, ZstdDictionary dictionary) {
+        MemorySegment cctx;
         try {
-            MemorySegment cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
-            if (MemorySegment.NULL.equals(cctx)) {
-                throw new ZstdException("ZSTD_createCCtx returned NULL");
-            }
+            cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+        if (MemorySegment.NULL.equals(cctx)) {
+            throw new ZstdException("ZSTD_createCCtx returned NULL");
+        }
+        // From here the context is allocated: if any further native setup fails,
+        // free it before propagating so a failed constructor leaks nothing.
+        try {
             Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     cctx, ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
             if (dictionary != null) {
@@ -70,7 +77,16 @@ public final class ZstdCompressStream extends NativeObject {
             }
             return cctx;
         } catch (Throwable t) {
+            freeQuietly(cctx);
             throw rethrow(t);
+        }
+    }
+
+    private static void freeQuietly(MemorySegment cctx) {
+        try {
+            var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
+        } catch (Throwable _) {
+            // best-effort free on an error path
         }
     }
 

@@ -31,6 +31,45 @@ class ZstdDictionaryTest {
     }
 
     @Nested
+    class CoverTraining {
+
+        @Test
+        void fastCoverRoundTrips() {
+            // Given a fast-COVER-trained dictionary
+            ZstdDictionary dict = ZstdDictionary.trainFastCover(samples, 16 * 1024);
+            assertThat(dict.size()).isGreaterThan(0);
+
+            // Then records round-trip and compress smaller than dictionaryless
+            byte[] record = samples.get(321);
+            byte[] plain;
+            byte[] withDict;
+            byte[] restored;
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                plain = cctx.compress(record);
+                withDict = cctx.compress(record, dict);
+                restored = dctx.decompress(cctx.compress(record, dict), record.length, dict);
+            }
+            assertThat(withDict.length).isLessThan(plain.length);
+            assertThat(restored).isEqualTo(record);
+        }
+
+        @Test
+        void coverRoundTrips() {
+            // COVER is slower, so train on a subset to keep the test quick
+            ZstdDictionary dict = ZstdDictionary.trainCover(samples.subList(0, 1000), 8 * 1024);
+            assertThat(dict.size()).isGreaterThan(0);
+
+            byte[] record = samples.get(5);
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                byte[] frame = cctx.compress(record, dict);
+                assertThat(dctx.decompress(frame, record.length, dict)).isEqualTo(record);
+            }
+        }
+    }
+
+    @Nested
     class Training {
 
         @Test

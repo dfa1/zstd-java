@@ -2,10 +2,12 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /// An immutable zstd dictionary — the feature that makes compressing many small,
@@ -74,6 +76,95 @@ public final class ZstdDictionary {
             try {
                 produced = (long) Bindings.ZDICT_TRAIN.invokeExact(
                         dictBuf, (long) maxDictBytes, flat, sizes, samples.size());
+            } catch (Throwable t) {
+                throw rethrow(t);
+            }
+            if (zdictIsError(produced)) {
+                throw new ZstdException("dictionary training failed: " + zdictErrorName(produced));
+            }
+            byte[] out = new byte[Math.toIntExact(produced)];
+            MemorySegment.copy(dictBuf, JAVA_BYTE, 0, out, 0, out.length);
+            return new ZstdDictionary(out);
+        }
+    }
+
+    /// Trains a dictionary with the COVER algorithm, auto-tuning its parameters
+    /// for the best dictionary it can find. Higher quality than {@link #train},
+    /// but slower; for a faster near-equal result use {@link #trainFastCover}.
+    ///
+    /// @param samples      representative payloads to learn from
+    /// @param maxDictBytes upper bound on the produced dictionary size
+    /// @return the trained dictionary
+    /// @throws ZstdException if training fails
+    public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes) {
+        return trainCover(samples, maxDictBytes, 0);
+    }
+
+    /// Trains a COVER dictionary optimised for a specific compression level.
+    ///
+    /// @param samples          representative payloads to learn from
+    /// @param maxDictBytes     upper bound on the produced dictionary size
+    /// @param compressionLevel the level the dictionary will be used at (0 = default)
+    /// @return the trained dictionary
+    /// @throws ZstdException if training fails
+    public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes, int compressionLevel) {
+        return optimize(samples, maxDictBytes, compressionLevel, false);
+    }
+
+    /// Trains a dictionary with the fast COVER algorithm, auto-tuning its
+    /// parameters. The recommended optimiser: nearly the quality of
+    /// {@link #trainCover} at a fraction of the time.
+    ///
+    /// @param samples      representative payloads to learn from
+    /// @param maxDictBytes upper bound on the produced dictionary size
+    /// @return the trained dictionary
+    /// @throws ZstdException if training fails
+    public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes) {
+        return trainFastCover(samples, maxDictBytes, 0);
+    }
+
+    /// Trains a fast COVER dictionary optimised for a specific compression level.
+    ///
+    /// @param samples          representative payloads to learn from
+    /// @param maxDictBytes     upper bound on the produced dictionary size
+    /// @param compressionLevel the level the dictionary will be used at (0 = default)
+    /// @return the trained dictionary
+    /// @throws ZstdException if training fails
+    public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes, int compressionLevel) {
+        return optimize(samples, maxDictBytes, compressionLevel, true);
+    }
+
+    private static ZstdDictionary optimize(List<byte[]> samples, int maxDictBytes,
+                                           int compressionLevel, boolean fast) {
+        if (samples.isEmpty()) {
+            throw new ZstdException("cannot train a dictionary from zero samples");
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            long total = 0;
+            for (byte[] s : samples) {
+                total += s.length;
+            }
+            MemorySegment flat = arena.allocate(Math.max(total, 1));
+            MemorySegment sizes = arena.allocate(JAVA_LONG, samples.size());
+            long offset = 0;
+            for (int i = 0; i < samples.size(); i++) {
+                byte[] s = samples.get(i);
+                MemorySegment.copy(s, 0, flat, JAVA_BYTE, offset, s.length);
+                sizes.setAtIndex(JAVA_LONG, i, s.length);
+                offset += s.length;
+            }
+            // zeroed params (auto-tune k/d/steps); set single-threaded + target level.
+            // fastCover: nbThreads@16, compressionLevel@44, size 56.
+            // cover:     nbThreads@12, compressionLevel@32, size 48.
+            MemorySegment params = arena.allocate(fast ? 56 : 48);
+            params.set(JAVA_INT, fast ? 16 : 12, 1);
+            params.set(JAVA_INT, fast ? 44 : 32, compressionLevel);
+            MethodHandle handle = fast ? Bindings.ZDICT_OPTIMIZE_FASTCOVER : Bindings.ZDICT_OPTIMIZE_COVER;
+            MemorySegment dictBuf = arena.allocate(maxDictBytes);
+            long produced;
+            try {
+                produced = (long) handle.invokeExact(
+                        dictBuf, (long) maxDictBytes, flat, sizes, samples.size(), params);
             } catch (Throwable t) {
                 throw rethrow(t);
             }

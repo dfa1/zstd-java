@@ -261,6 +261,16 @@ final class Bindings {
     static final MethodHandle ZDICT_GET_DICT_ID =
             NativeLibrary.lookup("ZDICT_getDictID", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
 
+    // size_t ZDICT_optimizeTrainFromBuffer_cover(dictBuffer, dictCap, samples, sizes, nbSamples,
+    //                                            ZDICT_cover_params_t* parameters)  [params auto-tuned in place]
+    static final MethodHandle ZDICT_OPTIMIZE_COVER =
+            NativeLibrary.lookup("ZDICT_optimizeTrainFromBuffer_cover",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS, JAVA_INT, ADDRESS));
+    // size_t ZDICT_optimizeTrainFromBuffer_fastCover(..., ZDICT_fastCover_params_t* parameters)
+    static final MethodHandle ZDICT_OPTIMIZE_FASTCOVER =
+            NativeLibrary.lookup("ZDICT_optimizeTrainFromBuffer_fastCover",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS, JAVA_INT, ADDRESS));
+
     private Bindings() {
         // no instances
     }

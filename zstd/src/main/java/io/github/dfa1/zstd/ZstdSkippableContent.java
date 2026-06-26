@@ -9,6 +9,20 @@ import java.util.Arrays;
 /// @param magicVariant the variant 0..15 the frame was written with
 public record ZstdSkippableContent(byte[] content, int magicVariant) {
 
+    /// Defensively copies `content` so the record owns its bytes and cannot be
+    /// mutated through the array the caller passed in.
+    public ZstdSkippableContent {
+        content = content.clone();
+    }
+
+    /// The embedded content bytes, as a fresh copy so the record stays immutable.
+    ///
+    /// @return a copy of the content bytes
+    @Override
+    public byte[] content() {
+        return content.clone();
+    }
+
     /// Value equality over the payload and variant, comparing `content` by its
     /// bytes rather than by array identity (the record default).
     ///

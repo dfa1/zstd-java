@@ -114,14 +114,18 @@ public final class ZstdOutputStream extends OutputStream {
             // Free the context if it was created, then the arena, so a failed
             // constructor leaks neither the native cctx nor the arena buffers.
             if (c != null && !MemorySegment.NULL.equals(c)) {
-                try {
-                    var _ = (long) Bindings.FREE_CCTX.invokeExact(c);
-                } catch (Throwable _) {
-                    // best-effort free
-                }
+                freeCctx(c);
             }
             arena.close();
             throw rethrow(t);
+        }
+    }
+
+    private static void freeCctx(MemorySegment cctx) {
+        try {
+            var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
+        } catch (Throwable _) {
+            // best-effort free
         }
     }
 
@@ -183,11 +187,7 @@ public final class ZstdOutputStream extends OutputStream {
             out.flush();
         } finally {
             closed = true;
-            try {
-                var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
-            } catch (Throwable _) {
-                // best-effort free
-            }
+            freeCctx(cctx);
             arena.close();
             out.close();
         }

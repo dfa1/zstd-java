@@ -41,52 +41,47 @@ public final class ZstdCompressStream extends NativeObject {
     ///
     /// @param level the compression level
     public ZstdCompressStream(int level) {
-        super(create(level, null));
+        this(level, null);
     }
 
     /// Creates a streaming compressor at `level` using `dictionary`.
     ///
     /// @param level      the compression level
-    /// @param dictionary the dictionary to compress against
+    /// @param dictionary the dictionary to compress against, or `null` for none
     public ZstdCompressStream(int level, ZstdDictionary dictionary) {
-        super(create(level, dictionary));
-    }
-
-    private static MemorySegment create(int level, ZstdDictionary dictionary) {
-        MemorySegment cctx;
-        try {
-            cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
-        } catch (Throwable t) {
-            throw rethrow(t);
-        }
-        if (MemorySegment.NULL.equals(cctx)) {
-            throw new ZstdException("ZSTD_createCCtx returned NULL");
-        }
-        // From here the context is allocated: if any further native setup fails,
-        // free it before propagating so a failed constructor leaks nothing.
+        // Own the context first, so any failure setting it up is cleaned up by
+        // close() — one release path, no leak on a half-built stream.
+        super(createCctx());
         try {
             Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
-                    cctx, ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
+                    ptr(), ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
             if (dictionary != null) {
-                try (Arena staging = Arena.ofConfined()) {
-                    byte[] raw = dictionary.raw();
-                    MemorySegment d = Zstd.copyIn(staging, raw);
-                    Zstd.call(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
-                            cctx, d, (long) raw.length));
-                }
+                loadDictionary(dictionary);
+            }
+        } catch (Throwable t) {
+            close();
+            throw rethrow(t);
+        }
+    }
+
+    private static MemorySegment createCctx() {
+        try {
+            MemorySegment cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
+            if (MemorySegment.NULL.equals(cctx)) {
+                throw new ZstdException("ZSTD_createCCtx returned NULL");
             }
             return cctx;
         } catch (Throwable t) {
-            freeQuietly(cctx);
             throw rethrow(t);
         }
     }
 
-    private static void freeQuietly(MemorySegment cctx) {
-        try {
-            var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
-        } catch (Throwable _) {
-            // best-effort free on an error path
+    private void loadDictionary(ZstdDictionary dictionary) {
+        try (Arena staging = Arena.ofConfined()) {
+            byte[] raw = dictionary.raw();
+            MemorySegment d = Zstd.copyIn(staging, raw);
+            Zstd.call(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
+                    ptr(), d, (long) raw.length));
         }
     }
 

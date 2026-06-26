@@ -77,14 +77,18 @@ public final class ZstdInputStream extends InputStream {
             // Free the context if it was created, then the arena, so a failed
             // constructor leaks neither the native dctx nor the arena buffers.
             if (d != null && !MemorySegment.NULL.equals(d)) {
-                try {
-                    var _ = (long) Bindings.FREE_DCTX.invokeExact(d);
-                } catch (Throwable _) {
-                    // best-effort free
-                }
+                freeDctx(d);
             }
             arena.close();
             throw rethrow(t);
+        }
+    }
+
+    private static void freeDctx(MemorySegment dctx) {
+        try {
+            var _ = (long) Bindings.FREE_DCTX.invokeExact(dctx);
+        } catch (Throwable _) {
+            // best-effort free
         }
     }
 
@@ -169,11 +173,7 @@ public final class ZstdInputStream extends InputStream {
             return;
         }
         closed = true;
-        try {
-            var _ = (long) Bindings.FREE_DCTX.invokeExact(dctx);
-        } catch (Throwable _) {
-            // best-effort free
-        }
+        freeDctx(dctx);
         arena.close();
         in.close();
     }

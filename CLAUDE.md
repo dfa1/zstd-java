@@ -54,6 +54,9 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
 - JUnit 5 + Mockito (BDDMockito) + AssertJ. Class under test named `sut`. Every test has
   `// Given` / `// When` / `// Then`. BDDMockito only: `given(mock.m()).willReturn(v)` /
   `then(...)` (static-import only `given`/`then`, never `willReturn`/`willThrow`).
+  For exception assertions, capture the action under `// When` as a
+  `ThrowingCallable result = () -> sut.m(...);` and assert it under `// Then` with
+  `assertThatThrownBy(result)` — the callable is the When, the assertion is the Then.
 - Prefer `@ParameterizedTest` over copy-paste (`@ValueSource`, else `@ArgumentsSource`/named cases).
   For large input spaces use seeded-random `@MethodSource` generators — they find corners examples
   miss. Put generators in `RandomArrays` (integration) or a similar util; keep counts low (10–30)

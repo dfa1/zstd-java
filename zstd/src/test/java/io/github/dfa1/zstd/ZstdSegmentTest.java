@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -110,8 +111,10 @@ class ZstdSegmentTest {
                 MemorySegment dst = arena.allocate(64);
 
                 // When compressing from it
+                ThrowingCallable result = () -> sut.compress(dst, heapSrc);
+
                 // Then it fails fast with a clear message instead of a cryptic FFM error
-                assertThatThrownBy(() -> sut.compress(dst, heapSrc))
+                assertThatThrownBy(result)
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("native");
             }
@@ -126,8 +129,10 @@ class ZstdSegmentTest {
                 MemorySegment src = arena.allocate(64);
 
                 // When decompressing into it
+                ThrowingCallable result = () -> sut.decompress(heapDst, src);
+
                 // Then it fails fast with a clear message instead of a cryptic FFM error
-                assertThatThrownBy(() -> sut.decompress(heapDst, src))
+                assertThatThrownBy(result)
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("native");
             }
@@ -139,8 +144,10 @@ class ZstdSegmentTest {
             MemorySegment heapFrame = MemorySegment.ofArray(new byte[8]);
 
             // When reading its decompressed size
+            ThrowingCallable result = () -> Zstd.decompressedSize(heapFrame);
+
             // Then it fails fast with a clear message instead of a cryptic FFM error
-            assertThatThrownBy(() -> Zstd.decompressedSize(heapFrame))
+            assertThatThrownBy(result)
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("native");
         }

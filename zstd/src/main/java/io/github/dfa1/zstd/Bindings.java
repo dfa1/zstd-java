@@ -80,6 +80,9 @@ final class Bindings {
     // ZSTD_ErrorCode ZSTD_getErrorCode(size_t functionResult)
     static final MethodHandle GET_ERROR_CODE =
             NativeLibrary.lookup("ZSTD_getErrorCode", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+    // const char* ZSTD_getErrorString(ZSTD_ErrorCode code)
+    static final MethodHandle GET_ERROR_STRING =
+            NativeLibrary.lookup("ZSTD_getErrorString", FunctionDescriptor.of(ADDRESS, JAVA_INT));
 
     // int ZSTD_maxCLevel(void) / ZSTD_minCLevel(void) / ZSTD_defaultCLevel(void)
     static final MethodHandle MAX_C_LEVEL =
@@ -138,6 +141,18 @@ final class Bindings {
     static final MethodHandle DCTX_SET_PARAMETER =
             NativeLibrary.lookup("ZSTD_DCtx_setParameter",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT, JAVA_INT));
+
+    // size_t ZSTD_CCtx_setPledgedSrcSize(ZSTD_CCtx*, unsigned long long pledgedSrcSize)
+    static final MethodHandle CCTX_SET_PLEDGED_SRC_SIZE =
+            NativeLibrary.lookup("ZSTD_CCtx_setPledgedSrcSize",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
+
+    // unsigned ZSTD_getDictID_fromCDict(const ZSTD_CDict*)
+    static final MethodHandle GET_DICT_ID_FROM_CDICT =
+            NativeLibrary.lookup("ZSTD_getDictID_fromCDict", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    // unsigned ZSTD_getDictID_fromDDict(const ZSTD_DDict*)
+    static final MethodHandle GET_DICT_ID_FROM_DDICT =
+            NativeLibrary.lookup("ZSTD_getDictID_fromDDict", FunctionDescriptor.of(JAVA_INT, ADDRESS));
 
     // ZSTD_bounds { size_t error; int lowerBound; int upperBound; } — returned by value
     private static final MemoryLayout BOUNDS_LAYOUT =
@@ -234,6 +249,30 @@ final class Bindings {
     // unsigned ZDICT_getDictID(const void* dictBuffer, size_t dictSize)
     static final MethodHandle ZDICT_GET_DICT_ID =
             NativeLibrary.lookup("ZDICT_getDictID", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
+
+    // --- deprecated zstd functions: intentionally NOT bound ---
+    //
+    // These carry ZSTD_DEPRECATED in zstd.h (as of the vendored submodule). Do not
+    // bind them — every one is superseded by API already registered above. Listed
+    // so the gap is a decision, not an oversight.
+    //
+    // Old streaming / block API (use CCtx_setParameter + compressStream2/compress2,
+    // and decompressStream):
+    //   ZSTD_compressBegin, ZSTD_compressBegin_advanced,
+    //   ZSTD_compressBegin_usingDict, ZSTD_compressBegin_usingCDict,
+    //   ZSTD_compressBegin_usingCDict_advanced, ZSTD_compressContinue,
+    //   ZSTD_compressEnd, ZSTD_compressBlock, ZSTD_decompressBlock,
+    //   ZSTD_insertBlock, ZSTD_getBlockSize,
+    //   ZSTD_initCStream_srcSize, ZSTD_initCStream_advanced,
+    //   ZSTD_initCStream_usingDict, ZSTD_initCStream_usingCDict,
+    //   ZSTD_initCStream_usingCDict_advanced, ZSTD_resetCStream,
+    //   ZSTD_initDStream_usingDict, ZSTD_initDStream_usingDDict, ZSTD_resetDStream
+    //
+    // Old one-shot / context helpers:
+    //   ZSTD_compress_advanced (use compress2),
+    //   ZSTD_compress_usingCDict_advanced (use compress_usingCDict),
+    //   ZSTD_copyCCtx, ZSTD_copyDCtx,
+    //   ZSTD_getDecompressedSize (use getFrameContentSize)
 
     private Bindings() {
         // no instances

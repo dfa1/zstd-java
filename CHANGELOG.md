@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [0.3]
+
+### Changed
+- `zstd-platform` is now an ordinary (empty) jar instead of a `pom` aggregator:
+  depend on it like any other artifact — drop the `<type>pom</type>` you needed
+  before. It still transitively pulls the bindings plus all six native libraries.
+
+### Security
+- Native loading is bundled-only. Removed the `-Dzstd.lib.path` override —
+  loading a caller-supplied native library is arbitrary native code execution in
+  the JVM, so the loader now trusts only the artifact bundled on the classpath.
+  The bundled library is extracted into a private, owner-only temp directory
+  (closing a swap/symlink window in the shared temp root). To run a self-built
+  `libzstd`, rebuild it into the native resource jar (see `docs/how-to.md`).
+
+### Fixed
+- `ZstdSkippableContent` now compares by content: `equals` / `hashCode` /
+  `toString` consider the payload bytes instead of array identity.
+
 ## [0.2]
 
 ### Added
@@ -40,4 +59,6 @@ zstd symbols are bound; see `docs/supported.md`.
   cross-compiled from a single host with `zig cc`.
 - Format-compatibility tests against the reference zstd-jni binding.
 
+[0.3]: https://github.com/dfa1/zstd-java/releases/tag/v0.3
+[0.2]: https://github.com/dfa1/zstd-java/releases/tag/v0.2
 [0.1]: https://github.com/dfa1/zstd-java/releases/tag/v0.1

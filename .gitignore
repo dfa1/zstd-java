@@ -7,3 +7,6 @@ native/*/src/main/resources/native/
 .idea/
 *.iml
 dependency-reduced-pom.xml
+
+private-key.asc
+*.asc

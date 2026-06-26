@@ -21,7 +21,7 @@ public record ZstdBounds(int lowerBound, int upperBound) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment bounds = (MemorySegment) getBounds.invokeExact((SegmentAllocator) arena, parameter);
             long error = bounds.get(JAVA_LONG, 0);
-            if (Zstd.isError(error)) {
+            if (NativeCall.isError(error)) {
                 throw new ZstdException("parameter has no queryable bounds");
             }
             return new ZstdBounds(bounds.get(JAVA_INT, 8), bounds.get(JAVA_INT, 12));

@@ -45,7 +45,7 @@ public final class ZstdDecompressDict extends NativeObject {
     }
 
     private static MemorySegment create(MemorySegment dict) {
-        Zstd.requireNative(dict, "dict");
+        NativeCall.requireNative(dict, "dict");
         try {
             MemorySegment p = (MemorySegment) Bindings.CREATE_DDICT.invokeExact(dict, dict.byteSize());
             if (MemorySegment.NULL.equals(p)) {

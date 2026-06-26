@@ -99,14 +99,14 @@ public final class ZstdCompressCtx extends NativeObject {
             MemorySegment in = Zstd.copyIn(arena, src);
             long bound = Zstd.compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
-            long written = Zstd.call(() -> (long) Bindings.COMPRESS2.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS2.invokeExact(
                     ptr(), out, bound, in, (long) src.length));
             return Zstd.copyOut(out, written);
         }
     }
 
     private void setParam(ZstdCompressParameter parameter, int value) {
-        Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
     }
 
     /// Compresses `src` against `dict` at this context's level.
@@ -125,7 +125,7 @@ public final class ZstdCompressCtx extends NativeObject {
             MemorySegment dseg = Zstd.copyIn(arena, d);
             long bound = Zstd.compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
-            long written = Zstd.call(() -> (long) Bindings.COMPRESS_USING_DICT.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_USING_DICT.invokeExact(
                     ptr(), out, bound, in, (long) src.length, dseg, (long) d.length, level));
             return Zstd.copyOut(out, written);
         }
@@ -143,7 +143,7 @@ public final class ZstdCompressCtx extends NativeObject {
             long bound = Zstd.compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
             MemorySegment cdict = dict.ptr();
-            long written = Zstd.call(() -> (long) Bindings.COMPRESS_USING_CDICT.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_USING_CDICT.invokeExact(
                     ptr(), out, bound, in, (long) src.length, cdict));
             return Zstd.copyOut(out, written);
         }
@@ -162,9 +162,9 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or compression fails
     public long compress(MemorySegment dst, MemorySegment src) {
-        Zstd.requireNative(dst, "dst");
-        Zstd.requireNative(src, "src");
-        return Zstd.call(() -> (long) Bindings.COMPRESS2.invokeExact(
+        NativeCall.requireNative(dst, "dst");
+        NativeCall.requireNative(src, "src");
+        return NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS2.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize()));
     }
 
@@ -175,10 +175,10 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param dict the pre-digested compression dictionary
     /// @return the number of bytes written into `dst`
     public long compress(MemorySegment dst, MemorySegment src, ZstdCompressDict dict) {
-        Zstd.requireNative(dst, "dst");
-        Zstd.requireNative(src, "src");
+        NativeCall.requireNative(dst, "dst");
+        NativeCall.requireNative(src, "src");
         MemorySegment cdict = dict.ptr();
-        return Zstd.call(() -> (long) Bindings.COMPRESS_USING_CDICT.invokeExact(
+        return NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_USING_CDICT.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize(), cdict));
     }
 

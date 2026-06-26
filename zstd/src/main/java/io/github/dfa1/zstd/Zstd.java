@@ -42,7 +42,7 @@ public final class Zstd {
             MemorySegment in = copyIn(arena, src);
             long bound = compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
-            long written = call(() -> (long) Bindings.COMPRESS.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS.invokeExact(
                     out, bound, in, (long) src.length, level));
             return copyOut(out, written);
         }
@@ -77,7 +77,7 @@ public final class Zstd {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
-            long written = call(() -> (long) Bindings.DECOMPRESS.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS.invokeExact(
                     out, (long) maxSize, in, (long) compressed.length));
             return copyOut(out, written);
         }
@@ -91,7 +91,7 @@ public final class Zstd {
     /// @return the decompressed length in bytes
     /// @throws ZstdException if the frame is invalid or does not store its size
     public static long decompressedSize(MemorySegment frame) {
-        requireNative(frame, "frame");
+        NativeCall.requireNative(frame, "frame");
         long size;
         try {
             size = (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(frame, frame.byteSize());
@@ -228,64 +228,7 @@ public final class Zstd {
     }
 
     // --- package-private helpers shared with the context classes ---
-
-    /// A native call returning a zstd `size_t` status that may encode an error.
-    @FunctionalInterface
-    interface SizeCall {
-        long run() throws Throwable;
-    }
-
-    /// Invokes a size-returning zstd call and converts a zstd error code into a
-    /// {@link ZstdException}.
-    static long call(SizeCall c) {
-        long code;
-        try {
-            code = c.run();
-        } catch (Throwable t) {
-            throw sneaky(t);
-        }
-        if (isError(code)) {
-            throw new ZstdException(errorName(code), ZstdErrorCode.of(errorCode(code)));
-        }
-        return code;
-    }
-
-    static boolean isError(long code) {
-        try {
-            return ((int) Bindings.IS_ERROR.invokeExact(code)) != 0;
-        } catch (Throwable t) {
-            throw sneaky(t);
-        }
-    }
-
-    private static int errorCode(long code) {
-        try {
-            return (int) Bindings.GET_ERROR_CODE.invokeExact(code);
-        } catch (Throwable t) {
-            throw sneaky(t);
-        }
-    }
-
-    @SuppressWarnings("restricted") // reinterpret needed to read a C string of unknown length
-    private static String errorName(long code) {
-        try {
-            MemorySegment p = (MemorySegment) Bindings.GET_ERROR_NAME.invokeExact(code);
-            return p.reinterpret(Long.MAX_VALUE).getString(0, StandardCharsets.US_ASCII);
-        } catch (Throwable t) {
-            throw sneaky(t);
-        }
-    }
-
-    /// Guards a zero-copy entry point: the segment handed to zstd must be backed
-    /// by native (off-heap) memory, since its address is dereferenced in C. Fails
-    /// fast with a clear message instead of the FFM linker's cryptic error.
-    static MemorySegment requireNative(MemorySegment seg, String name) {
-        if (!seg.isNative()) {
-            throw new IllegalArgumentException(
-                    name + " must be a native (off-heap) MemorySegment; got a heap segment");
-        }
-        return seg;
-    }
+    // Native-call status checking and segment guards live in NativeCall.
 
     static MemorySegment copyIn(Arena arena, byte[] src) {
         MemorySegment seg = arena.allocate(Math.max(src.length, 1));

@@ -68,7 +68,7 @@ public final class ZstdCompressDict extends NativeObject {
     }
 
     private static MemorySegment create(MemorySegment dict, int level) {
-        Zstd.requireNative(dict, "dict");
+        NativeCall.requireNative(dict, "dict");
         try {
             MemorySegment p = (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level);
             if (MemorySegment.NULL.equals(p)) {

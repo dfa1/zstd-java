@@ -54,7 +54,7 @@ public final class ZstdDecompressStream extends NativeObject {
         try (Arena staging = Arena.ofConfined()) {
             byte[] raw = dictionary.raw();
             MemorySegment d = Zstd.copyIn(staging, raw);
-            Zstd.call(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
+            NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
                     ptr(), d, (long) raw.length));
         }
     }
@@ -72,7 +72,7 @@ public final class ZstdDecompressStream extends NativeObject {
     public ZstdStreamResult decompress(MemorySegment dst, MemorySegment src) {
         in.set(src, src.byteSize(), 0);
         out.set(dst, dst.byteSize(), 0);
-        long remaining = Zstd.call(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
+        long remaining = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
                 ptr(), out.segment(), in.segment()));
         return new ZstdStreamResult(in.pos(), out.pos(), remaining);
     }

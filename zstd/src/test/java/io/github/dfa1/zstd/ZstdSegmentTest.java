@@ -103,14 +103,15 @@ class ZstdSegmentTest {
 
         @Test
         void compressRejectsHeapSource() {
-            // Given a heap-backed segment (not off-heap) handed to the zero-copy API
-            MemorySegment heap = MemorySegment.ofArray(new byte[64]);
             try (Arena arena = Arena.ofConfined();
-                 ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                 ZstdCompressCtx sut = new ZstdCompressCtx()) {
+                // Given a heap-backed source segment handed to the zero-copy API
+                MemorySegment heapSrc = MemorySegment.ofArray(new byte[64]);
                 MemorySegment dst = arena.allocate(64);
 
+                // When compressing from it
                 // Then it fails fast with a clear message instead of a cryptic FFM error
-                assertThatThrownBy(() -> cctx.compress(dst, heap))
+                assertThatThrownBy(() -> sut.compress(dst, heapSrc))
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("native");
             }
@@ -118,12 +119,15 @@ class ZstdSegmentTest {
 
         @Test
         void decompressRejectsHeapDestination() {
-            MemorySegment heapDst = MemorySegment.ofArray(new byte[64]);
             try (Arena arena = Arena.ofConfined();
-                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                 ZstdDecompressCtx sut = new ZstdDecompressCtx()) {
+                // Given a heap-backed destination segment handed to the zero-copy API
+                MemorySegment heapDst = MemorySegment.ofArray(new byte[64]);
                 MemorySegment src = arena.allocate(64);
 
-                assertThatThrownBy(() -> dctx.decompress(heapDst, src))
+                // When decompressing into it
+                // Then it fails fast with a clear message instead of a cryptic FFM error
+                assertThatThrownBy(() -> sut.decompress(heapDst, src))
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("native");
             }
@@ -131,7 +135,12 @@ class ZstdSegmentTest {
 
         @Test
         void decompressedSizeRejectsHeapFrame() {
-            assertThatThrownBy(() -> Zstd.decompressedSize(MemorySegment.ofArray(new byte[8])))
+            // Given a heap-backed frame segment
+            MemorySegment heapFrame = MemorySegment.ofArray(new byte[8]);
+
+            // When reading its decompressed size
+            // Then it fails fast with a clear message instead of a cryptic FFM error
+            assertThatThrownBy(() -> Zstd.decompressedSize(heapFrame))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("native");
         }

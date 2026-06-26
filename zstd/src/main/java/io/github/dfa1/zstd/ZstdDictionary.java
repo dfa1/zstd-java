@@ -116,7 +116,7 @@ public final class ZstdDictionary {
                 produced = (long) Bindings.ZDICT_TRAIN.invokeExact(
                         dictBuf, (long) maxDictBytes, flat, sizes, samples.size());
             } catch (Throwable t) {
-                throw rethrow(t);
+                throw NativeCall.rethrow(t);
             }
             if (zdictIsError(produced)) {
                 throw new ZstdException("dictionary training failed: " + zdictErrorName(produced));
@@ -204,7 +204,7 @@ public final class ZstdDictionary {
                 produced = (long) handle.invokeExact(
                         dictBuf, (long) maxDictBytes, flat, sizes, samples.size(), params);
             } catch (Throwable t) {
-                throw rethrow(t);
+                throw NativeCall.rethrow(t);
             }
             if (zdictIsError(produced)) {
                 throw new ZstdException("dictionary training failed: " + zdictErrorName(produced));
@@ -255,7 +255,7 @@ public final class ZstdDictionary {
                         dictBuf, (long) maxDictBytes, contentSeg, (long) content.length,
                         flat, sizes, samples.size(), params);
             } catch (Throwable t) {
-                throw rethrow(t);
+                throw NativeCall.rethrow(t);
             }
             if (zdictIsError(produced)) {
                 throw new ZstdException("dictionary finalisation failed: " + zdictErrorName(produced));
@@ -275,7 +275,7 @@ public final class ZstdDictionary {
             MemorySegment seg = Zstd.copyIn(arena, bytes);
             return (int) Bindings.ZDICT_GET_DICT_ID.invokeExact(seg, (long) bytes.length);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -293,7 +293,7 @@ public final class ZstdDictionary {
             }
             return Math.toIntExact(size);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -320,7 +320,7 @@ public final class ZstdDictionary {
         try {
             return ((int) Bindings.ZDICT_IS_ERROR.invokeExact(code)) != 0;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -330,12 +330,7 @@ public final class ZstdDictionary {
             MemorySegment p = (MemorySegment) Bindings.ZDICT_GET_ERROR_NAME.invokeExact(code);
             return p.reinterpret(Long.MAX_VALUE).getString(0, StandardCharsets.US_ASCII);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

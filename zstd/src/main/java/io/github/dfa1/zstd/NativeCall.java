@@ -22,7 +22,7 @@ final class NativeCall {
         try {
             code = c.run();
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw rethrow(t);
         }
         if (isError(code)) {
             throw new ZstdException(errorName(code), ZstdErrorCode.of(errorCode(code)));
@@ -34,7 +34,7 @@ final class NativeCall {
         try {
             return ((int) Bindings.IS_ERROR.invokeExact(code)) != 0;
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw rethrow(t);
         }
     }
 
@@ -42,7 +42,7 @@ final class NativeCall {
         try {
             return (int) Bindings.GET_ERROR_CODE.invokeExact(code);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw rethrow(t);
         }
     }
 
@@ -52,7 +52,7 @@ final class NativeCall {
             MemorySegment p = (MemorySegment) Bindings.GET_ERROR_NAME.invokeExact(code);
             return p.reinterpret(Long.MAX_VALUE).getString(0, StandardCharsets.US_ASCII);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw rethrow(t);
         }
     }
 
@@ -67,8 +67,11 @@ final class NativeCall {
         return seg;
     }
 
+    /// Rethrows any `Throwable` as if unchecked, laundering the checked
+    /// `Throwable` that {@link java.lang.invoke.MethodHandle#invokeExact} declares.
+    /// The shared sink for every binding class's native-call catch blocks.
     @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException sneaky(Throwable t) throws E {
+    static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
         throw (E) t;
     }
 

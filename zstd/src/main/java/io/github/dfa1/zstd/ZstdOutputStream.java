@@ -117,7 +117,7 @@ public final class ZstdOutputStream extends OutputStream {
                 freeCctx(c);
             }
             arena.close();
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -211,10 +211,5 @@ public final class ZstdOutputStream extends OutputStream {
         if (closed) {
             throw new IOException("stream closed");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

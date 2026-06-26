@@ -40,7 +40,7 @@ public final class ZstdDecompressDict extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -53,7 +53,7 @@ public final class ZstdDecompressDict extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -64,7 +64,7 @@ public final class ZstdDecompressDict extends NativeObject {
         try {
             return (int) Bindings.GET_DICT_ID_FROM_DDICT.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -75,17 +75,12 @@ public final class ZstdDecompressDict extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_DDICT.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         var _ = (long) Bindings.FREE_DDICT.invokeExact(ptr);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

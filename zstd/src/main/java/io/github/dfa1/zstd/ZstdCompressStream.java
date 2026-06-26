@@ -60,7 +60,7 @@ public final class ZstdCompressStream extends NativeObject {
             }
         } catch (Throwable t) {
             close();
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -72,7 +72,7 @@ public final class ZstdCompressStream extends NativeObject {
             }
             return cctx;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -122,7 +122,7 @@ public final class ZstdCompressStream extends NativeObject {
                     p.get(JAVA_INT, 32),    // currentJobID
                     p.get(JAVA_INT, 36));   // nbActiveWorkers
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -133,7 +133,7 @@ public final class ZstdCompressStream extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_CCTX.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -144,10 +144,5 @@ public final class ZstdCompressStream extends NativeObject {
         } finally {
             arena.close();
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

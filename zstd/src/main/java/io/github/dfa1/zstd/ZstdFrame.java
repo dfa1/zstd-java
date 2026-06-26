@@ -190,7 +190,7 @@ public final class ZstdFrame {
         try {
             return ((int) Bindings.IS_SKIPPABLE_FRAME.invokeExact(data, size)) != 0;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -198,7 +198,7 @@ public final class ZstdFrame {
         try {
             return ((int) Bindings.IS_FRAME.invokeExact(data, size)) != 0;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -211,7 +211,7 @@ public final class ZstdFrame {
         try {
             bound = (long) Bindings.DECOMPRESS_BOUND.invokeExact(data, size);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
         if (bound == CONTENTSIZE_ERROR) {
             throw new ZstdException("not valid zstd data");
@@ -223,13 +223,8 @@ public final class ZstdFrame {
         try {
             return (int) Bindings.GET_DICT_ID_FROM_FRAME.invokeExact(data, size);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 
     private ZstdFrame() {

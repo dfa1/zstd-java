@@ -22,7 +22,7 @@ public final class ZstdDecompressCtx extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -176,17 +176,12 @@ public final class ZstdDecompressCtx extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_DCTX.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         var _ = (long) Bindings.FREE_DCTX.invokeExact(ptr);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

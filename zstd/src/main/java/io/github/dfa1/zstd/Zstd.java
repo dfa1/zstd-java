@@ -96,7 +96,7 @@ public final class Zstd {
         try {
             size = (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(frame, frame.byteSize());
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
         if (size == CONTENTSIZE_UNKNOWN) {
             throw new ZstdException("decompressed size not stored in frame");
@@ -116,7 +116,7 @@ public final class Zstd {
         try {
             return (long) Bindings.COMPRESS_BOUND.invokeExact(srcSize);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -126,7 +126,7 @@ public final class Zstd {
             MemorySegment in = copyIn(arena, compressed);
             return (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(in, (long) compressed.length);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -137,7 +137,7 @@ public final class Zstd {
         try {
             return (int) Bindings.MAX_C_LEVEL.invokeExact();
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -148,7 +148,7 @@ public final class Zstd {
         try {
             return (int) Bindings.MIN_C_LEVEL.invokeExact();
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -159,7 +159,7 @@ public final class Zstd {
         try {
             return (int) Bindings.DEFAULT_C_LEVEL.invokeExact();
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -172,7 +172,7 @@ public final class Zstd {
         try {
             return (long) Bindings.ESTIMATE_CCTX_SIZE.invokeExact(level);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -183,7 +183,7 @@ public final class Zstd {
         try {
             return (long) Bindings.ESTIMATE_DCTX_SIZE.invokeExact();
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -197,7 +197,7 @@ public final class Zstd {
         try {
             return (long) Bindings.ESTIMATE_CDICT_SIZE.invokeExact(dictSize, level);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -210,7 +210,7 @@ public final class Zstd {
         try {
             return (long) Bindings.ESTIMATE_DDICT_SIZE.invokeExact(dictSize, 0); // ZSTD_dlm_byCopy
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -223,7 +223,7 @@ public final class Zstd {
             MemorySegment p = (MemorySegment) Bindings.VERSION_STRING.invokeExact();
             return p.reinterpret(Long.MAX_VALUE).getString(0, StandardCharsets.US_ASCII);
         } catch (Throwable t) {
-            throw sneaky(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -240,11 +240,6 @@ public final class Zstd {
         byte[] out = new byte[Math.toIntExact(len)];
         MemorySegment.copy(seg, JAVA_BYTE, 0, out, 0, out.length);
         return out;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException sneaky(Throwable t) throws E {
-        throw (E) t;
     }
 
     private Zstd() {

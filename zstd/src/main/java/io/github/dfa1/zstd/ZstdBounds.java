@@ -26,12 +26,7 @@ public record ZstdBounds(int lowerBound, int upperBound) {
             }
             return new ZstdBounds(bounds.get(JAVA_INT, 8), bounds.get(JAVA_INT, 12));
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

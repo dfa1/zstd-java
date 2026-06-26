@@ -34,7 +34,7 @@ public final class ZstdDecompressStream extends NativeObject {
             }
         } catch (Throwable t) {
             close();
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -46,7 +46,7 @@ public final class ZstdDecompressStream extends NativeObject {
             }
             return dctx;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -84,7 +84,7 @@ public final class ZstdDecompressStream extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_DCTX.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -95,10 +95,5 @@ public final class ZstdDecompressStream extends NativeObject {
         } finally {
             arena.close();
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

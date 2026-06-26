@@ -33,7 +33,7 @@ public final class ZstdCompressCtx extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -216,17 +216,12 @@ public final class ZstdCompressCtx extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_CCTX.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         var _ = (long) Bindings.FREE_CCTX.invokeExact(ptr);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

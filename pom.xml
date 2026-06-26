@@ -131,6 +131,10 @@
 						<failOnError>true</failOnError>
 						<failOnWarnings>true</failOnWarnings>
 						<quiet>true</quiet>
+						<!-- Don't cross-link to sibling reactor modules: the native/bom
+						     modules have no Java sources, so link detection just creates
+						     fake apidocs dirs and logs "Error fetching link". -->
+						<detectOfflineLinks>false</detectOfflineLinks>
 					</configuration>
 				</plugin>
 				<plugin>

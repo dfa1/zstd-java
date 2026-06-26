@@ -325,15 +325,10 @@
 							<autoPublish>true</autoPublish>
 							<waitUntil>published</waitUntil>
 							<excludeArtifacts>
-								<!-- Internal modules: not published to Maven Central. -->
-								<artifact>
-									<groupId>io.github.dfa1.zstd</groupId>
-									<artifactId>zstd-integration-tests</artifactId>
-								</artifact>
-								<artifact>
-									<groupId>io.github.dfa1.zstd</groupId>
-									<artifactId>zstd-benchmark</artifactId>
-								</artifact>
+								<!-- Internal modules: not published to Maven Central.
+								     Each entry is a groupId:artifactId string. -->
+								<artifact>io.github.dfa1.zstd:zstd-integration-tests</artifact>
+								<artifact>io.github.dfa1.zstd:zstd-benchmark</artifact>
 							</excludeArtifacts>
 						</configuration>
 					</plugin>

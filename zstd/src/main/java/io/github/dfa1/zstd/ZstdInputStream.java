@@ -35,10 +35,14 @@ public final class ZstdInputStream extends InputStream {
     private final ZstdStreamBuffer outBufView = new ZstdStreamBuffer(arena);
     private final byte[] feed;
     private final byte[] hold;
+    private final byte[] single = new byte[1];
     private int holdStart;
     private int holdEnd;
     private boolean inputEof;
     private boolean closed;
+    /// zstd's "bytes still expected" hint from the last decompressStream call;
+    /// non-zero at EOF means the final frame was truncated.
+    private long lastHint;
 
     /// Wraps `in`, decompressing the zstd frame it carries.
     ///
@@ -84,9 +88,8 @@ public final class ZstdInputStream extends InputStream {
 
     @Override
     public int read() throws IOException {
-        byte[] one = new byte[1];
-        int n = read(one, 0, 1);
-        return n == -1 ? -1 : (one[0] & 0xFF);
+        int n = read(single, 0, 1);
+        return n == -1 ? -1 : (single[0] & 0xFF);
     }
 
     @Override
@@ -112,13 +115,20 @@ public final class ZstdInputStream extends InputStream {
                 int r = inputEof ? -1 : in.read(feed);
                 if (r == -1) {
                     inputEof = true;
+                    // The frame boundary is clean only when the last decompressStream
+                    // call reported nothing outstanding; otherwise the stream was cut
+                    // mid-frame and the remaining bytes are lost.
+                    if (lastHint != 0) {
+                        throw new ZstdException("truncated zstd stream: " + lastHint
+                                + " more input byte(s) expected");
+                    }
                     return false;
                 }
                 MemorySegment.copy(feed, 0, inSeg, JAVA_BYTE, 0, r);
                 inBuf.set(inSeg, r, 0);
             }
             outBufView.set(outSeg, outCap, 0);
-            Zstd.call(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
+            lastHint = Zstd.call(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
                     dctx, outBufView.segment(), inBuf.segment()));
             int produced = Math.toIntExact(outBufView.pos());
             if (produced > 0) {
@@ -127,10 +137,17 @@ public final class ZstdInputStream extends InputStream {
                 holdEnd = produced;
                 return true;
             }
-            // nothing produced: if input is exhausted and the underlying stream is
-            // at EOF, there is no more output to come.
-            if (inputEof && inBuf.pos() == inBuf.size()) {
-                return false;
+            // Nothing produced. If the decoder neither advanced its input nor wants
+            // more, it cannot make progress on this input — stop to avoid spinning.
+            if (inBuf.pos() == inBuf.size()) {
+                if (inputEof) {
+                    if (lastHint != 0) {
+                        throw new ZstdException("truncated zstd stream: " + lastHint
+                                + " more input byte(s) expected");
+                    }
+                    return false;
+                }
+                // input drained but frame wants more: loop to refill from `in`.
             }
         }
     }

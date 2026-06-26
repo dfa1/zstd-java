@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ZstdStreamTest {
 
@@ -145,6 +146,37 @@ class ZstdStreamTest {
         private byte[] record(int i) {
             return ("{\"id\":" + i + ",\"user\":\"user_" + (i % 40) + "\",\"event\":\"click\"}")
                     .getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
+    @Nested
+    class Truncation {
+
+        @ParameterizedTest
+        @ValueSource(ints = {1, 8, 64})
+        void throwsWhenFinalFrameIsCutShort(int bytesDropped) throws IOException {
+            // Given a valid frame with its tail bytes lopped off (random data so the
+            // frame stays large enough to drop bytes from)
+            byte[] original = randomBytes(50_000);
+            byte[] frame = streamCompress(original, 6);
+            byte[] cut = java.util.Arrays.copyOf(frame, frame.length - bytesDropped);
+
+            // When the streaming decompressor drains it
+            // Then it reports the truncation instead of returning a clean EOF
+            try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(cut))) {
+                assertThatThrownBy(zin::readAllBytes)
+                        .isInstanceOf(ZstdException.class)
+                        .hasMessageContaining("truncated");
+            }
+        }
+
+        @Test
+        void emptyInputIsCleanEofNotTruncation() throws IOException {
+            // Given no input at all
+            // When read, it is end-of-stream, not an error
+            try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(new byte[0]))) {
+                assertThat(zin.read()).isEqualTo(-1);
+            }
         }
     }
 

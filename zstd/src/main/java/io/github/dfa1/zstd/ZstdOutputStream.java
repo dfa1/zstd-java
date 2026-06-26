@@ -41,6 +41,7 @@ public final class ZstdOutputStream extends OutputStream {
     private final ZstdStreamBuffer in = new ZstdStreamBuffer(arena);
     private final ZstdStreamBuffer outBuf = new ZstdStreamBuffer(arena);
     private final byte[] drain;
+    private final byte[] single = new byte[1];
     private boolean closed;
 
     /// Wraps `out`, compressing at the library default level.
@@ -124,7 +125,8 @@ public final class ZstdOutputStream extends OutputStream {
 
     @Override
     public void write(int b) throws IOException {
-        write(new byte[]{(byte) b}, 0, 1);
+        single[0] = (byte) b;
+        write(single, 0, 1);
     }
 
     @Override

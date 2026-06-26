@@ -16,9 +16,9 @@ public record ZstdSkippableContent(byte[] content, int magicVariant) {
     /// @return `true` if `o` is a [ZstdSkippableContent] with equal content bytes and variant
     @Override
     public boolean equals(Object o) {
-        return o instanceof ZstdSkippableContent other
-                && magicVariant == other.magicVariant
-                && Arrays.equals(content, other.content);
+        return o instanceof ZstdSkippableContent(byte[] otherContent, int otherVariant)
+                && magicVariant == otherVariant
+                && Arrays.equals(content, otherContent);
     }
 
     /// Hash code consistent with [#equals(Object)], derived from the content bytes
@@ -35,6 +35,7 @@ public record ZstdSkippableContent(byte[] content, int magicVariant) {
     ///
     /// @return a string with the content length and magic variant
     @Override
+    @SuppressWarnings("NullableProblems") // toString never returns null; we just don't pull in JB @NotNull
     public String toString() {
         return "ZstdSkippableContent[content=" + content.length + " bytes, magicVariant=" + magicVariant + "]";
     }

@@ -26,10 +26,11 @@ final class ZstdStreamBuffer {
         return struct;
     }
 
-    void set(MemorySegment buffer, long size, long pos) {
+    /// Points the buffer at `buffer` with the given size and a fresh position of 0.
+    void set(MemorySegment buffer, long size) {
         struct.set(ADDRESS, OFF_PTR, buffer);
         struct.set(JAVA_LONG, OFF_SIZE, size);
-        struct.set(JAVA_LONG, OFF_POS, pos);
+        struct.set(JAVA_LONG, OFF_POS, 0L);
     }
 
     long size() {

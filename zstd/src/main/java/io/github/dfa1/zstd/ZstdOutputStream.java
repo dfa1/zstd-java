@@ -153,7 +153,7 @@ public final class ZstdOutputStream extends OutputStream {
         while (remaining > 0) {
             int chunk = (int) Math.min(remaining, inCap);
             MemorySegment.copy(b, pos, inSeg, JAVA_BYTE, 0, chunk);
-            in.set(inSeg, chunk, 0);
+            in.set(inSeg, chunk);
             do {
                 drainOutput(ZSTD_E_CONTINUE);
             } while (in.pos() < chunk);
@@ -165,7 +165,7 @@ public final class ZstdOutputStream extends OutputStream {
     @Override
     public void flush() throws IOException {
         ensureOpen();
-        in.set(inSeg, 0, 0);
+        in.set(inSeg, 0);
         long remainingHint;
         do {
             remainingHint = drainOutput(ZSTD_E_FLUSH);
@@ -179,7 +179,7 @@ public final class ZstdOutputStream extends OutputStream {
             return;
         }
         try {
-            in.set(inSeg, 0, 0);
+            in.set(inSeg, 0);
             long remainingHint;
             do {
                 remainingHint = drainOutput(ZSTD_E_END);
@@ -196,7 +196,7 @@ public final class ZstdOutputStream extends OutputStream {
     /// Runs one compressStream2 call and writes whatever it produced to `out`.
     /// Returns the zstd "remaining" hint (0 means the directive is fully flushed).
     private long drainOutput(int directive) throws IOException {
-        outBuf.set(outSeg, outCap, 0);
+        outBuf.set(outSeg, outCap);
         long remainingHint = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
                 cctx, outBuf.segment(), in.segment(), directive));
         int produced = Math.toIntExact(outBuf.pos());

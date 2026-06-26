@@ -8,6 +8,9 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -234,6 +237,102 @@ class ZstdDictionaryTest {
                 restored = dctx.decompress(frame, record.length, sut);
             }
             assertThat(restored).isEqualTo(record);
+        }
+    }
+
+    @Nested
+    class SegmentDigestedDictionary {
+
+        @Test
+        void roundTripsViaSegmentBuiltCDictAndDDict() {
+            // Given digested dictionaries built straight from native dictionary
+            // segments (the zero-copy path — no heap byte[] bounce)
+            byte[] record = samples.get(999);
+            byte[] raw = sut.toByteArray();
+
+            byte[] restored;
+            int level;
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx();
+                 ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw), 19);
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(nativeDict(arena, raw))) {
+
+                // When round-tripped through the segment-built dictionaries
+                byte[] frame = cctx.compress(record, cdict);
+                restored = dctx.decompress(frame, record.length, ddict);
+                level = cdict.level();
+            }
+
+            // Then the record is recovered at the requested level
+            assertThat(restored).isEqualTo(record);
+            assertThat(level).isEqualTo(19);
+        }
+
+        @Test
+        void segmentBuiltDictionariesReportSameIdAsHeap() {
+            // Given dictionaries digested from a native segment
+            byte[] raw = sut.toByteArray();
+
+            // Then they carry the same id as the heap-built dictionary
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw));
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(nativeDict(arena, raw))) {
+                assertThat(cdict.id()).isEqualTo(sut.id());
+                assertThat(ddict.id()).isEqualTo(sut.id());
+            }
+        }
+
+        @Test
+        void interoperatesWithHeapBuiltDictionaries() {
+            // Given a frame compressed with a segment-built CDict
+            byte[] record = samples.get(2048);
+            byte[] raw = sut.toByteArray();
+
+            byte[] restored;
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx();
+                 ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw));
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
+                byte[] frame = cctx.compress(record, cdict);
+
+                // When decompressed with a heap-built DDict
+                restored = dctx.decompress(frame, record.length, ddict);
+            }
+
+            // Then segment- and heap-built dictionaries interoperate
+            assertThat(restored).isEqualTo(record);
+        }
+
+        @Test
+        void rejectsHeapDecompressDictSegment() {
+            // Given a heap-backed dictionary segment
+            MemorySegment heap = MemorySegment.ofArray(sut.toByteArray());
+
+            // When digesting it as a decompress dictionary
+            ThrowingCallable result = () -> new ZstdDecompressDict(heap);
+
+            // Then it fails fast rather than dereferencing a heap address in C
+            assertThatThrownBy(result).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void rejectsHeapCompressDictSegment() {
+            // Given a heap-backed dictionary segment
+            MemorySegment heap = MemorySegment.ofArray(sut.toByteArray());
+
+            // When digesting it as a compress dictionary
+            ThrowingCallable result = () -> new ZstdCompressDict(heap);
+
+            // Then it fails fast
+            assertThatThrownBy(result).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        private MemorySegment nativeDict(Arena arena, byte[] raw) {
+            MemorySegment seg = arena.allocate(raw.length);
+            MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);
+            return seg;
         }
     }
 

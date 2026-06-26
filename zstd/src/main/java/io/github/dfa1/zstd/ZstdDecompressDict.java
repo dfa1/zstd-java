@@ -18,11 +18,36 @@ public final class ZstdDecompressDict extends NativeObject {
         super(create(dict));
     }
 
+    /// Digests a native dictionary segment for decompression, without a heap copy.
+    ///
+    /// `dict` must be a native (off-heap) [MemorySegment] — e.g. an mmap slice or
+    /// an arena buffer. Its bytes are copied into the digested dictionary, so the
+    /// segment may be released once the constructor returns. Heap-backed callers
+    /// should use [ZstdDecompressDict(ZstdDictionary)] instead.
+    ///
+    /// @param dict native dictionary content
+    public ZstdDecompressDict(MemorySegment dict) {
+        super(create(dict));
+    }
+
     private static MemorySegment create(ZstdDictionary dict) {
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);
             MemorySegment p = (MemorySegment) Bindings.CREATE_DDICT.invokeExact(d, (long) raw.length);
+            if (MemorySegment.NULL.equals(p)) {
+                throw new ZstdException("ZSTD_createDDict returned NULL");
+            }
+            return p;
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
+    private static MemorySegment create(MemorySegment dict) {
+        Zstd.requireNative(dict, "dict");
+        try {
+            MemorySegment p = (MemorySegment) Bindings.CREATE_DDICT.invokeExact(dict, dict.byteSize());
             if (MemorySegment.NULL.equals(p)) {
                 throw new ZstdException("ZSTD_createDDict returned NULL");
             }

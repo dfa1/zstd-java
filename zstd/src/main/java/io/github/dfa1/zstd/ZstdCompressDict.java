@@ -30,11 +30,47 @@ public final class ZstdCompressDict extends NativeObject {
         this(dict, Zstd.defaultCompressionLevel());
     }
 
+    /// Digests a native dictionary segment for compression at the given level,
+    /// without a heap copy.
+    ///
+    /// `dict` must be a native (off-heap) [MemorySegment] — e.g. an mmap slice or
+    /// an arena buffer. Its bytes are copied into the digested dictionary, so the
+    /// segment may be released once the constructor returns. Heap-backed callers
+    /// should use [ZstdCompressDict(ZstdDictionary, int)] instead.
+    ///
+    /// @param dict  native dictionary content
+    /// @param level the compression level to fix for this digested dictionary
+    public ZstdCompressDict(MemorySegment dict, int level) {
+        super(create(dict, level));
+        this.level = level;
+    }
+
+    /// Digests a native dictionary segment for compression at the library default
+    /// level, without a heap copy.
+    ///
+    /// @param dict native dictionary content
+    public ZstdCompressDict(MemorySegment dict) {
+        this(dict, Zstd.defaultCompressionLevel());
+    }
+
     private static MemorySegment create(ZstdDictionary dict, int level) {
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);
             MemorySegment p = (MemorySegment) Bindings.CREATE_CDICT.invokeExact(d, (long) raw.length, level);
+            if (MemorySegment.NULL.equals(p)) {
+                throw new ZstdException("ZSTD_createCDict returned NULL");
+            }
+            return p;
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
+    private static MemorySegment create(MemorySegment dict, int level) {
+        Zstd.requireNative(dict, "dict");
+        try {
+            MemorySegment p = (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level);
             if (MemorySegment.NULL.equals(p)) {
                 throw new ZstdException("ZSTD_createCDict returned NULL");
             }

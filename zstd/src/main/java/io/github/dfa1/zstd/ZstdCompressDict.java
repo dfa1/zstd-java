@@ -51,6 +51,17 @@ public final class ZstdCompressDict extends NativeObject {
         return level;
     }
 
+    /// The dictionary id stamped into frames compressed with this dictionary.
+    ///
+    /// @return the dictionary id, or `0` for a content-only dictionary
+    public int id() {
+        try {
+            return (int) Bindings.GET_DICT_ID_FROM_CDICT.invokeExact(ptr());
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         long ignored = (long) Bindings.FREE_CDICT.invokeExact(ptr);

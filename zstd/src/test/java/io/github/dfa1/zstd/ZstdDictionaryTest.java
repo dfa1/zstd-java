@@ -114,6 +114,15 @@ class ZstdDictionaryTest {
         }
 
         @Test
+        void digestedDictionariesReportTheSameId() {
+            try (ZstdCompressDict cdict = new ZstdCompressDict(sut);
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
+                assertThat(cdict.id()).isEqualTo(sut.id());
+                assertThat(ddict.id()).isEqualTo(sut.id());
+            }
+        }
+
+        @Test
         void interoperatesWithRawPath() {
             // Given a record compressed with the raw dictionary
             byte[] record = samples.get(2048);

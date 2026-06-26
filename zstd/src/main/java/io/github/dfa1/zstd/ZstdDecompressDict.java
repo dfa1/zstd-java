@@ -32,6 +32,17 @@ public final class ZstdDecompressDict extends NativeObject {
         }
     }
 
+    /// The dictionary id this dictionary decodes frames for.
+    ///
+    /// @return the dictionary id, or `0` for a content-only dictionary
+    public int id() {
+        try {
+            return (int) Bindings.GET_DICT_ID_FROM_DDICT.invokeExact(ptr());
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         long ignored = (long) Bindings.FREE_DDICT.invokeExact(ptr);

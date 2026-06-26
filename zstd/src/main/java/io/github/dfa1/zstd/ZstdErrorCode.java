@@ -1,5 +1,8 @@
 package io.github.dfa1.zstd;
 
+import java.lang.foreign.MemorySegment;
+import java.nio.charset.StandardCharsets;
+
 /// Categories of zstd error, exposed by [ZstdException#code()] so callers can
 /// branch on the kind of failure (e.g. distinguish [#CHECKSUM_WRONG] from
 /// [#DST_SIZE_TOO_SMALL]) instead of matching on message text.
@@ -94,6 +97,25 @@ public enum ZstdErrorCode {
     /// @return the zstd error code value
     public int value() {
         return value;
+    }
+
+    /// zstd's canonical human-readable description of this error, from
+    /// `ZSTD_getErrorString`.
+    ///
+    /// @return the description text
+    @SuppressWarnings("restricted") // reinterpret needed to read a C string of unknown length
+    public String description() {
+        try {
+            MemorySegment p = (MemorySegment) Bindings.GET_ERROR_STRING.invokeExact(value);
+            return p.reinterpret(Long.MAX_VALUE).getString(0, StandardCharsets.US_ASCII);
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
+        throw (E) t;
     }
 
     /// Maps a native `ZSTD_ErrorCode` integer to its category.

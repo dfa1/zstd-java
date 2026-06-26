@@ -59,5 +59,11 @@ class ZstdErrorTest {
         void mapsUnknownValueToUnknown() {
             assertThat(ZstdErrorCode.of(999_999)).isEqualTo(ZstdErrorCode.UNKNOWN);
         }
+
+        @Test
+        void exposesCanonicalDescription() {
+            assertThat(ZstdErrorCode.CHECKSUM_WRONG.description()).isNotBlank();
+            assertThat(ZstdErrorCode.NO_ERROR.description()).isNotBlank();
+        }
     }
 }

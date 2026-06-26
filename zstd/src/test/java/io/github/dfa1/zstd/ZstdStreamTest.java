@@ -148,6 +148,25 @@ class ZstdStreamTest {
         }
     }
 
+    @Nested
+    class PledgedSize {
+
+        @Test
+        void recordsContentSizeInTheFrame() throws IOException {
+            // Given a stream told the exact total up front
+            byte[] original = "pledged payload ".repeat(300).getBytes(StandardCharsets.UTF_8);
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sink, 6, original.length)) {
+                zout.write(original);
+            }
+            byte[] frame = sink.toByteArray();
+
+            // Then the frame header carries the size, so size-less decompress works
+            assertThat(ZstdFrame.header(frame).contentSize()).hasValue(original.length);
+            assertThat(Zstd.decompress(frame)).isEqualTo(original);
+        }
+    }
+
     private static byte[] streamCompress(byte[] data, int level) throws IOException {
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         try (ZstdOutputStream zout = new ZstdOutputStream(sink, level)) {

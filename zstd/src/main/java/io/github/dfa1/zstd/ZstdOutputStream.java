@@ -66,6 +66,25 @@ public final class ZstdOutputStream extends OutputStream {
         this(out, Zstd.defaultCompressionLevel(), dictionary);
     }
 
+    /// Wraps `out` and declares the exact total number of bytes that will be
+    /// written, so the frame header records the decompressed size — letting a
+    /// reader use [Zstd#decompress(byte[])] (size known) instead of supplying a
+    /// bound. Writing a different total raises an error when the stream closes.
+    ///
+    /// @param out            the stream to write the compressed frame to
+    /// @param level          the compression level
+    /// @param pledgedSrcSize the exact number of uncompressed bytes that will be written
+    /// @return a stream that will stamp the content size into the frame
+    public static ZstdOutputStream withPledgedSize(OutputStream out, int level, long pledgedSrcSize) {
+        ZstdOutputStream stream = new ZstdOutputStream(out, level);
+        stream.setPledgedSrcSize(pledgedSrcSize);
+        return stream;
+    }
+
+    private void setPledgedSrcSize(long pledgedSrcSize) {
+        Zstd.call(() -> (long) Bindings.CCTX_SET_PLEDGED_SRC_SIZE.invokeExact(cctx, pledgedSrcSize));
+    }
+
     /// Wraps `out`, compressing against `dictionary` at `level`.
     ///
     /// @param out        the stream to write the compressed frame to

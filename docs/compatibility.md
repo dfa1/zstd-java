@@ -5,7 +5,7 @@ and semantics follow the [official manual](https://facebook.github.io/zstd/doc/a
 
 - zstd version: **1.6.0** (vendored `third_party/zstd`)
 - Public symbols exported by `libzstd`: **186**
-- Bound so far: **51** (~27%)
+- Bound so far: **55** (~30%)
 
 "Bound" means the symbol has a `MethodHandle` in `Bindings` and is reachable
 through the public Java API. The rest are reachable from native code but not yet
@@ -21,13 +21,13 @@ low-level variants that an idiomatic Java API does not need.
 |---|:---:|---|
 | Core one-shot | 6 / 7 | compress/decompress/bound/levels — complete for practical use |
 | Version | 2 / 2 | complete |
-| Errors | 3 / 4 | name + typed `ZstdErrorCode` (via `getErrorCode`); `getErrorString` not bound |
+| Errors | 4 / 4 | complete: name, typed `ZstdErrorCode`, and `description()` |
 | Reusable contexts | 6 / 8 | CCtx/DCtx create/free/compress/decompress |
-| Dictionary — simple | 8 / 23 | raw + digested (CDict/DDict); `_advanced`/`_byReference` variants not bound |
+| Dictionary — simple | 10 / 23 | raw + digested (CDict/DDict) + dict-id queries; `_advanced`/`_byReference`/`Begin` variants not bound |
 | Dictionary training (ZDICT) | 4 / 12 | `trainFromBuffer`; cover/fastCover optimizers not bound |
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
-| Advanced parameters | 7 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `loadDictionary`, `c/dParam_getBounds`; MT inert on single-thread build |
+| Advanced parameters | 8 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `loadDictionary`, `c/dParam_getBounds`; MT inert on single-thread build |
 | Frame inspection | 9 / 13 | `ZstdFrame`: isFrame, header, compressedSize, decompressedBound, dictId, skippable read/write; getFrameProgression/_advanced not bound |
 | Memory sizing | 0 / 14 | `sizeof_*` / `estimate*` accounting not bound |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
@@ -56,6 +56,9 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_decompressStream`, `ZSTD_DStreamInSize`, `ZSTD_DStreamOutSize` | `ZstdInputStream` |
 | `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressCtx.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (all of `ZstdCompressParameter`) |
 | `ZSTD_DCtx_setParameter` | `ZstdDecompressCtx.parameter` / `windowLogMax` (`ZstdDecompressParameter`) |
+| `ZSTD_CCtx_setPledgedSrcSize` | `ZstdOutputStream.withPledgedSize` |
+| `ZSTD_getDictID_fromCDict`, `ZSTD_getDictID_fromDDict` | `ZstdCompressDict.id()` / `ZstdDecompressDict.id()` |
+| `ZSTD_getErrorString` | `ZstdErrorCode.description()` |
 | `ZSTD_cParam_getBounds`, `ZSTD_dParam_getBounds` | `ZstdCompressParameter.bounds()` / `ZstdDecompressParameter.bounds()` (`ZstdBounds`) |
 | `ZSTD_CCtx_loadDictionary`, `ZSTD_DCtx_loadDictionary` | `ZstdOutputStream` / `ZstdInputStream` dictionary constructors |
 | `ZSTD_isFrame`, `ZSTD_findFrameCompressedSize`, `ZSTD_decompressBound`, `ZSTD_getDictID_fromFrame`, `ZSTD_getFrameHeader`, `ZSTD_isSkippableFrame`, `ZSTD_writeSkippableFrame`, `ZSTD_readSkippableFrame` | `ZstdFrame` (+ `ZstdFrameHeader`, `ZstdFrameType`, `ZstdSkippableContent`) |
@@ -63,9 +66,9 @@ low-level variants that an idiomatic Java API does not need.
 
 ## Roadmap (priority order)
 
-1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`compressStream2`, `decompressStream`, bounded buffers, dictionary constructors). Remaining: `MemorySegment`-buffer driver, `pledgedSrcSize`.
-2. ~~**Advanced parameters**~~ — done: every `ZSTD_cParameter`/`ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter` (+ `bounds()`), on both contexts. Remaining: `pledgedSrcSize`; `nbWorkers` is settable but inert until the native build enables multithreading.
-3. ~~**Frame inspection**~~ — done: `ZstdFrame` (`isFrame`, `header`, `compressedSize`, `decompressedBound`, `dictId`, skippable read/write). Remaining: `getDictID_fromDict/CDict/DDict`, `getFrameProgression`.
+1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`compressStream2`, `decompressStream`, bounded buffers, dictionary constructors, `pledgedSrcSize` via `withPledgedSize`). Remaining: `MemorySegment`-buffer driver.
+2. ~~**Advanced parameters**~~ — done: every `ZSTD_cParameter`/`ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter` (+ `bounds()`), on both contexts; `pledgedSrcSize`. `nbWorkers` is settable but inert until the native build enables multithreading.
+3. ~~**Frame inspection**~~ — done: `ZstdFrame` (`isFrame`, `header`, `compressedSize`, `decompressedBound`, `dictId`, skippable read/write); dict-id from raw/CDict/DDict. Remaining: `getFrameProgression`.
 4. **Better dictionaries** — `ZDICT_optimizeTrainFromBuffer_cover` / `_fastCover`, `finalizeDictionary`.
 5. ~~**Typed errors**~~ — done: `ZstdException.code()` returns `ZstdErrorCode` (via `getErrorCode`).
 
@@ -83,7 +86,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_defaultCLevel` | ✅ |
 | `ZSTD_maxCLevel` | ✅ |
 | `ZSTD_minCLevel` | ✅ |
-| `ZSTD_compress_advanced` | — |
+| `ZSTD_compress_advanced` | — ᵈ |
 
 ### Version (2/2)
 
@@ -92,14 +95,14 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_versionNumber` | ✅ |
 | `ZSTD_versionString` | ✅ |
 
-### Errors (3/4)
+### Errors (4/4)
 
 | Symbol | Bound |
 |---|:---:|
 | `ZSTD_getErrorName` | ✅ |
 | `ZSTD_isError` | ✅ |
 | `ZSTD_getErrorCode` | ✅ |
-| `ZSTD_getErrorString` | — |
+| `ZSTD_getErrorString` | ✅ |
 
 ### Reusable contexts (6/8)
 
@@ -114,7 +117,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_createCCtx_advanced` | — |
 | `ZSTD_createDCtx_advanced` | — |
 
-### Dictionary — simple (8/23)
+### Dictionary — simple (10/23)
 
 | Symbol | Bound |
 |---|:---:|
@@ -126,10 +129,10 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_decompress_usingDict` | ✅ |
 | `ZSTD_freeCDict` | ✅ |
 | `ZSTD_freeDDict` | ✅ |
-| `ZSTD_compress_usingCDict_advanced` | — |
-| `ZSTD_compressBegin_usingCDict` | — |
-| `ZSTD_compressBegin_usingCDict_advanced` | — |
-| `ZSTD_compressBegin_usingDict` | — |
+| `ZSTD_compress_usingCDict_advanced` | — ᵈ |
+| `ZSTD_compressBegin_usingCDict` | — ᵈ |
+| `ZSTD_compressBegin_usingCDict_advanced` | — ᵈ |
+| `ZSTD_compressBegin_usingDict` | — ᵈ |
 | `ZSTD_createCDict_advanced` | — |
 | `ZSTD_createCDict_advanced2` | — |
 | `ZSTD_createCDict_byReference` | — |
@@ -137,8 +140,8 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_createDDict_byReference` | — |
 | `ZSTD_decompressBegin_usingDDict` | — |
 | `ZSTD_decompressBegin_usingDict` | — |
-| `ZSTD_getDictID_fromCDict` | — |
-| `ZSTD_getDictID_fromDDict` | — |
+| `ZSTD_getDictID_fromCDict` | ✅ |
+| `ZSTD_getDictID_fromDDict` | ✅ |
 | `ZSTD_getDictID_fromDict` | — |
 | `ZSTD_getDictID_fromFrame` | ✅ |
 
@@ -177,13 +180,13 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_flushStream` | — |
 | `ZSTD_freeCStream` | — |
 | `ZSTD_initCStream` | — |
-| `ZSTD_initCStream_advanced` | — |
-| `ZSTD_initCStream_srcSize` | — |
-| `ZSTD_initCStream_usingCDict` | — |
-| `ZSTD_initCStream_usingCDict_advanced` | — |
-| `ZSTD_initCStream_usingDict` | — |
+| `ZSTD_initCStream_advanced` | — ᵈ |
+| `ZSTD_initCStream_srcSize` | — ᵈ |
+| `ZSTD_initCStream_usingCDict` | — ᵈ |
+| `ZSTD_initCStream_usingCDict_advanced` | — ᵈ |
+| `ZSTD_initCStream_usingDict` | — ᵈ |
 | `ZSTD_initStaticCStream` | — |
-| `ZSTD_resetCStream` | — |
+| `ZSTD_resetCStream` | — ᵈ |
 | `ZSTD_sizeof_CStream` | — |
 
 ### Streaming — decompress (3/15)
@@ -200,13 +203,13 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_estimateDStreamSize_fromFrame` | — |
 | `ZSTD_freeDStream` | — |
 | `ZSTD_initDStream` | — |
-| `ZSTD_initDStream_usingDDict` | — |
-| `ZSTD_initDStream_usingDict` | — |
+| `ZSTD_initDStream_usingDDict` | — ᵈ |
+| `ZSTD_initDStream_usingDict` | — ᵈ |
 | `ZSTD_initStaticDStream` | — |
-| `ZSTD_resetDStream` | — |
+| `ZSTD_resetDStream` | — ᵈ |
 | `ZSTD_sizeof_DStream` | — |
 
-### Advanced parameters (7/38)
+### Advanced parameters (8/38)
 
 | Symbol | Bound |
 |---|:---:|
@@ -230,7 +233,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_CCtx_setParameter` | ✅ |
 | `ZSTD_CCtx_setParametersUsingCCtxParams` | — |
 | `ZSTD_CCtx_setParams` | — |
-| `ZSTD_CCtx_setPledgedSrcSize` | — |
+| `ZSTD_CCtx_setPledgedSrcSize` | ✅ |
 | `ZSTD_DCtx_getParameter` | — |
 | `ZSTD_DCtx_loadDictionary` | ✅ |
 | `ZSTD_DCtx_loadDictionary_advanced` | — |
@@ -258,7 +261,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_findDecompressedSize` | — |
 | `ZSTD_findFrameCompressedSize` | ✅ |
 | `ZSTD_frameHeaderSize` | — |
-| `ZSTD_getDecompressedSize` | — |
+| `ZSTD_getDecompressedSize` | — ᵈ |
 | `ZSTD_getFrameHeader` | ✅ |
 | `ZSTD_getFrameHeader_advanced` | — |
 | `ZSTD_getFrameProgression` | — |
@@ -279,7 +282,7 @@ low-level variants that an idiomatic Java API does not need.
 | `ZSTD_estimateCDictSize_advanced` | — |
 | `ZSTD_estimateDCtxSize` | — |
 | `ZSTD_estimateDDictSize` | — |
-| `ZSTD_getBlockSize` | — |
+| `ZSTD_getBlockSize` | — ᵈ |
 | `ZSTD_sequenceBound` | — |
 | `ZSTD_sizeof_CCtx` | — |
 | `ZSTD_sizeof_CDict` | — |
@@ -290,15 +293,15 @@ low-level variants that an idiomatic Java API does not need.
 
 | Symbol | Bound |
 |---|:---:|
-| `ZSTD_compressBegin` | — |
-| `ZSTD_compressBegin_advanced` | — |
-| `ZSTD_compressBlock` | — |
-| `ZSTD_compressContinue` | — |
-| `ZSTD_compressEnd` | — |
+| `ZSTD_compressBegin` | — ᵈ |
+| `ZSTD_compressBegin_advanced` | — ᵈ |
+| `ZSTD_compressBlock` | — ᵈ |
+| `ZSTD_compressContinue` | — ᵈ |
+| `ZSTD_compressEnd` | — ᵈ |
 | `ZSTD_decompressBegin` | — |
-| `ZSTD_decompressBlock` | — |
+| `ZSTD_decompressBlock` | — ᵈ |
 | `ZSTD_decompressContinue` | — |
-| `ZSTD_insertBlock` | — |
+| `ZSTD_insertBlock` | — ᵈ |
 | `ZSTD_nextInputType` | — |
 | `ZSTD_nextSrcSizeToDecompress` | — |
 | `ZSTD_toFlushNow` | — |
@@ -319,8 +322,8 @@ low-level variants that an idiomatic Java API does not need.
 |---|:---:|
 | `ZSTD_adjustCParams` | — |
 | `ZSTD_checkCParams` | — |
-| `ZSTD_copyCCtx` | — |
-| `ZSTD_copyDCtx` | — |
+| `ZSTD_copyCCtx` | — ᵈ |
+| `ZSTD_copyDCtx` | — ᵈ |
 | `ZSTD_getCParams` | — |
 | `ZSTD_getParams` | — |
 | `ZSTD_initStaticCCtx` | — |

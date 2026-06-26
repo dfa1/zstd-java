@@ -166,6 +166,14 @@ final class Bindings {
     static final MethodHandle DPARAM_GET_BOUNDS =
             NativeLibrary.lookup("ZSTD_dParam_getBounds", FunctionDescriptor.of(BOUNDS_LAYOUT, JAVA_INT));
 
+    // ZSTD_frameProgression { u64 ingested, consumed, produced, flushed; u32 currentJobID, nbActiveWorkers; }
+    private static final MemoryLayout FRAME_PROGRESSION_LAYOUT =
+            MemoryLayout.structLayout(JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_INT, JAVA_INT);
+    // ZSTD_frameProgression ZSTD_getFrameProgression(const ZSTD_CCtx*) — returned by value
+    static final MethodHandle GET_FRAME_PROGRESSION =
+            NativeLibrary.lookup("ZSTD_getFrameProgression",
+                    FunctionDescriptor.of(FRAME_PROGRESSION_LAYOUT, ADDRESS));
+
     // size_t ZSTD_compressStream2(ZSTD_CCtx*, ZSTD_outBuffer*, ZSTD_inBuffer*, ZSTD_EndDirective)
     static final MethodHandle COMPRESS_STREAM2 =
             NativeLibrary.lookup("ZSTD_compressStream2",

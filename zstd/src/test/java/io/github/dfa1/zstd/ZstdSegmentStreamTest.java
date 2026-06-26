@@ -89,6 +89,33 @@ class ZstdSegmentStreamTest {
     }
 
     @Nested
+    class Progress {
+
+        @Test
+        void tracksByteCounters() {
+            byte[] original = "progress payload ".repeat(500).getBytes(StandardCharsets.UTF_8);
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressStream cs = new ZstdCompressStream()) {
+
+                MemorySegment src = segment(arena, original);
+                MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
+
+                // fresh stream: nothing moved yet
+                assertThat(cs.progress().consumed()).isZero();
+
+                ZstdStreamResult r = cs.compress(dst, src, ZstdEndDirective.END);
+
+                // after a complete END step the counters reflect the whole frame
+                ZstdFrameProgression p = cs.progress();
+                assertThat(p.consumed()).isEqualTo(original.length);
+                assertThat(p.ingested()).isEqualTo(original.length);
+                assertThat(p.flushed()).isEqualTo(r.bytesProduced());
+                assertThat(p.activeWorkers()).isZero(); // single-threaded build
+            }
+        }
+    }
+
+    @Nested
     class WithDictionary {
 
         @Test

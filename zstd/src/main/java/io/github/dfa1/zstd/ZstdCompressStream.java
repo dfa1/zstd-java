@@ -2,6 +2,10 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
+
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /// A low-level, zero-copy streaming compressor driven with native
 /// {@link MemorySegment} buffers — no heap `byte[]` bounce.
@@ -87,6 +91,26 @@ public final class ZstdCompressStream extends NativeObject {
         long remaining = Zstd.call(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
                 ptr(), out.segment(), in.segment(), directive.value()));
         return new ZstdStreamResult(in.pos(), out.pos(), remaining);
+    }
+
+    /// A live snapshot of how much this stream has ingested, compressed, produced,
+    /// and flushed so far — useful for progress reporting on a long stream.
+    ///
+    /// @return the current frame progression
+    public ZstdFrameProgression progress() {
+        try (Arena scratch = Arena.ofConfined()) {
+            MemorySegment p = (MemorySegment) Bindings.GET_FRAME_PROGRESSION.invokeExact(
+                    (SegmentAllocator) scratch, ptr());
+            return new ZstdFrameProgression(
+                    p.get(JAVA_LONG, 0),    // ingested
+                    p.get(JAVA_LONG, 8),    // consumed
+                    p.get(JAVA_LONG, 16),   // produced
+                    p.get(JAVA_LONG, 24),   // flushed
+                    p.get(JAVA_INT, 32),    // currentJobID
+                    p.get(JAVA_INT, 36));   // nbActiveWorkers
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
     }
 
     @Override

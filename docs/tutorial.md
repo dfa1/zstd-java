@@ -71,9 +71,10 @@ try (var out = new ZstdOutputStream(Files.newOutputStream(packed), 9)) {
     Files.copy(source, out);
 }
 
-// decompress as you read it back
-try (var in = new ZstdInputStream(Files.newInputStream(packed))) {
-    in.transferTo(Files.newOutputStream(restored));
+// decompress as you read it back (transferTo loops internally until EOF)
+try (var in = new ZstdInputStream(Files.newInputStream(packed));
+     var out = Files.newOutputStream(restored)) {
+    in.transferTo(out);
 }
 ```
 

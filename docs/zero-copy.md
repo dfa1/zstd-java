@@ -113,18 +113,25 @@ MemorySegment out    = dctx.decompress(arena, frame); // zero-copy decode
 ByteBuffer    result = out.asByteBuffer();             // zero-copy hand-off
 ```
 
-**Gap / proposed sugar.** The one-liner above is the supported path today, but it
-leaks two FFM details onto the caller: `asByteBuffer()` returns a `BIG_ENDIAN`
-buffer regardless of platform, and the segment's lifetime is the arena's, not the
-buffer's. A thin `toByteBuffer()` convenience on the arena-returning results would
-fix both in one place — set native byte order, document the borrowed lifetime:
+**Byte order.** `asByteBuffer()` on a *native* segment already returns a **direct**
+buffer aliasing the same off-heap bytes — there is no copy and nothing to convert.
+The one wart is byte order: it comes back `BIG_ENDIAN` regardless of platform, so a
+caller doing multi-byte reads must restore the native order:
 
 ```java
-ByteBuffer result = dctx.decompress(arena, frame).toByteBuffer(); // proposed
+import java.nio.ByteOrder;
+
+ByteBuffer result = dctx.decompress(arena, frame)
+        .asByteBuffer()
+        .order(ByteOrder.nativeOrder()); // direct buffer, native order, zero copy
 ```
 
-This keeps the API segment-first (no parallel `ByteBuffer` surface to maintain);
-it is purely an output adapter for callers already living in NIO.
+(For a pure byte payload the order does not matter and even that is unneeded.) The
+remaining caveat is lifetime: the buffer borrows the arena's scope, so it must not
+outlive the `try`-with-resources. A thin `toByteBuffer()` convenience on the
+arena-returning results could fold the `order(nativeOrder())` call in one place, but
+it would be a one-line output adapter, not new capability — the conversion already
+exists. We keep the API segment-first (no parallel `ByteBuffer` surface to maintain).
 
 ## Zero-copy streaming
 
@@ -182,7 +189,7 @@ header, so a downstream reader can size the output arena exactly and decode in o
 shot:
 
 ```java
-try (var zout = ZstdOutputStream.withPledgedSize(sink, 19, data.length)) {
+try (var zout = ZstdOutputStream.withPledgedSize(sink, 6, data.length)) {
     zout.write(data);                          // pledge must match the bytes written
 }
 byte[] frame = sink.toByteArray();

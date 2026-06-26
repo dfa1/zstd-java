@@ -11,10 +11,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -232,16 +232,21 @@ class ZstdStreamTest {
             }
             byte[] frame = sink.toByteArray();
 
-            // When a memory-mapped-style reader decodes straight into its arena
+            // a memory-mapped reader sees the frame as a direct ByteBuffer — no heap copy in
+            ByteBuffer mmap = ByteBuffer.allocateDirect(frame.length).put(frame).flip();
+
+            // When it decodes straight into its arena and hands the result back as a ByteBuffer
             byte[] restored;
             try (Arena arena = Arena.ofConfined();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                MemorySegment src = Zstd.copyIn(arena, frame);
-                MemorySegment out = dctx.decompress(arena, src);
+                MemorySegment src = MemorySegment.ofBuffer(mmap);   // zero-copy input view
+                MemorySegment out = dctx.decompress(arena, src);    // one allocation, zero copies
+                ByteBuffer result = out.asByteBuffer();             // zero-copy hand-off out
 
                 // Then the arena was sized exactly from the header and decode round-trips
                 assertThat(out.byteSize()).isEqualTo(original.length);
-                restored = out.toArray(JAVA_BYTE);
+                restored = new byte[result.remaining()];
+                result.get(restored);
             }
             assertThat(restored).isEqualTo(original);
         }

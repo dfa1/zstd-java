@@ -7,6 +7,9 @@ import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
 import io.github.dfa1.zstd.ZstdFrame;
 import io.github.dfa1.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdDictCompress;
+import com.github.luben.zstd.ZstdDictDecompress;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -185,8 +188,12 @@ class GoldenCorpusTest {
     @Nested
     class GoldenDictionaries {
 
-        static Stream<Arguments> dictionaries() {
-            return filesIn("golden-dictionaries", "");
+        static Stream<Named<Path>> dictionaries() {
+            return filesIn("golden-dictionaries", "")
+                    .map(args -> {
+                        Object[] a = args.get();
+                        return Named.of((String) a[0], (Path) a[1]);
+                    });
         }
 
         private byte[] payload() {
@@ -195,7 +202,7 @@ class GoldenCorpusTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("dictionaries")
-        void javaDictCompressJniDictDecompress(String name, Path file) {
+        void javaDictCompressJniDictDecompress(Path file) {
             // Given
             byte[] raw = read(file);
             byte[] data = payload();
@@ -206,8 +213,7 @@ class GoldenCorpusTest {
             }
 
             // When
-            var jniDict = new com.github.luben.zstd.ZstdDictDecompress(raw);
-            byte[] restored = com.github.luben.zstd.Zstd.decompress(frame, jniDict, data.length);
+            byte[] restored = com.github.luben.zstd.Zstd.decompress(frame, new ZstdDictDecompress(raw), data.length);
 
             // Then
             assertThat(restored).isEqualTo(data);
@@ -215,11 +221,11 @@ class GoldenCorpusTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("dictionaries")
-        void jniDictCompressJavaDictDecompress(String name, Path file) {
+        void jniDictCompressJavaDictDecompress(Path file) {
             // Given
             byte[] raw = read(file);
             byte[] data = payload();
-            var jniDict = new com.github.luben.zstd.ZstdDictCompress(raw, Zstd.defaultCompressionLevel());
+            ZstdDictCompress jniDict = new ZstdDictCompress(raw, Zstd.defaultCompressionLevel());
             byte[] frame = com.github.luben.zstd.Zstd.compress(data, jniDict);
 
             // When
@@ -234,7 +240,7 @@ class GoldenCorpusTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("dictionaries")
-        void dictIdRidesWithFrame(String name, Path file) {
+        void dictIdRidesWithFrame(Path file) {
             // Given
             byte[] raw = read(file);
             ZstdDictionary dict = ZstdDictionary.of(raw);

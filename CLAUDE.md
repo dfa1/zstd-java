@@ -9,9 +9,9 @@ already off-heap (e.g. an mmap slice in, an arena buffer out).
 
 ## Layout
 
-Multi-module Maven build (`io.github.dfa1:zstd-java`):
+Multi-module Maven build (`io.github.dfa1.zstd:zstd`):
 
-- `zstd/` — the library module, artifactId `zstd-java`, pure-Java FFM bindings
+- `zstd/` — the library module, artifactId `zstd`, pure-Java FFM bindings
   (package `io.github.dfa1.zstd`). The only module with Java sources.
 - `native/<classifier>/` — one module per platform; each packages a
   `libzstd.{dylib,so,dll}` built from the `third_party/zstd` submodule. No Java.

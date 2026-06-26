@@ -2,8 +2,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>io.github.dfa1</groupId>
-	<artifactId>parent</artifactId>
+	<groupId>io.github.dfa1.zstd</groupId>
+	<artifactId>zstd-parent</artifactId>
 	<version>0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
@@ -60,38 +60,38 @@
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-native-osx-aarch64</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-native-osx-aarch64</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-native-linux-x86_64</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-native-linux-x86_64</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-native-linux-aarch64</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-native-linux-aarch64</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-native-osx-x86_64</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-native-osx-x86_64</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-native-windows-x86_64</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-native-windows-x86_64</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.github.dfa1</groupId>
-				<artifactId>zstd-java-native-windows-aarch64</artifactId>
+				<groupId>io.github.dfa1.zstd</groupId>
+				<artifactId>zstd-native-windows-aarch64</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>

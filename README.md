@@ -126,7 +126,7 @@ Build any of the six targets from any host:
 
 ### Supported platforms
 
-The library — `io.github.dfa1:zstd-java` — ships as a pure-Java module plus one
+The library — `io.github.dfa1.zstd:zstd` — ships as a pure-Java module plus one
 native artifact per platform:
 
 | OS      | aarch64 | x86_64 |

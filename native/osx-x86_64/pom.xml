@@ -3,13 +3,13 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>io.github.dfa1</groupId>
-		<artifactId>parent</artifactId>
+		<groupId>io.github.dfa1.zstd</groupId>
+		<artifactId>zstd-parent</artifactId>
 		<version>0.1-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>zstd-java-native-osx-x86_64</artifactId>
+	<artifactId>zstd-native-osx-x86_64</artifactId>
 	<name>zstd FFM Native osx-x86_64</name>
 	<description>Native zstd library for macOS x86_64</description>
 	<packaging>jar</packaging>

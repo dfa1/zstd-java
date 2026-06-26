@@ -1,0 +1,151 @@
+package io.github.dfa1.zstd.bench;
+
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+
+import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdCompressCtx;
+import io.github.dfa1.zstd.ZstdDecompressCtx;
+import java.io.UncheckedIOException;
+import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
+
+/// Throughput on zstd's own vendored golden corpus — the real, version-matched
+/// fixtures under `third_party/zstd/tests/golden-compression`, rather than the
+/// synthetic ~3x-compressible payloads of [CompressBenchmark] / [DecompressBenchmark].
+///
+/// These files are small (143 B to 256 KiB) and structurally varied (an HTTP
+/// header, a pathological Huffman case, long literal/match runs, a block-splitter
+/// regression), so they exercise the per-call native-boundary overhead far more
+/// than the bandwidth-bound synthetic 64 MiB case. This is where FFM-vs-JNI
+/// fixed costs actually show up. Each `@Param` is one corpus file.
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@State(Scope.Thread)
+@Fork(value = 1, jvmArgsAppend = "--enable-native-access=ALL-UNNAMED")
+@Warmup(iterations = 3)
+@Measurement(iterations = 5)
+public class GoldenCorpusBenchmark {
+
+    @Param({
+        "http",
+        "huffman-compressed-larger",
+        "large-literal-and-match-lengths",
+        "PR-3517-block-splitter-corruption-test",
+    })
+    private String file;
+
+    @Param({"3"})
+    private int level;
+
+    private byte[] src;
+    private int srcSize;
+    private byte[] frame;
+
+    private ZstdCompressCtx cctx;
+    private ZstdDecompressCtx dctx;
+    private byte[] compressDst;
+
+    private Arena arena;
+    private MemorySegment srcSeg;
+    private MemorySegment frameSeg;
+    private MemorySegment compressDstSeg;
+    private MemorySegment decompressDstSeg;
+
+    @Setup(Level.Trial)
+    public void setup() {
+        src = read(corpus().resolve("golden-compression").resolve(file));
+        srcSize = src.length;
+        frame = Zstd.compress(src);
+
+        cctx = new ZstdCompressCtx().level(level);
+        dctx = new ZstdDecompressCtx();
+        int bound = (int) Zstd.compressBound(srcSize);
+        compressDst = new byte[bound];
+
+        arena = Arena.ofConfined();
+        srcSeg = arena.allocate(srcSize);
+        MemorySegment.copy(src, 0, srcSeg, JAVA_BYTE, 0, srcSize);
+        frameSeg = arena.allocate(frame.length);
+        MemorySegment.copy(frame, 0, frameSeg, JAVA_BYTE, 0, frame.length);
+        compressDstSeg = arena.allocate(bound);
+        decompressDstSeg = arena.allocate(srcSize);
+    }
+
+    @TearDown(Level.Trial)
+    public void tearDown() {
+        cctx.close();
+        dctx.close();
+        arena.close();
+    }
+
+    @Benchmark
+    public byte[] compressJavaBytes() {
+        return cctx.compress(src);
+    }
+
+    @Benchmark
+    public long compressJavaSegment() {
+        return cctx.compress(compressDstSeg, srcSeg);
+    }
+
+    @Benchmark
+    public byte[] compressJni() {
+        return com.github.luben.zstd.Zstd.compress(src, level);
+    }
+
+    @Benchmark
+    public byte[] decompressJavaBytes() {
+        return dctx.decompress(frame, srcSize);
+    }
+
+    @Benchmark
+    public long decompressJavaSegment() {
+        return dctx.decompress(decompressDstSeg, frameSeg);
+    }
+
+    @Benchmark
+    public byte[] decompressJni() {
+        return com.github.luben.zstd.Zstd.decompress(frame, srcSize);
+    }
+
+    private static byte[] read(Path file) {
+        try {
+            return Files.readAllBytes(file);
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot read corpus file " + file, e);
+        }
+    }
+
+    /// Walks up from the working directory to find `third_party/zstd/tests`, the
+    /// vendored corpus shipped via the `third_party/zstd` git submodule.
+    private static Path corpus() {
+        Path dir = Path.of("").toAbsolutePath();
+        while (dir != null) {
+            Path candidate = dir.resolve("third_party/zstd/tests");
+            if (Files.isDirectory(candidate)) {
+                return candidate;
+            }
+            dir = dir.getParent();
+        }
+        throw new IllegalStateException(
+                "golden corpus not found: third_party/zstd/tests is missing — "
+                        + "run `git submodule update --init --recursive`");
+    }
+}

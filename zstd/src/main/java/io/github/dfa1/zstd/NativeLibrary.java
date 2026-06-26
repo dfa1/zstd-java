@@ -41,9 +41,14 @@ final class NativeLibrary {
     private static String extractBundledLib() {
         String classifier = classifier();
         String ext = libExtension(classifier);
-        String resource = "/native/" + classifier + "/libzstd." + ext;
+        // Load through the class loader (no leading slash), not Class#getResourceAsStream:
+        // the library lives in a separate zstd-native-<classifier> module, and a named
+        // module only finds resources in itself. The classifier directory name contains a
+        // dash, so it is not a valid package and the resource is not module-encapsulated —
+        // the class loader can read it across modules (and on the classpath alike).
+        String resource = "native/" + classifier + "/libzstd." + ext;
 
-        try (InputStream in = NativeLibrary.class.getResourceAsStream(resource)) {
+        try (InputStream in = NativeLibrary.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
                 throw new UnsatisfiedLinkError("No bundled zstd library found for platform " + classifier);
             }

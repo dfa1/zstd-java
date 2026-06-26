@@ -14,7 +14,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 public final class ZstdFrame {
 
     /// Sentinel returned by `ZSTD_decompressBound` when the input is not valid.
-    private static final long CONTENTSIZE_ERROR = -2L;
+    private static final long CONTENT_SIZE_ERROR = -2L;
 
     /// Tests whether `data` begins with a valid zstd frame (standard or skippable).
     ///
@@ -213,7 +213,7 @@ public final class ZstdFrame {
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
-        if (bound == CONTENTSIZE_ERROR) {
+        if (bound == CONTENT_SIZE_ERROR) {
             throw new ZstdException("not valid zstd data");
         }
         return bound;

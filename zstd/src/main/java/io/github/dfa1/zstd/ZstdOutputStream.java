@@ -83,7 +83,7 @@ public final class ZstdOutputStream extends OutputStream {
     }
 
     private void setPledgedSrcSize(long pledgedSrcSize) {
-        Zstd.call(() -> (long) Bindings.CCTX_SET_PLEDGED_SRC_SIZE.invokeExact(cctx, pledgedSrcSize));
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PLEDGED_SRC_SIZE.invokeExact(cctx, pledgedSrcSize));
     }
 
     /// Wraps `out`, compressing against `dictionary` at `level`.
@@ -100,7 +100,7 @@ public final class ZstdOutputStream extends OutputStream {
                 throw new ZstdException("ZSTD_createCCtx returned NULL");
             }
             this.cctx = c;
-            Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
+            NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     cctx, ZSTD_C_COMPRESSION_LEVEL, level));
             if (dictionary != null) {
                 loadDictionary(dictionary);
@@ -117,7 +117,7 @@ public final class ZstdOutputStream extends OutputStream {
                 freeCctx(c);
             }
             arena.close();
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -133,7 +133,7 @@ public final class ZstdOutputStream extends OutputStream {
         try (Arena staging = Arena.ofConfined()) {
             byte[] raw = dictionary.raw();
             MemorySegment dictSeg = Zstd.copyIn(staging, raw);
-            Zstd.call(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
+            NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
                     cctx, dictSeg, (long) raw.length));
         }
     }
@@ -197,7 +197,7 @@ public final class ZstdOutputStream extends OutputStream {
     /// Returns the zstd "remaining" hint (0 means the directive is fully flushed).
     private long drainOutput(int directive) throws IOException {
         outBuf.set(outSeg, outCap, 0);
-        long remainingHint = Zstd.call(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
+        long remainingHint = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
                 cctx, outBuf.segment(), in.segment(), directive));
         int produced = Math.toIntExact(outBuf.pos());
         if (produced > 0) {
@@ -211,10 +211,5 @@ public final class ZstdOutputStream extends OutputStream {
         if (closed) {
             throw new IOException("stream closed");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

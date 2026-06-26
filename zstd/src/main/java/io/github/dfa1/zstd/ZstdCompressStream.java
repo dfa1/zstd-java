@@ -53,14 +53,14 @@ public final class ZstdCompressStream extends NativeObject {
         // close() — one release path, no leak on a half-built stream.
         super(createCctx());
         try {
-            Zstd.call(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
+            NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     ptr(), ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
             if (dictionary != null) {
                 loadDictionary(dictionary);
             }
         } catch (Throwable t) {
             close();
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -72,7 +72,7 @@ public final class ZstdCompressStream extends NativeObject {
             }
             return cctx;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -80,7 +80,7 @@ public final class ZstdCompressStream extends NativeObject {
         try (Arena staging = Arena.ofConfined()) {
             byte[] raw = dictionary.raw();
             MemorySegment d = Zstd.copyIn(staging, raw);
-            Zstd.call(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
+            NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
                     ptr(), d, (long) raw.length));
         }
     }
@@ -97,11 +97,11 @@ public final class ZstdCompressStream extends NativeObject {
     /// @return how much was consumed and produced, and the remaining hint
     /// @throws ZstdException if compression fails
     public ZstdStreamResult compress(MemorySegment dst, MemorySegment src, ZstdEndDirective directive) {
-        Zstd.requireNative(dst, "dst");
-        Zstd.requireNative(src, "src");
+        NativeCall.requireNative(dst, "dst");
+        NativeCall.requireNative(src, "src");
         in.set(src, src.byteSize(), 0);
         out.set(dst, dst.byteSize(), 0);
-        long remaining = Zstd.call(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
+        long remaining = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
                 ptr(), out.segment(), in.segment(), directive.value()));
         return new ZstdStreamResult(in.pos(), out.pos(), remaining);
     }
@@ -122,7 +122,7 @@ public final class ZstdCompressStream extends NativeObject {
                     p.get(JAVA_INT, 32),    // currentJobID
                     p.get(JAVA_INT, 36));   // nbActiveWorkers
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -133,7 +133,7 @@ public final class ZstdCompressStream extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_CCTX.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -144,10 +144,5 @@ public final class ZstdCompressStream extends NativeObject {
         } finally {
             arena.close();
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

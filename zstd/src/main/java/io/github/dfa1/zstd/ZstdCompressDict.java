@@ -63,12 +63,12 @@ public final class ZstdCompressDict extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     private static MemorySegment create(MemorySegment dict, int level) {
-        Zstd.requireNative(dict, "dict");
+        NativeCall.requireNative(dict, "dict");
         try {
             MemorySegment p = (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level);
             if (MemorySegment.NULL.equals(p)) {
@@ -76,7 +76,7 @@ public final class ZstdCompressDict extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -94,7 +94,7 @@ public final class ZstdCompressDict extends NativeObject {
         try {
             return (int) Bindings.GET_DICT_ID_FROM_CDICT.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -105,17 +105,12 @@ public final class ZstdCompressDict extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_CDICT.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         var _ = (long) Bindings.FREE_CDICT.invokeExact(ptr);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

@@ -22,7 +22,7 @@ public final class ZstdDecompressCtx extends NativeObject {
             }
             return p;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -33,7 +33,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @return `this`, for chaining
     /// @throws ZstdException if the value is out of range for the parameter
     public ZstdDecompressCtx parameter(ZstdDecompressParameter parameter, int value) {
-        Zstd.call(() -> (long) Bindings.DCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
+        NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
         return this;
     }
 
@@ -55,7 +55,7 @@ public final class ZstdDecompressCtx extends NativeObject {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
-            long written = Zstd.call(() -> (long) Bindings.DECOMPRESS_DCTX.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_DCTX.invokeExact(
                     ptr(), out, (long) maxSize, in, (long) compressed.length));
             return Zstd.copyOut(out, written);
         }
@@ -77,7 +77,7 @@ public final class ZstdDecompressCtx extends NativeObject {
             byte[] d = dict.raw();
             MemorySegment dseg = Zstd.copyIn(arena, d);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
-            long written = Zstd.call(() -> (long) Bindings.DECOMPRESS_USING_DICT.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_USING_DICT.invokeExact(
                     ptr(), out, (long) maxSize, in, (long) compressed.length, dseg, (long) d.length));
             return Zstd.copyOut(out, written);
         }
@@ -94,7 +94,7 @@ public final class ZstdDecompressCtx extends NativeObject {
             MemorySegment in = Zstd.copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
             MemorySegment ddict = dict.ptr();
-            long written = Zstd.call(() -> (long) Bindings.DECOMPRESS_USING_DDICT.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_USING_DDICT.invokeExact(
                     ptr(), out, (long) maxSize, in, (long) compressed.length, ddict));
             return Zstd.copyOut(out, written);
         }
@@ -115,9 +115,9 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or the frame is invalid
     public long decompress(MemorySegment dst, MemorySegment src) {
-        Zstd.requireNative(dst, "dst");
-        Zstd.requireNative(src, "src");
-        return Zstd.call(() -> (long) Bindings.DECOMPRESS_DCTX.invokeExact(
+        NativeCall.requireNative(dst, "dst");
+        NativeCall.requireNative(src, "src");
+        return NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_DCTX.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize()));
     }
 
@@ -128,10 +128,10 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict the pre-digested decompression dictionary
     /// @return the number of bytes written into `dst`
     public long decompress(MemorySegment dst, MemorySegment src, ZstdDecompressDict dict) {
-        Zstd.requireNative(dst, "dst");
-        Zstd.requireNative(src, "src");
+        NativeCall.requireNative(dst, "dst");
+        NativeCall.requireNative(src, "src");
         MemorySegment ddict = dict.ptr();
-        return Zstd.call(() -> (long) Bindings.DECOMPRESS_USING_DDICT.invokeExact(
+        return NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_USING_DDICT.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize(), ddict));
     }
 
@@ -176,17 +176,12 @@ public final class ZstdDecompressCtx extends NativeObject {
         try {
             return (long) Bindings.SIZEOF_DCTX.invokeExact(ptr());
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         var _ = (long) Bindings.FREE_DCTX.invokeExact(ptr);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

@@ -80,7 +80,7 @@ public final class ZstdInputStream extends InputStream {
                 freeDctx(d);
             }
             arena.close();
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -96,7 +96,7 @@ public final class ZstdInputStream extends InputStream {
         try (Arena staging = Arena.ofConfined()) {
             byte[] raw = dictionary.raw();
             MemorySegment dictSeg = Zstd.copyIn(staging, raw);
-            Zstd.call(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
+            NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(
                     dctx, dictSeg, (long) raw.length));
         }
     }
@@ -143,7 +143,7 @@ public final class ZstdInputStream extends InputStream {
                 inBuf.set(inSeg, r, 0);
             }
             outBufView.set(outSeg, outCap, 0);
-            lastHint = Zstd.call(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
+            lastHint = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
                     dctx, outBufView.segment(), inBuf.segment()));
             int produced = Math.toIntExact(outBufView.pos());
             if (produced > 0) {
@@ -182,10 +182,5 @@ public final class ZstdInputStream extends InputStream {
         if (closed) {
             throw new IOException("stream closed");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 }

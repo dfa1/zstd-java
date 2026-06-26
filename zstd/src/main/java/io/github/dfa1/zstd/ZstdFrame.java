@@ -145,7 +145,7 @@ public final class ZstdFrame {
             MemorySegment src = Zstd.copyIn(arena, content);
             long cap = content.length + 8L;
             MemorySegment dst = arena.allocate(cap);
-            long written = Zstd.call(() -> (long) Bindings.WRITE_SKIPPABLE_FRAME.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.WRITE_SKIPPABLE_FRAME.invokeExact(
                     dst, cap, src, (long) content.length, magicVariant));
             return Zstd.copyOut(dst, written);
         }
@@ -162,7 +162,7 @@ public final class ZstdFrame {
             MemorySegment src = Zstd.copyIn(arena, frame);
             MemorySegment magic = arena.allocate(JAVA_INT);
             MemorySegment dst = arena.allocate(Math.max(frame.length, 1));
-            long written = Zstd.call(() -> (long) Bindings.READ_SKIPPABLE_FRAME.invokeExact(
+            long written = NativeCall.checkReturnValue(() -> (long) Bindings.READ_SKIPPABLE_FRAME.invokeExact(
                     dst, (long) frame.length, magic, src, (long) frame.length));
             return new ZstdSkippableContent(Zstd.copyOut(dst, written), magic.get(JAVA_INT, 0));
         }
@@ -171,7 +171,7 @@ public final class ZstdFrame {
     private static ZstdFrameHeader header(MemorySegment data, long size) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment zfh = arena.allocate(48);
-            long remaining = Zstd.call(() -> (long) Bindings.GET_FRAME_HEADER.invokeExact(zfh, data, size));
+            long remaining = NativeCall.checkReturnValue(() -> (long) Bindings.GET_FRAME_HEADER.invokeExact(zfh, data, size));
             if (remaining != 0) {
                 throw new ZstdException("incomplete frame header: need " + remaining + " more bytes");
             }
@@ -190,7 +190,7 @@ public final class ZstdFrame {
         try {
             return ((int) Bindings.IS_SKIPPABLE_FRAME.invokeExact(data, size)) != 0;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
@@ -198,12 +198,12 @@ public final class ZstdFrame {
         try {
             return ((int) Bindings.IS_FRAME.invokeExact(data, size)) != 0;
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
     }
 
     private static long compressedSize(MemorySegment data, long size) {
-        return Zstd.call(() -> (long) Bindings.FIND_FRAME_COMPRESSED_SIZE.invokeExact(data, size));
+        return NativeCall.checkReturnValue(() -> (long) Bindings.FIND_FRAME_COMPRESSED_SIZE.invokeExact(data, size));
     }
 
     private static long decompressedBound(MemorySegment data, long size) {
@@ -211,7 +211,7 @@ public final class ZstdFrame {
         try {
             bound = (long) Bindings.DECOMPRESS_BOUND.invokeExact(data, size);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
         if (bound == CONTENTSIZE_ERROR) {
             throw new ZstdException("not valid zstd data");
@@ -223,13 +223,8 @@ public final class ZstdFrame {
         try {
             return (int) Bindings.GET_DICT_ID_FROM_FRAME.invokeExact(data, size);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 
     private ZstdFrame() {

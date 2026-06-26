@@ -109,13 +109,8 @@ public enum ZstdErrorCode {
             MemorySegment p = (MemorySegment) Bindings.GET_ERROR_STRING.invokeExact(value);
             return p.reinterpret(Long.MAX_VALUE).getString(0, StandardCharsets.US_ASCII);
         } catch (Throwable t) {
-            throw rethrow(t);
+            throw NativeCall.rethrow(t);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
-        throw (E) t;
     }
 
     /// Maps a native `ZSTD_ErrorCode` integer to its category.

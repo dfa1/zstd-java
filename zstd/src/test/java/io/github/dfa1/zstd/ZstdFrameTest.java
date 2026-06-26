@@ -139,6 +139,24 @@ class ZstdFrameTest {
         void standardFrameIsNotSkippable() {
             assertThat(ZstdFrame.isSkippableFrame(Zstd.compress(PAYLOAD))).isFalse();
         }
+
+        @Test
+        void contentHasValueEqualityOverTheBytesNotArrayIdentity() {
+            // Given two separately built payloads with the same bytes and variant, and one differing
+            ZstdSkippableContent a = new ZstdSkippableContent("meta".getBytes(StandardCharsets.UTF_8), 3);
+            ZstdSkippableContent b = new ZstdSkippableContent("meta".getBytes(StandardCharsets.UTF_8), 3);
+            ZstdSkippableContent differentVariant = new ZstdSkippableContent("meta".getBytes(StandardCharsets.UTF_8), 4);
+
+            // When compared by value and rendered as text
+            boolean sameBytesEqual = a.equals(b);
+            boolean differentVariantEqual = a.equals(differentVariant);
+
+            // Then equality and hashCode follow the content bytes, and toString omits the identity hash
+            assertThat(sameBytesEqual).isTrue();
+            assertThat(differentVariantEqual).isFalse();
+            assertThat(a).hasSameHashCodeAs(b);
+            assertThat(a).hasToString("ZstdSkippableContent[content=4 bytes, magicVariant=3]");
+        }
     }
 
     @Nested

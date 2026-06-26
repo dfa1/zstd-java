@@ -14,14 +14,19 @@ import java.nio.file.StandardCopyOption;
 /// Infrastructure — loads the bundled `libzstd` shared library and binds
 /// native symbols to {@link MethodHandle}s via the Foreign Function & Memory API.
 ///
-/// The library is resolved from the platform-specific native JAR on the
+/// The library is resolved only from the platform-specific native JAR on the
 /// classpath, extracted to a temp file, and loaded once at class-init time.
-/// Override with `-Dzstd.lib.path=/path/to/libzstd.so`.
+///
+/// There is deliberately no path override (no `-Dzstd.lib.path`): loading a
+/// caller-supplied native library is arbitrary native code execution in the JVM
+/// process, so the loader trusts only the signed artifact on the classpath. To
+/// run a self-built `libzstd`, package it into the native resource jar — see
+/// `docs/how-to.md`.
 @SuppressWarnings("restricted") // libraryLookup / downcallHandle are restricted FFM methods
 final class NativeLibrary {
 
     private static final Linker LINKER = Linker.nativeLinker();
-    private static final SymbolLookup LIB = SymbolLookup.libraryLookup(resolveLibPath(), Arena.ofAuto());
+    private static final SymbolLookup LIB = SymbolLookup.libraryLookup(extractBundledLib(), Arena.ofAuto());
 
     static MethodHandle lookup(String name, FunctionDescriptor fd) {
         return LINKER.downcallHandle(
@@ -30,12 +35,7 @@ final class NativeLibrary {
                 fd);
     }
 
-    private static String resolveLibPath() {
-        String explicit = System.getProperty("zstd.lib.path");
-        if (explicit != null) {
-            return explicit;
-        }
-
+    private static String extractBundledLib() {
         String classifier = classifier();
         String ext = libExtension(classifier);
         String resource = "/native/" + classifier + "/libzstd." + ext;
@@ -44,10 +44,15 @@ final class NativeLibrary {
             if (in == null) {
                 throw new UnsatisfiedLinkError("No bundled zstd library found for platform " + classifier);
             }
-            Path tmp = Files.createTempFile("libzstd-", "." + ext);
-            tmp.toFile().deleteOnExit();
-            Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
-            return tmp.toString();
+            // Extract into a private, owner-only temp directory rather than a file
+            // loose in the shared temp root: createTempDirectory is 0700 on POSIX, so
+            // no other local user can swap the library between extraction and dlopen.
+            Path dir = Files.createTempDirectory("zstd-");
+            Path lib = dir.resolve("libzstd." + ext);
+            Files.copy(in, lib, StandardCopyOption.REPLACE_EXISTING);
+            lib.toFile().deleteOnExit();
+            dir.toFile().deleteOnExit();
+            return lib.toString();
         } catch (IOException e) {
             throw new UnsatisfiedLinkError("Failed to extract bundled zstd: " + e.getMessage());
         }

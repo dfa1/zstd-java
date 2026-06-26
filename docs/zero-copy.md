@@ -87,7 +87,44 @@ MemorySegment decoded = dctx.decompress(arena, frame); // header-sized, exact le
 | decompress  | `decompress(dst, src)` → bytes written        | `decompress(arena, frame)` → output segment |
 
 The arena form of `decompress` requires the frame to store its decompressed size
-(frames this library produces do). For size-less frames, size `dst` yourself.
+(one-shot `compress` always stamps it; a *streamed* frame only does so when you
+pledge the size up front — see [Pledged size](#pledged-size-unlocks-zero-copy-decode)).
+For size-less frames, size `dst` yourself.
+
+## ByteBuffer interop
+
+Much of the Java ecosystem speaks `ByteBuffer`, not `MemorySegment` — NIO
+channels, Netty, and `FileChannel.map`'s `MappedByteBuffer`. We deliberately do
+**not** add a third set of `ByteBuffer` overloads: the segment API already
+bridges both directions of the FFM↔NIO boundary at zero copy, because FFM defines
+the conversions.
+
+- **`ByteBuffer` in** — wrap a *direct* buffer as a segment with
+  `MemorySegment.ofBuffer(buf)` (zero copy; a heap-backed buffer copies, the same
+  caveat as `byte[]`). Hand the segment to `compress` / `decompress`.
+- **`MemorySegment` out to `ByteBuffer`** — `segment.asByteBuffer()` returns a
+  buffer view over the native bytes, no copy. The decompressed arena segment is
+  consumable by an existing `ByteBuffer` pipeline as-is.
+
+```java
+// an mmap'd frame is already a direct ByteBuffer (FileChannel.map)
+MemorySegment frame  = MemorySegment.ofBuffer(mappedByteBuffer);
+MemorySegment out    = dctx.decompress(arena, frame); // zero-copy decode
+ByteBuffer    result = out.asByteBuffer();             // zero-copy hand-off
+```
+
+**Gap / proposed sugar.** The one-liner above is the supported path today, but it
+leaks two FFM details onto the caller: `asByteBuffer()` returns a `BIG_ENDIAN`
+buffer regardless of platform, and the segment's lifetime is the arena's, not the
+buffer's. A thin `toByteBuffer()` convenience on the arena-returning results would
+fix both in one place — set native byte order, document the borrowed lifetime:
+
+```java
+ByteBuffer result = dctx.decompress(arena, frame).toByteBuffer(); // proposed
+```
+
+This keeps the API segment-first (no parallel `ByteBuffer` surface to maintain);
+it is purely an output adapter for callers already living in NIO.
 
 ## Zero-copy streaming
 
@@ -117,3 +154,46 @@ try (ZstdCompressStream cs = new ZstdCompressStream(level)) {
 
 Both drivers take an optional `ZstdDictionary`. Decompression mirrors the loop,
 calling `decompress(dst, src)` until a result `isComplete()` (frame fully decoded).
+
+## Pledged size unlocks zero-copy decode
+
+Streaming compression has a hidden cost the one-shot path does not: **a streamed
+frame does not record its decompressed size.** zstd writes the content-size field
+in the frame header only when the encoder knows the total up front — trivially
+true for `ZSTD_compress`, but a streaming encoder is fed incrementally and closes
+the frame without ever being told the total.
+
+That field is exactly what the zero-copy decode path reads to size the output
+arena. So a plain `ZstdOutputStream` frame **cannot be decoded zero-copy**:
+
+```java
+byte[] frame = streamCompress(data);          // no pledged size
+Zstd.decompressedSize(segmentOf(frame));      // throws: "decompressed size not stored in frame"
+dctx.decompress(arena, segmentOf(frame));     // same — it can't size the arena
+```
+
+The consumer is forced back onto the bounded streaming decoder (allocate, decode a
+chunk, grow, repeat) or a guessed `maxSize` — the very heap-bounce the segment API
+exists to avoid.
+
+`ZstdOutputStream.withPledgedSize(out, level, total)` closes the loop. Tell the
+encoder the total before the first byte and it stamps the content size into the
+header, so a downstream reader can size the output arena exactly and decode in one
+shot:
+
+```java
+try (var zout = ZstdOutputStream.withPledgedSize(sink, 19, data.length)) {
+    zout.write(data);                          // pledge must match the bytes written
+}
+byte[] frame = sink.toByteArray();
+
+// downstream, in a memory-mapped reader:
+MemorySegment src = MemorySegment.ofBuffer(mmap);
+MemorySegment out = dctx.decompress(arena, src);  // one allocation, zero copies
+```
+
+This is the case where pledging is not a micro-optimization but a correctness
+gate: it is the difference between a frame that participates in the zero-copy
+decode path and one that does not. Pledge whenever the producer streams but the
+total is known (file length, serialized record count, `Content-Length`). The pledge
+must equal the bytes actually written — a mismatch raises an error on close.

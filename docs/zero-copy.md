@@ -88,3 +88,32 @@ MemorySegment decoded = dctx.decompress(arena, frame); // header-sized, exact le
 
 The arena form of `decompress` requires the frame to store its decompressed size
 (frames this library produces do). For size-less frames, size `dst` yourself.
+
+## Zero-copy streaming
+
+The one-shot segment methods above need the whole input in one segment. When data
+is large or arrives incrementally but both ends are still off-heap, use the
+segment **stream driver** — `ZstdCompressStream` / `ZstdDecompressStream` — which
+drives `ZSTD_compressStream2` / `ZSTD_decompressStream` directly over native
+buffers, in bounded memory, with no heap bounce (unlike `ZstdOutputStream` /
+`ZstdInputStream`, which copy through `byte[]` to fit `java.io`).
+
+Each step compresses/decompresses as much of `src` as fits in `dst` and reports a
+`ZstdStreamResult` (`bytesConsumed`, `bytesProduced`, `remaining`). Advance the
+source by `bytesConsumed`, drain `bytesProduced` from `dst`, and for compression
+finish with `ZstdEndDirective.END` until `isComplete()`:
+
+```java
+try (ZstdCompressStream cs = new ZstdCompressStream(level)) {
+    long off = 0;
+    ZstdStreamResult r;
+    do {
+        r = cs.compress(dst, src.asSlice(off), ZstdEndDirective.END);
+        off += r.bytesConsumed();
+        sink.write(dst.asSlice(0, r.bytesProduced()));
+    } while (!r.isComplete());
+}
+```
+
+Both drivers take an optional `ZstdDictionary`. Decompression mirrors the loop,
+calling `decompress(dst, src)` until a result `isComplete()` (frame fully decoded).

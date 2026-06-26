@@ -70,8 +70,8 @@ public final class ZstdDecompressStream extends NativeObject {
     /// @return how much was consumed and produced, and the remaining hint
     /// @throws ZstdException if the frame is invalid
     public ZstdStreamResult decompress(MemorySegment dst, MemorySegment src) {
-        in.set(src, src.byteSize(), 0);
-        out.set(dst, dst.byteSize(), 0);
+        in.set(src, src.byteSize());
+        out.set(dst, dst.byteSize());
         long remaining = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
                 ptr(), out.segment(), in.segment()));
         return new ZstdStreamResult(in.pos(), out.pos(), remaining);

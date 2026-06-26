@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -186,6 +188,38 @@ class ZstdFrameTest {
                 samples.add(("{\"id\":" + i + ",\"k\":\"v" + (i % 30) + "\"}").getBytes(StandardCharsets.UTF_8));
             }
             return ZstdDictionary.train(samples, 8 * 1024);
+        }
+    }
+
+    @Nested
+    class SegmentOverloads {
+
+        @Test
+        void mirrorTheByteArrayOverloadsForANativeFrame() {
+            // Given a frame as both a byte[] and the same bytes in a native segment
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+
+                // When inspected through the zero-copy MemorySegment overloads
+                // Then each agrees with its byte[] counterpart
+                assertThat(ZstdFrame.isZstdFrame(seg)).isEqualTo(ZstdFrame.isZstdFrame(frame));
+                assertThat(ZstdFrame.compressedSize(seg)).isEqualTo(ZstdFrame.compressedSize(frame));
+                assertThat(ZstdFrame.decompressedBound(seg)).isEqualTo(ZstdFrame.decompressedBound(frame));
+                assertThat(ZstdFrame.dictId(seg)).isEqualTo(ZstdFrame.dictId(frame));
+            }
+        }
+
+        @Test
+        void recognisesASkippableNativeFrame() {
+            // Given a skippable frame in a native segment
+            byte[] frame = ZstdFrame.writeSkippableFrame("meta".getBytes(StandardCharsets.UTF_8), 5);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+
+                // When tested through the MemorySegment overload / Then it is skippable
+                assertThat(ZstdFrame.isSkippableFrame(seg)).isTrue();
+            }
         }
     }
 }

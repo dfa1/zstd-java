@@ -1,5 +1,7 @@
 package io.github.dfa1.zstd;
 
+import java.io.Serial;
+
 /// Thrown when a zstd native call reports an error.
 ///
 /// Unchecked: zstd errors on valid use of this API indicate either corrupt
@@ -7,6 +9,7 @@ package io.github.dfa1.zstd;
 /// recoverable I/O condition.
 public final class ZstdException extends RuntimeException {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /// The zstd error category for this failure.

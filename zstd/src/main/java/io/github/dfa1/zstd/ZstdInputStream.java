@@ -29,7 +29,6 @@ public final class ZstdInputStream extends InputStream {
     private final MemorySegment dctx;
     private final MemorySegment inSeg;
     private final MemorySegment outSeg;
-    private final long inCap;
     private final long outCap;
     private final ZstdStreamBuffer inBuf = new ZstdStreamBuffer(arena);
     private final ZstdStreamBuffer outBufView = new ZstdStreamBuffer(arena);
@@ -67,7 +66,7 @@ public final class ZstdInputStream extends InputStream {
             if (dictionary != null) {
                 loadDictionary(dictionary);
             }
-            this.inCap = (long) Bindings.DSTREAM_IN_SIZE.invokeExact();
+            long inCap = (long) Bindings.DSTREAM_IN_SIZE.invokeExact();
             this.outCap = (long) Bindings.DSTREAM_OUT_SIZE.invokeExact();
             this.inSeg = arena.allocate(inCap);
             this.outSeg = arena.allocate(outCap);
@@ -140,9 +139,9 @@ public final class ZstdInputStream extends InputStream {
                     return false;
                 }
                 MemorySegment.copy(feed, 0, inSeg, JAVA_BYTE, 0, r);
-                inBuf.set(inSeg, r, 0);
+                inBuf.set(inSeg, r);
             }
-            outBufView.set(outSeg, outCap, 0);
+            outBufView.set(outSeg, outCap);
             lastHint = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS_STREAM.invokeExact(
                     dctx, outBufView.segment(), inBuf.segment()));
             int produced = Math.toIntExact(outBufView.pos());

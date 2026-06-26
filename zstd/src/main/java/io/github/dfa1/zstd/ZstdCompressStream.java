@@ -99,8 +99,8 @@ public final class ZstdCompressStream extends NativeObject {
     public ZstdStreamResult compress(MemorySegment dst, MemorySegment src, ZstdEndDirective directive) {
         NativeCall.requireNative(dst, "dst");
         NativeCall.requireNative(src, "src");
-        in.set(src, src.byteSize(), 0);
-        out.set(dst, dst.byteSize(), 0);
+        in.set(src, src.byteSize());
+        out.set(dst, dst.byteSize());
         long remaining = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(
                 ptr(), out.segment(), in.segment(), directive.value()));
         return new ZstdStreamResult(in.pos(), out.pos(), remaining);

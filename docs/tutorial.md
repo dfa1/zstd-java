@@ -15,7 +15,6 @@ runs on any OS/arch:
   <groupId>io.github.dfa1.zstd</groupId>
   <artifactId>zstd-platform</artifactId>
   <version>0.2</version>
-  <type>pom</type>
 </dependency>
 ```
 

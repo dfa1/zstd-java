@@ -12,13 +12,16 @@
 	<artifactId>zstd-platform</artifactId>
 	<name>zstd-platform</name>
 	<description>zstd-java bindings bundled with every platform's native library</description>
-	<packaging>pom</packaging>
+	<!-- Empty convenience jar (no sources of its own): a single, ordinary jar
+	     dependency that transitively pulls everything. jar packaging (not pom) so
+	     clients can add it like any normal artifact. -->
+	<packaging>jar</packaging>
 
-	<!-- Convenience aggregator: one dependency pulls the bindings plus all six
-	     native libraries, so a build runs on any OS/arch without choosing a
-	     classifier. Costs ~3.8 MB of natives (five unused per platform); for a
-	     known single target depend on zstd + the one zstd-native-<classifier>
-	     directly. Versions come from the parent's dependencyManagement. -->
+	<!-- One dependency pulls the bindings plus all six native libraries, so a
+	     build runs on any OS/arch without choosing a classifier. Costs ~3.8 MB of
+	     natives (five unused per platform); for a known single target depend on
+	     zstd + the one zstd-native-<classifier> directly. Versions come from the
+	     parent's dependencyManagement. -->
 	<dependencies>
 		<dependency>
 			<groupId>io.github.dfa1.zstd</groupId>

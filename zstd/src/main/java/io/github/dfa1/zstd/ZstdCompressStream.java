@@ -129,7 +129,7 @@ public final class ZstdCompressStream extends NativeObject {
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         try {
-            long ignored = (long) Bindings.FREE_CCTX.invokeExact(ptr);
+            var _ = (long) Bindings.FREE_CCTX.invokeExact(ptr);
         } finally {
             arena.close();
         }

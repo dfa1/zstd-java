@@ -6,9 +6,9 @@ import java.lang.foreign.MemorySegment;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
-// Backing for ZSTD_inBuffer / ZSTD_outBuffer, which share the layout
-//   { void* ptr; size_t size; size_t pos; }
-// on LP64: ptr@0 (8), size@8 (8), pos@16 (8) -> 24 bytes.
+// Backing for ZSTD_inBuffer / ZSTD_outBuffer, which share a layout of a
+// void pointer then two size_t values. On LP64: ptr@0 (8), size@8 (8),
+// pos@16 (8) -> 24 bytes.
 final class ZstdStreamBuffer {
 
     static final long BYTES = 24;

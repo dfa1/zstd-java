@@ -173,8 +173,8 @@ public final class ZstdOutputStream extends OutputStream {
         } finally {
             closed = true;
             try {
-                long ignored = (long) Bindings.FREE_CCTX.invokeExact(cctx);
-            } catch (Throwable ignored) {
+                var _ = (long) Bindings.FREE_CCTX.invokeExact(cctx);
+            } catch (Throwable _) {
                 // best-effort free
             }
             arena.close();

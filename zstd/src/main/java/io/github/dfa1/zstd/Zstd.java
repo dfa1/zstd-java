@@ -227,6 +227,18 @@ public final class Zstd {
         }
     }
 
+    /// Runtime zstd version as a single number for programmatic comparison,
+    /// encoded `MAJOR * 10000 + MINOR * 100 + PATCH` — e.g. `10507` for `1.5.7`.
+    ///
+    /// @return the linked zstd library version number
+    public static int versionNumber() {
+        try {
+            return (int) Bindings.VERSION_NUMBER.invokeExact();
+        } catch (Throwable t) {
+            throw NativeCall.rethrow(t);
+        }
+    }
+
     // --- package-private helpers shared with the context classes ---
     // Native-call status checking and segment guards live in NativeCall.
 

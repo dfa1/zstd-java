@@ -7,7 +7,6 @@
 
 **zstd-java** is a Java wrapper for [Zstandard](https://github.com/facebook/zstd)
 built on the **Foreign Function & Memory (FFM) API** — no JNI, no hand-written C.
-
 It targets **JDK 25+** (for stable `java.lang.foreign`) and leads with the
 feature missing from most JVM zstd bindings: **dictionary compression**, trained
 straight from your own data.
@@ -16,34 +15,63 @@ straight from your own data.
 > C header mapping, test generation, docs. Architecture, API design, and all
 > decisions are human-driven.
 
-The native library is built from vendored zstd source via **`zig cc`** as a
-drop-in C compiler. zstd is pure C with no build-system dependencies, so the
-sources are compiled directly — no autotools, no CMake. Zig bundles clang and
-libc for every target, enabling hermetic cross-compilation without a sysroot.
+## Documentation
 
-## Supported platforms
+The docs follow the [Diátaxis](https://diataxis.fr) framework — four kinds of
+documentation, each serving a different need:
 
-The library — `io.github.dfa1:zstd-java` — ships as a pure-Java module plus one
-native artifact per platform:
+| | Purpose | Start here |
+|---|---|---|
+| **[Tutorial](#tutorial-getting-started)** | Learning by doing | [Getting started](#tutorial-getting-started) |
+| **[How-to guides](#how-to-guides)** | Solving a specific task | [Hot paths](#compress-on-a-hot-path), [Dictionaries](#compress-many-small-payloads-with-a-dictionary), [Zero-copy](#avoid-heap-copies-with-memorysegment), [Self-built lib](#run-against-a-self-built-libzstd) |
+| **[Reference](#reference)** | Looking up facts | [Platforms](#supported-platforms), [API surface](#api-surface), [Symbol coverage](docs/supported.md), [Build](#build-from-source) |
+| **[Explanation](#explanation)** | Understanding the why | [Why FFM + Zig](#why-ffm-and-zig), [When zero-copy pays](docs/zero-copy.md), [Benchmarks](docs/benchmarks.md) |
 
-| OS      | aarch64 | x86_64 |
-|---------|:-------:|:------:|
-| macOS   |   ✅    |   ✅   |
-| Linux   |   ✅    |   ✅   |
-| Windows |   ✅    |   ✅   |
+---
 
-## Usage
+## Tutorial: Getting started
 
-### One-shot
+This walks you from a clean checkout to your first compress/decompress round-trip.
 
-```java
-byte[] packed   = Zstd.compress("hello world".getBytes());
-byte[] restored = Zstd.decompress(packed);          // size read from frame header
+**1. Clone with the zstd submodule and build.** You need JDK 25+, Maven, and
+[Zig](https://ziglang.org/) on `PATH` (Zig is the C compiler for the native lib).
 
-byte[] hard     = Zstd.compress(data, Zstd.maxCompressionLevel());
+```bash
+git clone --recurse-submodules https://github.com/dfa1/zstd-java.git
+cd zstd-java
+mvn install
 ```
 
-### Reusable contexts (hot paths)
+The build invokes `scripts/build-zstd.sh`, compiling `libzstd` from the vendored
+source — no autotools or CMake needed.
+
+**2. Write your first round-trip.**
+
+```java
+import io.github.dfa1.zstd.Zstd;
+
+byte[] original = "hello world".getBytes();
+byte[] packed   = Zstd.compress(original);
+byte[] restored = Zstd.decompress(packed);   // size read from the frame header
+
+assert java.util.Arrays.equals(original, restored);
+```
+
+**3. Run it with native access enabled.** The FFM API requires an explicit flag:
+
+```bash
+java --enable-native-access=ALL-UNNAMED Demo.java
+```
+
+That's the whole loop. From here, pick a [how-to guide](#how-to-guides) for your
+actual task, or browse the [reference](#reference).
+
+## How-to guides
+
+Task-focused recipes. Each assumes you have the library on the classpath (see the
+[tutorial](#tutorial-getting-started)).
+
+### Compress on a hot path
 
 Reuse a context to amortise native allocation across many calls:
 
@@ -55,7 +83,10 @@ try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19);
 }
 ```
 
-### Dictionaries
+Pick the level explicitly with `Zstd.maxCompressionLevel()` /
+`minCompressionLevel()` when you need the extreme ends.
+
+### Compress many small payloads with a dictionary
 
 For many small, similar payloads (log lines, JSON records, protobufs), a
 dictionary compresses each one far smaller than it could be alone. Train one on
@@ -86,7 +117,7 @@ try (ZstdCompressDict cdict = new ZstdCompressDict(dict, 19);
 }
 ```
 
-### Zero-copy (`MemorySegment`)
+### Avoid heap copies with `MemorySegment`
 
 When your data is already off-heap — an `mmap` slice in, an arena buffer out —
 use the `MemorySegment` overloads to skip the heap `byte[]` bounce entirely. FFM
@@ -103,13 +134,62 @@ try (Arena arena = Arena.ofConfined();
 ```
 
 There are matching `compress(dst, src)` / `decompress(dst, src)` overloads (plus
-dictionary variants) returning the number of bytes written. See
-[docs/zero-copy.md](docs/zero-copy.md) for why and when this pays off.
+dictionary variants) returning the number of bytes written. For *why and when*
+this pays off, see the [explanation](docs/zero-copy.md).
 
-> Native access requires `--enable-native-access=ALL-UNNAMED` (or your module) on
-> the JVM command line.
+### Run against a self-built libzstd
 
-## Building
+To use a `libzstd` you built yourself instead of the bundled one, point the
+loader at it:
+
+```bash
+java -Dzstd.lib.path=/path/to/libzstd.dylib --enable-native-access=ALL-UNNAMED ...
+```
+
+Build any of the six targets from any host:
+
+```bash
+./scripts/build-zstd.sh <output-resources-dir> <classifier>
+# classifier: osx-aarch64 | osx-x86_64 | linux-x86_64 | linux-aarch64
+#           | windows-x86_64 | windows-aarch64
+```
+
+## Reference
+
+### Supported platforms
+
+The library — `io.github.dfa1:zstd-java` — ships as a pure-Java module plus one
+native artifact per platform:
+
+| OS      | aarch64 | x86_64 |
+|---------|:-------:|:------:|
+| macOS   |   ✅    |   ✅   |
+| Linux   |   ✅    |   ✅   |
+| Windows |   ✅    |   ✅   |
+
+### API surface
+
+| Type | Role |
+|---|---|
+| `Zstd` | one-shot `compress` / `decompress`, level + version queries, `compressBound`, `decompressedSize` |
+| `ZstdCompressCtx` / `ZstdDecompressCtx` | reusable contexts; `byte[]` and `MemorySegment` overloads, dictionary variants |
+| `ZstdDictionary` | train (`ZDICT`), load, persist, query dict id |
+| `ZstdCompressDict` / `ZstdDecompressDict` | pre-digested dictionaries for hot paths |
+| `ZstdFrame` | frame inspection: header, sizes, dict id, skippable frames |
+| `ZstdException` / `ZstdErrorCode` | typed errors mapped from zstd's sentinels |
+
+### Symbol coverage
+
+Which zstd C symbols are bound (and which deprecated ones are intentionally not),
+with a per-area breakdown and a comparison against zstd-jni:
+[docs/supported.md](docs/supported.md).
+
+### Runtime requirement
+
+Native access requires `--enable-native-access=ALL-UNNAMED` (or your module name)
+on the JVM command line.
+
+### Build from source
 
 Requires JDK 25+, Maven, and [Zig](https://ziglang.org/) on `PATH`.
 
@@ -119,23 +199,37 @@ cd zstd-java
 mvn test
 ```
 
-The `mvn` build invokes `scripts/build-zstd.sh`, which compiles
-`libzstd.{dylib,so,dll}` from the `third_party/zstd` submodule with `zig cc`. The script
-cross-compiles any of the six targets from any host:
+`scripts/build-zstd.sh` compiles `libzstd.{dylib,so,dll}` from the
+`third_party/zstd` submodule (pinned to tag `v1.5.7`) with `zig cc`, cross-compiling
+any of the six targets from any host.
 
-```bash
-./scripts/build-zstd.sh <output-resources-dir> <classifier>
-# classifier: osx-aarch64 | osx-x86_64 | linux-x86_64 | linux-aarch64
-#           | windows-x86_64 | windows-aarch64
-```
-
-To run against a self-built library instead of the bundled one:
-
-```bash
--Dzstd.lib.path=/path/to/libzstd.dylib
-```
-
-## License
+### License
 
 [BSD 3-Clause](LICENSE) — the same primary license as zstd, which is bundled
 under its BSD terms (zstd is dual BSD / GPLv2, © Meta Platforms, Inc.).
+
+## Explanation
+
+### Why FFM and Zig
+
+The bindings use the **Foreign Function & Memory API** rather than JNI: no
+hand-written C glue, no separate native compile step for the binding layer, and a
+direct path from Java to zstd's addresses — which is what makes the zero-copy
+`MemorySegment` API possible.
+
+The native library itself is built from vendored zstd source via **`zig cc`** as
+a drop-in C compiler. zstd is pure C with no build-system dependencies, so the
+sources are compiled directly — no autotools, no CMake. Zig bundles clang and
+libc for every target, enabling hermetic cross-compilation without a sysroot:
+any host can build all six platform artifacts.
+
+### When zero-copy pays off
+
+The `MemorySegment` fast path eliminates the heap `byte[]` bounce and the
+per-call allocation it implies. The reasoning, and the cases where it does and
+does not matter, is in [docs/zero-copy.md](docs/zero-copy.md).
+
+### Benchmarks
+
+Throughput and allocation versus zstd-jni (JNI) and aircompressor (pure Java),
+including an async-profiler breakdown: [docs/benchmarks.md](docs/benchmarks.md).

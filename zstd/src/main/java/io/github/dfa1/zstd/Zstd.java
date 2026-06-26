@@ -162,6 +162,57 @@ public final class Zstd {
         }
     }
 
+    /// Estimates the memory a compression context will use at `level`, before
+    /// creating one — useful for budgeting.
+    ///
+    /// @param level the compression level
+    /// @return the estimated context size in bytes
+    public static long estimateCompressContextSize(int level) {
+        try {
+            return (long) Bindings.ESTIMATE_CCTX_SIZE.invokeExact(level);
+        } catch (Throwable t) {
+            throw sneaky(t);
+        }
+    }
+
+    /// Estimates the memory a decompression context will use.
+    ///
+    /// @return the estimated context size in bytes
+    public static long estimateDecompressContextSize() {
+        try {
+            return (long) Bindings.ESTIMATE_DCTX_SIZE.invokeExact();
+        } catch (Throwable t) {
+            throw sneaky(t);
+        }
+    }
+
+    /// Estimates the memory a digested compression dictionary of `dictSize` bytes
+    /// will use at `level`.
+    ///
+    /// @param dictSize the raw dictionary size in bytes
+    /// @param level    the compression level
+    /// @return the estimated digested-dictionary size in bytes
+    public static long estimateCompressDictSize(long dictSize, int level) {
+        try {
+            return (long) Bindings.ESTIMATE_CDICT_SIZE.invokeExact(dictSize, level);
+        } catch (Throwable t) {
+            throw sneaky(t);
+        }
+    }
+
+    /// Estimates the memory a digested decompression dictionary of `dictSize`
+    /// bytes will use.
+    ///
+    /// @param dictSize the raw dictionary size in bytes
+    /// @return the estimated digested-dictionary size in bytes
+    public static long estimateDecompressDictSize(long dictSize) {
+        try {
+            return (long) Bindings.ESTIMATE_DDICT_SIZE.invokeExact(dictSize, 0); // ZSTD_dlm_byCopy
+        } catch (Throwable t) {
+            throw sneaky(t);
+        }
+    }
+
     /// Runtime zstd version, e.g. `"1.6.0"`.
     ///
     /// @return the linked zstd library version as an `x.y.z` string

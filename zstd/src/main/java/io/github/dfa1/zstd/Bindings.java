@@ -285,6 +285,30 @@ final class Bindings {
             NativeLibrary.lookup("ZDICT_getDictHeaderSize",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
 
+    // --- memory accounting ---
+
+    // size_t ZSTD_sizeof_CCtx / DCtx / CDict / DDict (live memory of an object)
+    static final MethodHandle SIZEOF_CCTX =
+            NativeLibrary.lookup("ZSTD_sizeof_CCtx", FunctionDescriptor.of(JAVA_LONG, ADDRESS));
+    static final MethodHandle SIZEOF_DCTX =
+            NativeLibrary.lookup("ZSTD_sizeof_DCtx", FunctionDescriptor.of(JAVA_LONG, ADDRESS));
+    static final MethodHandle SIZEOF_CDICT =
+            NativeLibrary.lookup("ZSTD_sizeof_CDict", FunctionDescriptor.of(JAVA_LONG, ADDRESS));
+    static final MethodHandle SIZEOF_DDICT =
+            NativeLibrary.lookup("ZSTD_sizeof_DDict", FunctionDescriptor.of(JAVA_LONG, ADDRESS));
+
+    // size_t ZSTD_estimateCCtxSize(int level) / ZSTD_estimateDCtxSize(void)
+    static final MethodHandle ESTIMATE_CCTX_SIZE =
+            NativeLibrary.lookup("ZSTD_estimateCCtxSize", FunctionDescriptor.of(JAVA_LONG, JAVA_INT));
+    static final MethodHandle ESTIMATE_DCTX_SIZE =
+            NativeLibrary.lookup("ZSTD_estimateDCtxSize", FunctionDescriptor.of(JAVA_LONG));
+    // size_t ZSTD_estimateCDictSize(size_t dictSize, int level)
+    static final MethodHandle ESTIMATE_CDICT_SIZE =
+            NativeLibrary.lookup("ZSTD_estimateCDictSize", FunctionDescriptor.of(JAVA_LONG, JAVA_LONG, JAVA_INT));
+    // size_t ZSTD_estimateDDictSize(size_t dictSize, ZSTD_dictLoadMethod_e dlm)
+    static final MethodHandle ESTIMATE_DDICT_SIZE =
+            NativeLibrary.lookup("ZSTD_estimateDDictSize", FunctionDescriptor.of(JAVA_LONG, JAVA_LONG, JAVA_INT));
+
     private Bindings() {
         // no instances
     }

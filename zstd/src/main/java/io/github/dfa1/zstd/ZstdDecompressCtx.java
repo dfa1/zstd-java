@@ -165,6 +165,17 @@ public final class ZstdDecompressCtx extends NativeObject {
         return out;
     }
 
+    /// Current native memory used by this context, in bytes.
+    ///
+    /// @return the live context size
+    public long sizeOf() {
+        try {
+            return (long) Bindings.SIZEOF_DCTX.invokeExact(ptr());
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         long ignored = (long) Bindings.FREE_DCTX.invokeExact(ptr);

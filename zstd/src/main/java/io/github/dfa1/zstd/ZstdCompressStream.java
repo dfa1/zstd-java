@@ -113,6 +113,17 @@ public final class ZstdCompressStream extends NativeObject {
         }
     }
 
+    /// Current native memory used by this stream's context, in bytes.
+    ///
+    /// @return the live context size
+    public long sizeOf() {
+        try {
+            return (long) Bindings.SIZEOF_CCTX.invokeExact(ptr());
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
     @Override
     protected void tryClose(MemorySegment ptr) throws Throwable {
         try {

@@ -34,7 +34,6 @@ The docs follow the [Diátaxis](https://diataxis.fr) framework:
   <groupId>io.github.dfa1.zstd</groupId>
   <artifactId>zstd-platform</artifactId>
   <version>0.2</version>
-  <type>pom</type>
 </dependency>
 ```
 

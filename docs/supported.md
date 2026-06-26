@@ -3,8 +3,8 @@
 Coverage of the zstd C API by the `io.github.dfa1.zstd` bindings. Signatures
 and semantics follow the [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
 
-- zstd version: **1.6.0** (vendored `third_party/zstd`)
-- Public symbols exported by `libzstd`: **186**
+- zstd version: **1.5.7** (vendored `third_party/zstd`, pinned to tag `v1.5.7`)
+- Public symbols exported by `libzstd`: **185**
 - Bound so far: **55** (~30%)
 
 "Bound" means the symbol has a `MethodHandle` in `Bindings` and is reachable
@@ -38,7 +38,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Memory sizing | 0 / 14 | `sizeof_*` / `estimate*` accounting not bound |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
 | Sequences | 0 / 5 | sequence producer API not bound |
-| Misc / experimental | 0 / 11 | static-buffer init, param helpers, `copy*` not bound |
+| Misc / experimental | 0 / 10 | static-buffer init, param helpers, `copy*` not bound |
 
 ## Bound symbols → Java
 
@@ -333,7 +333,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_mergeBlockDelimiters` | — | — |
 | `ZSTD_registerSequenceProducer` | — | ✅ |
 
-### Misc / experimental (0/11)
+### Misc / experimental (0/10)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
@@ -347,4 +347,3 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_initStaticCDict` | — | — |
 | `ZSTD_initStaticDCtx` | — | — |
 | `ZSTD_initStaticDDict` | — | — |
-| `ZSTD_isDeterministicBuild` | — | — |

@@ -23,11 +23,13 @@
 	</properties>
 
 	<dependencies>
+		<!-- The library under test. Compile scope (not test) so jacoco
+		     report-aggregate pulls its classes into the integration coverage
+		     report; this module is never published (maven.deploy.skip=true). -->
 		<dependency>
 			<groupId>io.github.dfa1.zstd</groupId>
 			<artifactId>zstd</artifactId>
 			<version>${project.version}</version>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.github.luben</groupId>
@@ -49,6 +51,34 @@
 
 	<!-- The matching native library for the host platform (test scope only). -->
 	<profiles>
+		<!-- Activated by ./mvnw verify -P coverage alongside the parent profile.
+		     This module has no main classes; report-aggregate reads the IT
+		     jacoco.exec produced here and reports hits on the zstd classes the
+		     integration tests exercise, so the library's integration coverage
+		     reaches Sonar (see sonar.coverage.jacoco.xmlReportPaths in the parent). -->
+		<profile>
+			<id>coverage</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>report-aggregate</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>report-aggregate</goal>
+								</goals>
+								<configuration>
+									<outputDirectory>${project.reporting.outputDirectory}/jacoco-aggregate</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<profile>
 			<id>native-osx-aarch64</id>
 			<activation>

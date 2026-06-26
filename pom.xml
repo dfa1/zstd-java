@@ -57,6 +57,33 @@
 		<maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
 		<maven-release-plugin.version>3.3.1</maven-release-plugin.version>
 		<maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+		<jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+
+		<!-- SonarCloud analysis (.github/workflows/sonar.yml). -->
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.organization>dfa11</sonar.organization>
+		<sonar.projectKey>dfa1_zstd-java</sonar.projectKey>
+		<!-- The benchmark module is JMH main code with no tests by design, and the
+		     native modules carry no Java sources — neither should drag the coverage
+		     ratio. Exclude from coverage. -->
+		<sonar.coverage.exclusions>
+			**/benchmark/**
+		</sonar.coverage.exclusions>
+		<!-- Coverage sources Sonar ingests:
+		     1. per-module surefire (unit tests) — target/site/jacoco/jacoco.xml
+		     2. integration-tests aggregate — report-aggregate there reads the IT
+		        jacoco.exec and reports hits on the zstd classes it exercises, so the
+		        library's integration coverage lands on Sonar too. -->
+		<sonar.coverage.jacoco.xmlReportPaths>
+			${project.build.directory}/site/jacoco/jacoco.xml,
+			${maven.multiModuleProjectDirectory}/integration-tests/target/site/jacoco-aggregate/jacoco.xml
+		</sonar.coverage.jacoco.xmlReportPaths>
+
+		<!-- Default for the @{argLine} placeholder in the surefire config below.
+		     JaCoCo's prepare-agent overwrites this property with the agent args when
+		     the coverage profile is active; the empty default keeps surefire from
+		     receiving a literal @{argLine} token when it is not. -->
+		<argLine />
 	</properties>
 
 	<dependencyManagement>
@@ -150,8 +177,15 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.5.6</version>
 					<configuration>
-						<argLine>--enable-native-access=ALL-UNNAMED</argLine>
+						<!-- @{argLine} carries JaCoCo's agent when the coverage profile is
+						     active (empty otherwise); the native-access flag is always on. -->
+						<argLine>@{argLine} --enable-native-access=ALL-UNNAMED</argLine>
 					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${jacoco-maven-plugin.version}</version>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
@@ -257,6 +291,35 @@
 	</build>
 
 	<profiles>
+		<!-- Activated in CI for Sonar: ./mvnw verify -P coverage
+		     Attaches the JaCoCo agent to surefire (via the @{argLine} placeholder)
+		     and writes one target/site/jacoco/jacoco.xml per module. -->
+		<profile>
+			<id>coverage</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>prepare-agent</id>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>report</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<!-- Cut a release with maven-release-plugin (configured in build above):
 		       ./mvnw release:prepare
 		     drops -SNAPSHOT, commits, tags v<version> (pushChanges=false), then

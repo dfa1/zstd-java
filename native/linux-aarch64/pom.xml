@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>zstd-native-linux-aarch64</artifactId>
-	<name>zstd FFM Native linux-aarch64</name>
+	<name>zstd-native-linux-aarch64</name>
 	<description>Native zstd library for Linux aarch64</description>
 	<packaging>jar</packaging>
 

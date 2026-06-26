@@ -11,7 +11,7 @@
 
 	<artifactId>zstd-bom</artifactId>
 	<packaging>pom</packaging>
-	<name>zstd FFM BOM</name>
+	<name>zstd-bom</name>
 	<description>Bill of materials for the zstd-java modules</description>
 
 	<dependencyManagement>

@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>zstd</artifactId>
-	<name>zstd FFM Core</name>
+	<name>zstd</name>
 	<description>Java Foreign Function &amp; Memory (FFM) bindings for zstd</description>
 	<packaging>jar</packaging>
 

@@ -7,7 +7,7 @@
 	<version>0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
-	<name>zstd FFM</name>
+	<name>zstd-parent</name>
 	<description>Java FFM (Foreign Function &amp; Memory) bindings for zstd</description>
 	<url>https://github.com/dfa1/zstd-java</url>
 

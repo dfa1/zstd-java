@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>zstd-native-windows-aarch64</artifactId>
-	<name>zstd FFM Native windows-aarch64</name>
+	<name>zstd-native-windows-aarch64</name>
 	<description>Native zstd library for Windows aarch64</description>
 	<packaging>jar</packaging>
 

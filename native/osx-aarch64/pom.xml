@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>zstd-native-osx-aarch64</artifactId>
-	<name>zstd FFM Native osx-aarch64</name>
+	<name>zstd-native-osx-aarch64</name>
 	<description>Native zstd library for macOS aarch64</description>
 	<packaging>jar</packaging>
 

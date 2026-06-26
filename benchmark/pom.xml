@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>zstd-benchmark</artifactId>
-	<name>zstd FFM Benchmark</name>
+	<name>zstd-benchmark</name>
 	<packaging>jar</packaging>
 
 	<description>

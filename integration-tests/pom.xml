@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>zstd-integration-tests</artifactId>
-	<name>zstd FFM Integration Tests</name>
+	<name>zstd-integration-tests</name>
 
 	<!--
 		Format-compatibility tests against the reference zstd-jni binding: frames

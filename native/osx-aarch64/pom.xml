@@ -11,6 +11,7 @@
 
 	<artifactId>zstd-java-native-osx-aarch64</artifactId>
 	<name>zstd FFM Native osx-aarch64</name>
+	<description>Native zstd library for macOS aarch64</description>
 	<packaging>jar</packaging>
 
 	<!-- No Java sources: this module only packages the native shared library. -->

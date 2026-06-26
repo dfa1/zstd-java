@@ -11,6 +11,7 @@
 
 	<artifactId>zstd-java</artifactId>
 	<name>zstd FFM Core</name>
+	<description>Java Foreign Function &amp; Memory (FFM) bindings for zstd</description>
 	<packaging>jar</packaging>
 
 	<dependencies>

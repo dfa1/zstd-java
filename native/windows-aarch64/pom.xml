@@ -11,6 +11,7 @@
 
 	<artifactId>zstd-java-native-windows-aarch64</artifactId>
 	<name>zstd FFM Native windows-aarch64</name>
+	<description>Native zstd library for Windows aarch64</description>
 	<packaging>jar</packaging>
 
 	<!-- No Java sources: this module only packages the native shared library. -->

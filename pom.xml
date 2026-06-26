@@ -27,6 +27,13 @@
 		</developer>
 	</developers>
 
+	<scm>
+		<connection>scm:git:https://github.com/dfa1/zstd-java.git</connection>
+		<developerConnection>scm:git:git@github.com:dfa1/zstd-java.git</developerConnection>
+		<url>https://github.com/dfa1/zstd-java</url>
+		<tag>HEAD</tag>
+	</scm>
+
 	<modules>
 		<module>native/osx-aarch64</module>
 		<module>native/osx-x86_64</module>
@@ -43,6 +50,10 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.release>25</maven.compiler.release>
+		<central-publishing-plugin.version>0.11.0</central-publishing-plugin.version>
+		<maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+		<maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+		<maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
 	</properties>
 
 	<dependencyManagement>
@@ -186,4 +197,81 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!-- Release to Maven Central: ./mvnw deploy -Prelease
+		     Prerequisites:
+		       1. Register namespace io.github.dfa1 at central.sonatype.com.
+		       2. Generate a user token (Account / User Tokens) and add it to
+		          ~/.m2/settings.xml as a server with id "central".
+		       3. A published GPG key.
+		     CI does this on a v* tag via .github/workflows/publish.yml. -->
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>${maven-source-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>${maven-javadoc-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<doclint>none</doclint>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>${maven-gpg-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+								<configuration>
+									<gpgArguments>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
+									</gpgArguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>${central-publishing-plugin.version}</version>
+						<extensions>true</extensions>
+						<configuration>
+							<publishingServerId>central</publishingServerId>
+							<autoPublish>true</autoPublish>
+							<waitUntil>published</waitUntil>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>

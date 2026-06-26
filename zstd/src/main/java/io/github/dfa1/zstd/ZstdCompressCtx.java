@@ -2,6 +2,7 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Objects;
 
 /// A reusable compression context.
 ///
@@ -95,6 +96,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param src the bytes to compress
     /// @return a self-describing zstd frame
     public byte[] compress(byte[] src) {
+        Objects.requireNonNull(src, "src");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, src);
             long bound = Zstd.compressBound(src.length);
@@ -119,6 +121,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param dict the dictionary to compress against
     /// @return a self-describing zstd frame
     public byte[] compress(byte[] src, ZstdDictionary dict) {
+        Objects.requireNonNull(src, "src");
+        Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, src);
             byte[] d = dict.raw();
@@ -138,6 +142,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param dict the pre-digested compression dictionary
     /// @return a self-describing zstd frame
     public byte[] compress(byte[] src, ZstdCompressDict dict) {
+        Objects.requireNonNull(src, "src");
+        Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, src);
             long bound = Zstd.compressBound(src.length);

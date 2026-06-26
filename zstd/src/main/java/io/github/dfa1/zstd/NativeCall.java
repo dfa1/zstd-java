@@ -2,6 +2,7 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /// Package-private helpers that adapt raw FFM downcalls to the zstd error
 /// convention: run a native call, decode a zstd `size_t` error code into a
@@ -60,6 +61,7 @@ final class NativeCall {
     /// by native (off-heap) memory, since its address is dereferenced in C. Fails
     /// fast with a clear message instead of the FFM linker's cryptic error.
     static void requireNative(MemorySegment seg, String name) {
+        Objects.requireNonNull(seg, name);
         if (!seg.isNative()) {
             throw new IllegalArgumentException(
                     name + " must be a native (off-heap) MemorySegment; got a heap segment");

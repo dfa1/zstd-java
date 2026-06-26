@@ -2,6 +2,7 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Objects;
 
 /// A dictionary digested once for compression at a fixed level.
 ///
@@ -10,6 +11,8 @@ import java.lang.foreign.MemorySegment;
 /// cost — the right choice when compressing many payloads against the same
 /// dictionary. The raw {@link ZstdDictionary} bytes are copied into native
 /// memory, so the source may be discarded afterwards.
+///
+/// Immutable once built and safe to share across threads (the digested dictionary is read-only).
 public final class ZstdCompressDict extends NativeObject {
 
     private final int level;
@@ -54,6 +57,7 @@ public final class ZstdCompressDict extends NativeObject {
     }
 
     private static MemorySegment create(ZstdDictionary dict, int level) {
+        Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);

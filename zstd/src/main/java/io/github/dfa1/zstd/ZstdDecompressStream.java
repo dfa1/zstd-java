@@ -10,6 +10,8 @@ import java.lang.foreign.MemorySegment;
 /// pipelines prefer [ZstdInputStream]. Feed compressed input, drain the
 /// destination when it fills; a result is [ZstdStreamResult#isComplete()] when
 /// the current frame is fully decoded.
+///
+/// Not thread-safe: confine an instance to a single thread.
 public final class ZstdDecompressStream extends NativeObject {
 
     private final Arena arena = Arena.ofConfined();

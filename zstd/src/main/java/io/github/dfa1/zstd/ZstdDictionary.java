@@ -7,6 +7,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
@@ -79,6 +80,7 @@ public final class ZstdDictionary {
     /// @param raw dictionary bytes; defensively copied
     /// @return a dictionary wrapping a copy of `raw`
     public static ZstdDictionary of(byte[] raw) {
+        Objects.requireNonNull(raw, "raw");
         return new ZstdDictionary(raw.clone());
     }
 
@@ -92,6 +94,7 @@ public final class ZstdDictionary {
     /// @return the trained dictionary
     /// @throws ZstdException if training fails (commonly: not enough sample data)
     public static ZstdDictionary train(List<byte[]> samples, int maxDictBytes) {
+        Objects.requireNonNull(samples, "samples");
         if (samples.isEmpty()) {
             throw new ZstdException("cannot train a dictionary from zero samples");
         }
@@ -175,6 +178,7 @@ public final class ZstdDictionary {
 
     private static ZstdDictionary optimize(List<byte[]> samples, int maxDictBytes,
                                            int compressionLevel, boolean fast) {
+        Objects.requireNonNull(samples, "samples");
         if (samples.isEmpty()) {
             throw new ZstdException("cannot train a dictionary from zero samples");
         }
@@ -228,6 +232,8 @@ public final class ZstdDictionary {
     /// @throws ZstdException if finalisation fails
     public static ZstdDictionary finalizeFrom(byte[] content, List<byte[]> samples,
                                               int maxDictBytes, int compressionLevel) {
+        Objects.requireNonNull(content, "content");
+        Objects.requireNonNull(samples, "samples");
         if (samples.isEmpty()) {
             throw new ZstdException("cannot finalise a dictionary from zero samples");
         }

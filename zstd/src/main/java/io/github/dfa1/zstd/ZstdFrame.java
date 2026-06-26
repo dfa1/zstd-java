@@ -13,9 +13,6 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// data already off-heap (e.g. an mmap slice); see `docs/zero-copy.md`.
 public final class ZstdFrame {
 
-    /// Sentinel returned by `ZSTD_decompressBound` when the input is not valid.
-    private static final long CONTENT_SIZE_ERROR = -2L;
-
     /// Tests whether `data` begins with a valid zstd frame (standard or skippable).
     ///
     /// @param data the bytes to inspect
@@ -213,7 +210,7 @@ public final class ZstdFrame {
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
-        if (bound == CONTENT_SIZE_ERROR) {
+        if (bound == Zstd.CONTENTSIZE_ERROR) {
             throw new ZstdException("not valid zstd data");
         }
         return bound;

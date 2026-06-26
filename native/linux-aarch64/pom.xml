@@ -14,6 +14,13 @@
 	<description>Native zstd library for Linux aarch64</description>
 	<packaging>jar</packaging>
 
+	<properties>
+		<!-- No Java to document or attach; the parent's maven-jar-plugin
+		     attaches empty javadoc/sources jars for Maven Central instead. -->
+		<maven.javadoc.skip>true</maven.javadoc.skip>
+		<maven.source.skip>true</maven.source.skip>
+	</properties>
+
 	<!-- No Java sources: this module only packages the native shared library. -->
 	<build>
 		<plugins>
@@ -36,6 +43,10 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>

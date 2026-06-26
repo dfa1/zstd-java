@@ -55,6 +55,7 @@
 		<maven-source-plugin.version>3.4.0</maven-source-plugin.version>
 		<maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
 		<maven-release-plugin.version>3.3.1</maven-release-plugin.version>
+		<maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
 	</properties>
 
 	<dependencyManagement>
@@ -191,6 +192,40 @@
 						<localCheckout>true</localCheckout>
 					</configuration>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>${maven-jar-plugin.version}</version>
+					<executions>
+						<!-- Resource-only native modules carry no Java sources. Attach
+						     empty javadoc/sources jars (from non-existent dirs) so Maven
+						     Central's "javadoc + sources required" validation passes. -->
+						<execution>
+							<id>empty-javadoc-jar</id>
+							<phase>package</phase>
+							<goals>
+								<goal>jar</goal>
+							</goals>
+							<configuration>
+								<classifier>javadoc</classifier>
+								<classesDirectory>${project.build.directory}/empty-javadoc</classesDirectory>
+								<forceCreation>true</forceCreation>
+							</configuration>
+						</execution>
+						<execution>
+							<id>empty-sources-jar</id>
+							<phase>package</phase>
+							<goals>
+								<goal>jar</goal>
+							</goals>
+							<configuration>
+								<classifier>sources</classifier>
+								<classesDirectory>${project.build.directory}/empty-sources</classesDirectory>
+								<forceCreation>true</forceCreation>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
@@ -289,6 +324,17 @@
 							<publishingServerId>central</publishingServerId>
 							<autoPublish>true</autoPublish>
 							<waitUntil>published</waitUntil>
+							<excludeArtifacts>
+								<!-- Internal modules: not published to Maven Central. -->
+								<artifact>
+									<groupId>io.github.dfa1.zstd</groupId>
+									<artifactId>zstd-integration-tests</artifactId>
+								</artifact>
+								<artifact>
+									<groupId>io.github.dfa1.zstd</groupId>
+									<artifactId>zstd-benchmark</artifactId>
+								</artifact>
+							</excludeArtifacts>
 						</configuration>
 					</plugin>
 				</plugins>

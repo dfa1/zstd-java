@@ -38,8 +38,9 @@ class GoldenCorpusTest {
 
     private static final Path TESTS = locateCorpus();
 
-    /// Walks up from the working directory to find `third_party/zstd/tests`,
-    /// or returns `null` if the submodule is absent.
+    /// Walks up from the working directory to find `third_party/zstd/tests`.
+    /// The corpus is the vendored zstd submodule, so its absence is a setup
+    /// error — fail loudly rather than silently skipping every golden test.
     private static Path locateCorpus() {
         Path dir = Path.of("").toAbsolutePath();
         for (; dir != null; dir = dir.getParent()) {
@@ -48,13 +49,12 @@ class GoldenCorpusTest {
                 return candidate;
             }
         }
-        return null;
+        throw new IllegalStateException(
+                "golden corpus not found: third_party/zstd/tests is missing — "
+                        + "initialise the zstd submodule (git submodule update --init --recursive)");
     }
 
     private static Stream<Arguments> filesIn(String subdir, String suffix) {
-        if (TESTS == null) {
-            return Stream.empty();
-        }
         Path dir = TESTS.resolve(subdir);
         if (!Files.isDirectory(dir)) {
             return Stream.empty();

@@ -49,6 +49,44 @@
 		</dependency>
 	</dependencies>
 
+	<build>
+		<plugins>
+			<!-- Fail early, with a clear message, if the vendored zstd submodule
+			     (the golden corpus these tests read) has not been checked out —
+			     before compiling or running anything. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>require-golden-corpus</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireFilesExist>
+									<files>
+										<file>${maven.multiModuleProjectDirectory}/third_party/zstd/tests</file>
+									</files>
+									<message>
+The golden corpus is missing: third_party/zstd/tests was not found.
+These integration tests read the vendored zstd submodule. Check it out with:
+
+    git submodule update --init --recursive
+
+then re-run the build.</message>
+								</requireFilesExist>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
 	<!-- The matching native library for the host platform (test scope only). -->
 	<profiles>
 		<!-- Activated by ./mvnw verify -P coverage alongside the parent profile.

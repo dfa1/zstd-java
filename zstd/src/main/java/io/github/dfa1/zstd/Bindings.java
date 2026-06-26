@@ -271,6 +271,20 @@ final class Bindings {
             NativeLibrary.lookup("ZDICT_optimizeTrainFromBuffer_fastCover",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS, JAVA_INT, ADDRESS));
 
+    // ZDICT_params_t { int compressionLevel; unsigned notificationLevel; unsigned dictID; } — by value
+    static final MemoryLayout ZDICT_PARAMS_LAYOUT =
+            MemoryLayout.structLayout(JAVA_INT, JAVA_INT, JAVA_INT);
+    // size_t ZDICT_finalizeDictionary(dstDict, maxDictSize, dictContent, contentSize,
+    //                                 samples, sizes, nbSamples, ZDICT_params_t params)
+    static final MethodHandle ZDICT_FINALIZE_DICTIONARY =
+            NativeLibrary.lookup("ZDICT_finalizeDictionary",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG,
+                            ADDRESS, ADDRESS, JAVA_INT, ZDICT_PARAMS_LAYOUT));
+    // size_t ZDICT_getDictHeaderSize(const void* dictBuffer, size_t dictSize)
+    static final MethodHandle ZDICT_GET_DICT_HEADER_SIZE =
+            NativeLibrary.lookup("ZDICT_getDictHeaderSize",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
+
     private Bindings() {
         // no instances
     }

@@ -70,6 +70,36 @@ class ZstdDictionaryTest {
     }
 
     @Nested
+    class Finalize {
+
+        @Test
+        void finalizesRawContentIntoUsableDictionary() {
+            // Given some raw dictionary content plus tuning samples
+            byte[] content = "{\"user\":\"\",\"event\":\"click\",\"id\":}".repeat(40)
+                    .getBytes(StandardCharsets.UTF_8);
+
+            ZstdDictionary dict = ZstdDictionary.finalizeFrom(content, samples, 16 * 1024, 0);
+
+            // Then it carries a header and round-trips a record
+            assertThat(dict.size()).isGreaterThan(0);
+            assertThat(dict.headerSize()).isPositive();
+
+            byte[] record = samples.get(3);
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                byte[] frame = cctx.compress(record, dict);
+                assertThat(dctx.decompress(frame, record.length, dict)).isEqualTo(record);
+            }
+        }
+
+        @Test
+        void trainedDictionaryHasHeader() {
+            assertThat(sut.headerSize()).isPositive();
+            assertThat(sut.headerSize()).isLessThanOrEqualTo(sut.size());
+        }
+    }
+
+    @Nested
     class Training {
 
         @Test

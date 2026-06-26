@@ -177,6 +177,57 @@ public final class ZstdDictionary {
         }
     }
 
+    /// Turns raw dictionary `content` you supply (e.g. hand-picked common bytes,
+    /// or a prefix from elsewhere) into a usable zstd dictionary by adding a
+    /// header and entropy tables tuned on `samples`. Use this when you control the
+    /// dictionary content and only want zstd to finalise it.
+    ///
+    /// @param content          the raw dictionary content to wrap
+    /// @param samples          representative payloads to tune entropy tables on
+    /// @param maxDictBytes     upper bound on the produced dictionary size
+    /// @param compressionLevel the level the dictionary will be used at (0 = default)
+    /// @return the finalised dictionary
+    /// @throws ZstdException if finalisation fails
+    public static ZstdDictionary finalizeFrom(byte[] content, List<byte[]> samples,
+                                              int maxDictBytes, int compressionLevel) {
+        if (samples.isEmpty()) {
+            throw new ZstdException("cannot finalise a dictionary from zero samples");
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            long total = 0;
+            for (byte[] s : samples) {
+                total += s.length;
+            }
+            MemorySegment flat = arena.allocate(Math.max(total, 1));
+            MemorySegment sizes = arena.allocate(JAVA_LONG, samples.size());
+            long offset = 0;
+            for (int i = 0; i < samples.size(); i++) {
+                byte[] s = samples.get(i);
+                MemorySegment.copy(s, 0, flat, JAVA_BYTE, offset, s.length);
+                sizes.setAtIndex(JAVA_LONG, i, s.length);
+                offset += s.length;
+            }
+            MemorySegment contentSeg = Zstd.copyIn(arena, content);
+            MemorySegment params = arena.allocate(Bindings.ZDICT_PARAMS_LAYOUT);
+            params.set(JAVA_INT, 0, compressionLevel);  // compressionLevel; notificationLevel/dictID = 0
+            MemorySegment dictBuf = arena.allocate(maxDictBytes);
+            long produced;
+            try {
+                produced = (long) Bindings.ZDICT_FINALIZE_DICTIONARY.invokeExact(
+                        dictBuf, (long) maxDictBytes, contentSeg, (long) content.length,
+                        flat, sizes, samples.size(), params);
+            } catch (Throwable t) {
+                throw rethrow(t);
+            }
+            if (zdictIsError(produced)) {
+                throw new ZstdException("dictionary finalisation failed: " + zdictErrorName(produced));
+            }
+            byte[] out = new byte[Math.toIntExact(produced)];
+            MemorySegment.copy(dictBuf, JAVA_BYTE, 0, out, 0, out.length);
+            return new ZstdDictionary(out);
+        }
+    }
+
     /// The dictionary id zstd stamps into frames compressed with this dictionary,
     /// or `0` for a raw/content-only dictionary with no header.
     ///
@@ -185,6 +236,24 @@ public final class ZstdDictionary {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment seg = Zstd.copyIn(arena, bytes);
             return (int) Bindings.ZDICT_GET_DICT_ID.invokeExact(seg, (long) bytes.length);
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
+    /// Size of this dictionary's header — the entropy-table and id prefix that
+    /// precedes the raw content.
+    ///
+    /// @return the header size in bytes
+    /// @throws ZstdException if this is not a valid zstd dictionary
+    public int headerSize() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment seg = Zstd.copyIn(arena, bytes);
+            long size = (long) Bindings.ZDICT_GET_DICT_HEADER_SIZE.invokeExact(seg, (long) bytes.length);
+            if (zdictIsError(size)) {
+                throw new ZstdException("not a valid dictionary: " + zdictErrorName(size));
+            }
+            return Math.toIntExact(size);
         } catch (Throwable t) {
             throw rethrow(t);
         }

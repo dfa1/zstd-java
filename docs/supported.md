@@ -1,4 +1,4 @@
-# Symbol compatibility
+# Supported symbols
 
 Coverage of the zstd C API by the `io.github.dfa1.zstd` bindings. Signatures
 and semantics follow the [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
@@ -80,260 +80,271 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 
 ## Full symbol table
 
-<!-- generated; see the nm command above to regenerate -->
+The **Bound** column is this library; **zstd-jni** marks symbols referenced by
+zstd-jni's JNI sources (v1.5.7-11, `src/main/native/*.c`). The latter is
+symbol-exact, not functional equivalence: zstd-jni may expose an operation through
+a different symbol than this library — e.g. it routes one-shot compression through
+`ZSTD_compress2`, so `ZSTD_compress` reads `—` for it even though `Zstd.compress`
+works. zstd-jni references 53 of these symbols; this library binds 55. They
+overlap on the modern context/streaming API and diverge mainly on zstd-jni's
+sequence-producer hooks vs this library's frame-inspection and typed-error surface.
+
+<!-- generated; see the nm command above to regenerate.
+     zstd-jni column: grep '(ZSTD|ZDICT)_NAME(' over its src/main/native/*.c,
+     intersected with this table's symbols. -->
 
 ### Core one-shot (6/7)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_compress` | ✅ |
-| `ZSTD_compressBound` | ✅ |
-| `ZSTD_decompress` | ✅ |
-| `ZSTD_defaultCLevel` | ✅ |
-| `ZSTD_maxCLevel` | ✅ |
-| `ZSTD_minCLevel` | ✅ |
-| `ZSTD_compress_advanced` | — ᵈ |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_compress` | ✅ | — |
+| `ZSTD_compressBound` | ✅ | ✅ |
+| `ZSTD_decompress` | ✅ | ✅ |
+| `ZSTD_defaultCLevel` | ✅ | — |
+| `ZSTD_maxCLevel` | ✅ | ✅ |
+| `ZSTD_minCLevel` | ✅ | ✅ |
+| `ZSTD_compress_advanced` | — ᵈ | — |
 
 ### Version (2/2)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_versionNumber` | ✅ |
-| `ZSTD_versionString` | ✅ |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_versionNumber` | ✅ | — |
+| `ZSTD_versionString` | ✅ | — |
 
 ### Errors (4/4)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_getErrorName` | ✅ |
-| `ZSTD_isError` | ✅ |
-| `ZSTD_getErrorCode` | ✅ |
-| `ZSTD_getErrorString` | ✅ |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_getErrorName` | ✅ | ✅ |
+| `ZSTD_isError` | ✅ | ✅ |
+| `ZSTD_getErrorCode` | ✅ | ✅ |
+| `ZSTD_getErrorString` | ✅ | — |
 
 ### Reusable contexts (6/8)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_compressCCtx` | ✅ |
-| `ZSTD_createCCtx` | ✅ |
-| `ZSTD_createDCtx` | ✅ |
-| `ZSTD_decompressDCtx` | ✅ |
-| `ZSTD_freeCCtx` | ✅ |
-| `ZSTD_freeDCtx` | ✅ |
-| `ZSTD_createCCtx_advanced` | — |
-| `ZSTD_createDCtx_advanced` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_compressCCtx` | ✅ | — |
+| `ZSTD_createCCtx` | ✅ | ✅ |
+| `ZSTD_createDCtx` | ✅ | ✅ |
+| `ZSTD_decompressDCtx` | ✅ | ✅ |
+| `ZSTD_freeCCtx` | ✅ | ✅ |
+| `ZSTD_freeDCtx` | ✅ | ✅ |
+| `ZSTD_createCCtx_advanced` | — | — |
+| `ZSTD_createDCtx_advanced` | — | — |
 
 ### Dictionary — simple (10/23)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_compress_usingCDict` | ✅ |
-| `ZSTD_compress_usingDict` | ✅ |
-| `ZSTD_createCDict` | ✅ |
-| `ZSTD_createDDict` | ✅ |
-| `ZSTD_decompress_usingDDict` | ✅ |
-| `ZSTD_decompress_usingDict` | ✅ |
-| `ZSTD_freeCDict` | ✅ |
-| `ZSTD_freeDDict` | ✅ |
-| `ZSTD_compress_usingCDict_advanced` | — ᵈ |
-| `ZSTD_compressBegin_usingCDict` | — ᵈ |
-| `ZSTD_compressBegin_usingCDict_advanced` | — ᵈ |
-| `ZSTD_compressBegin_usingDict` | — ᵈ |
-| `ZSTD_createCDict_advanced` | — |
-| `ZSTD_createCDict_advanced2` | — |
-| `ZSTD_createCDict_byReference` | — |
-| `ZSTD_createDDict_advanced` | — |
-| `ZSTD_createDDict_byReference` | — |
-| `ZSTD_decompressBegin_usingDDict` | — |
-| `ZSTD_decompressBegin_usingDict` | — |
-| `ZSTD_getDictID_fromCDict` | ✅ |
-| `ZSTD_getDictID_fromDDict` | ✅ |
-| `ZSTD_getDictID_fromDict` | — |
-| `ZSTD_getDictID_fromFrame` | ✅ |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_compress_usingCDict` | ✅ | ✅ |
+| `ZSTD_compress_usingDict` | ✅ | — |
+| `ZSTD_createCDict` | ✅ | ✅ |
+| `ZSTD_createDDict` | ✅ | ✅ |
+| `ZSTD_decompress_usingDDict` | ✅ | ✅ |
+| `ZSTD_decompress_usingDict` | ✅ | — |
+| `ZSTD_freeCDict` | ✅ | ✅ |
+| `ZSTD_freeDDict` | ✅ | ✅ |
+| `ZSTD_compress_usingCDict_advanced` | — ᵈ | — |
+| `ZSTD_compressBegin_usingCDict` | — ᵈ | — |
+| `ZSTD_compressBegin_usingCDict_advanced` | — ᵈ | — |
+| `ZSTD_compressBegin_usingDict` | — ᵈ | — |
+| `ZSTD_createCDict_advanced` | — | — |
+| `ZSTD_createCDict_advanced2` | — | — |
+| `ZSTD_createCDict_byReference` | — | ✅ |
+| `ZSTD_createDDict_advanced` | — | — |
+| `ZSTD_createDDict_byReference` | — | ✅ |
+| `ZSTD_decompressBegin_usingDDict` | — | — |
+| `ZSTD_decompressBegin_usingDict` | — | — |
+| `ZSTD_getDictID_fromCDict` | ✅ | — |
+| `ZSTD_getDictID_fromDDict` | ✅ | — |
+| `ZSTD_getDictID_fromDict` | — | ✅ |
+| `ZSTD_getDictID_fromFrame` | ✅ | ✅ |
 
 ### Dictionary training, ZDICT (4/12)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZDICT_getDictID` | ✅ |
-| `ZDICT_getErrorName` | ✅ |
-| `ZDICT_isError` | ✅ |
-| `ZDICT_trainFromBuffer` | ✅ |
-| `ZDICT_addEntropyTablesFromBuffer` | — |
-| `ZDICT_finalizeDictionary` | — |
-| `ZDICT_getDictHeaderSize` | — |
-| `ZDICT_optimizeTrainFromBuffer_cover` | — |
-| `ZDICT_optimizeTrainFromBuffer_fastCover` | — |
-| `ZDICT_trainFromBuffer_cover` | — |
-| `ZDICT_trainFromBuffer_fastCover` | — |
-| `ZDICT_trainFromBuffer_legacy` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZDICT_getDictID` | ✅ | — |
+| `ZDICT_getErrorName` | ✅ | — |
+| `ZDICT_isError` | ✅ | — |
+| `ZDICT_trainFromBuffer` | ✅ | ✅ |
+| `ZDICT_addEntropyTablesFromBuffer` | — | — |
+| `ZDICT_finalizeDictionary` | — | — |
+| `ZDICT_getDictHeaderSize` | — | — |
+| `ZDICT_optimizeTrainFromBuffer_cover` | — | — |
+| `ZDICT_optimizeTrainFromBuffer_fastCover` | — | — |
+| `ZDICT_trainFromBuffer_cover` | — | — |
+| `ZDICT_trainFromBuffer_fastCover` | — | — |
+| `ZDICT_trainFromBuffer_legacy` | — | ✅ |
 
 ### Streaming — compress (3/22)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_CStreamInSize` | ✅ |
-| `ZSTD_CStreamOutSize` | ✅ |
-| `ZSTD_compressStream2` | ✅ |
-| `ZSTD_compressStream` | — |
-| `ZSTD_compressStream2_simpleArgs` | — |
-| `ZSTD_createCStream` | — |
-| `ZSTD_createCStream_advanced` | — |
-| `ZSTD_endStream` | — |
-| `ZSTD_estimateCStreamSize` | — |
-| `ZSTD_estimateCStreamSize_usingCCtxParams` | — |
-| `ZSTD_estimateCStreamSize_usingCParams` | — |
-| `ZSTD_flushStream` | — |
-| `ZSTD_freeCStream` | — |
-| `ZSTD_initCStream` | — |
-| `ZSTD_initCStream_advanced` | — ᵈ |
-| `ZSTD_initCStream_srcSize` | — ᵈ |
-| `ZSTD_initCStream_usingCDict` | — ᵈ |
-| `ZSTD_initCStream_usingCDict_advanced` | — ᵈ |
-| `ZSTD_initCStream_usingDict` | — ᵈ |
-| `ZSTD_initStaticCStream` | — |
-| `ZSTD_resetCStream` | — ᵈ |
-| `ZSTD_sizeof_CStream` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_CStreamInSize` | ✅ | — |
+| `ZSTD_CStreamOutSize` | ✅ | ✅ |
+| `ZSTD_compressStream2` | ✅ | ✅ |
+| `ZSTD_compressStream` | — | ✅ |
+| `ZSTD_compressStream2_simpleArgs` | — | — |
+| `ZSTD_createCStream` | — | ✅ |
+| `ZSTD_createCStream_advanced` | — | — |
+| `ZSTD_endStream` | — | ✅ |
+| `ZSTD_estimateCStreamSize` | — | — |
+| `ZSTD_estimateCStreamSize_usingCCtxParams` | — | — |
+| `ZSTD_estimateCStreamSize_usingCParams` | — | — |
+| `ZSTD_flushStream` | — | ✅ |
+| `ZSTD_freeCStream` | — | ✅ |
+| `ZSTD_initCStream` | — | ✅ |
+| `ZSTD_initCStream_advanced` | — ᵈ | — |
+| `ZSTD_initCStream_srcSize` | — ᵈ | — |
+| `ZSTD_initCStream_usingCDict` | — ᵈ | — |
+| `ZSTD_initCStream_usingCDict_advanced` | — ᵈ | — |
+| `ZSTD_initCStream_usingDict` | — ᵈ | — |
+| `ZSTD_initStaticCStream` | — | — |
+| `ZSTD_resetCStream` | — ᵈ | — |
+| `ZSTD_sizeof_CStream` | — | — |
 
 ### Streaming — decompress (3/15)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_DStreamInSize` | ✅ |
-| `ZSTD_DStreamOutSize` | ✅ |
-| `ZSTD_decompressStream` | ✅ |
-| `ZSTD_decompressStream_simpleArgs` | — |
-| `ZSTD_createDStream` | — |
-| `ZSTD_createDStream_advanced` | — |
-| `ZSTD_estimateDStreamSize` | — |
-| `ZSTD_estimateDStreamSize_fromFrame` | — |
-| `ZSTD_freeDStream` | — |
-| `ZSTD_initDStream` | — |
-| `ZSTD_initDStream_usingDDict` | — ᵈ |
-| `ZSTD_initDStream_usingDict` | — ᵈ |
-| `ZSTD_initStaticDStream` | — |
-| `ZSTD_resetDStream` | — ᵈ |
-| `ZSTD_sizeof_DStream` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_DStreamInSize` | ✅ | ✅ |
+| `ZSTD_DStreamOutSize` | ✅ | ✅ |
+| `ZSTD_decompressStream` | ✅ | ✅ |
+| `ZSTD_decompressStream_simpleArgs` | — | — |
+| `ZSTD_createDStream` | — | ✅ |
+| `ZSTD_createDStream_advanced` | — | — |
+| `ZSTD_estimateDStreamSize` | — | — |
+| `ZSTD_estimateDStreamSize_fromFrame` | — | — |
+| `ZSTD_freeDStream` | — | — |
+| `ZSTD_initDStream` | — | ✅ |
+| `ZSTD_initDStream_usingDDict` | — ᵈ | — |
+| `ZSTD_initDStream_usingDict` | — ᵈ | — |
+| `ZSTD_initStaticDStream` | — | — |
+| `ZSTD_resetDStream` | — ᵈ | — |
+| `ZSTD_sizeof_DStream` | — | — |
 
 ### Advanced parameters (8/38)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_CCtxParams_getParameter` | — |
-| `ZSTD_CCtxParams_init` | — |
-| `ZSTD_CCtxParams_init_advanced` | — |
-| `ZSTD_CCtxParams_registerSequenceProducer` | — |
-| `ZSTD_CCtxParams_reset` | — |
-| `ZSTD_CCtxParams_setParameter` | — |
-| `ZSTD_CCtx_getParameter` | — |
-| `ZSTD_CCtx_loadDictionary` | ✅ |
-| `ZSTD_CCtx_loadDictionary_advanced` | — |
-| `ZSTD_CCtx_loadDictionary_byReference` | — |
-| `ZSTD_CCtx_refCDict` | — |
-| `ZSTD_CCtx_refPrefix` | — |
-| `ZSTD_CCtx_refPrefix_advanced` | — |
-| `ZSTD_CCtx_refThreadPool` | — |
-| `ZSTD_CCtx_reset` | — |
-| `ZSTD_CCtx_setCParams` | — |
-| `ZSTD_CCtx_setFParams` | — |
-| `ZSTD_CCtx_setParameter` | ✅ |
-| `ZSTD_CCtx_setParametersUsingCCtxParams` | — |
-| `ZSTD_CCtx_setParams` | — |
-| `ZSTD_CCtx_setPledgedSrcSize` | ✅ |
-| `ZSTD_DCtx_getParameter` | — |
-| `ZSTD_DCtx_loadDictionary` | ✅ |
-| `ZSTD_DCtx_loadDictionary_advanced` | — |
-| `ZSTD_DCtx_loadDictionary_byReference` | — |
-| `ZSTD_DCtx_refDDict` | — |
-| `ZSTD_DCtx_refPrefix` | — |
-| `ZSTD_DCtx_refPrefix_advanced` | — |
-| `ZSTD_DCtx_reset` | — |
-| `ZSTD_DCtx_setFormat` | — |
-| `ZSTD_DCtx_setMaxWindowSize` | — |
-| `ZSTD_DCtx_setParameter` | ✅ |
-| `ZSTD_cParam_getBounds` | ✅ |
-| `ZSTD_compress2` | ✅ |
-| `ZSTD_createCCtxParams` | — |
-| `ZSTD_dParam_getBounds` | ✅ |
-| `ZSTD_estimateCCtxSize_usingCCtxParams` | — |
-| `ZSTD_freeCCtxParams` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_CCtxParams_getParameter` | — | — |
+| `ZSTD_CCtxParams_init` | — | — |
+| `ZSTD_CCtxParams_init_advanced` | — | — |
+| `ZSTD_CCtxParams_registerSequenceProducer` | — | — |
+| `ZSTD_CCtxParams_reset` | — | — |
+| `ZSTD_CCtxParams_setParameter` | — | — |
+| `ZSTD_CCtx_getParameter` | — | — |
+| `ZSTD_CCtx_loadDictionary` | ✅ | ✅ |
+| `ZSTD_CCtx_loadDictionary_advanced` | — | — |
+| `ZSTD_CCtx_loadDictionary_byReference` | — | — |
+| `ZSTD_CCtx_refCDict` | — | ✅ |
+| `ZSTD_CCtx_refPrefix` | — | — |
+| `ZSTD_CCtx_refPrefix_advanced` | — | — |
+| `ZSTD_CCtx_refThreadPool` | — | — |
+| `ZSTD_CCtx_reset` | — | ✅ |
+| `ZSTD_CCtx_setCParams` | — | — |
+| `ZSTD_CCtx_setFParams` | — | — |
+| `ZSTD_CCtx_setParameter` | ✅ | ✅ |
+| `ZSTD_CCtx_setParametersUsingCCtxParams` | — | — |
+| `ZSTD_CCtx_setParams` | — | — |
+| `ZSTD_CCtx_setPledgedSrcSize` | ✅ | ✅ |
+| `ZSTD_DCtx_getParameter` | — | — |
+| `ZSTD_DCtx_loadDictionary` | ✅ | ✅ |
+| `ZSTD_DCtx_loadDictionary_advanced` | — | — |
+| `ZSTD_DCtx_loadDictionary_byReference` | — | — |
+| `ZSTD_DCtx_refDDict` | — | ✅ |
+| `ZSTD_DCtx_refPrefix` | — | — |
+| `ZSTD_DCtx_refPrefix_advanced` | — | — |
+| `ZSTD_DCtx_reset` | — | ✅ |
+| `ZSTD_DCtx_setFormat` | — | — |
+| `ZSTD_DCtx_setMaxWindowSize` | — | — |
+| `ZSTD_DCtx_setParameter` | ✅ | ✅ |
+| `ZSTD_cParam_getBounds` | ✅ | — |
+| `ZSTD_compress2` | ✅ | ✅ |
+| `ZSTD_createCCtxParams` | — | — |
+| `ZSTD_dParam_getBounds` | ✅ | — |
+| `ZSTD_estimateCCtxSize_usingCCtxParams` | — | — |
+| `ZSTD_freeCCtxParams` | — | — |
 
 ### Frame inspection (9/13)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_getFrameContentSize` | ✅ |
-| `ZSTD_decompressBound` | ✅ |
-| `ZSTD_findDecompressedSize` | — |
-| `ZSTD_findFrameCompressedSize` | ✅ |
-| `ZSTD_frameHeaderSize` | — |
-| `ZSTD_getDecompressedSize` | — ᵈ |
-| `ZSTD_getFrameHeader` | ✅ |
-| `ZSTD_getFrameHeader_advanced` | — |
-| `ZSTD_getFrameProgression` | — |
-| `ZSTD_isFrame` | ✅ |
-| `ZSTD_isSkippableFrame` | ✅ |
-| `ZSTD_readSkippableFrame` | ✅ |
-| `ZSTD_writeSkippableFrame` | ✅ |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_getFrameContentSize` | ✅ | ✅ |
+| `ZSTD_decompressBound` | ✅ | — |
+| `ZSTD_findDecompressedSize` | — | — |
+| `ZSTD_findFrameCompressedSize` | ✅ | ✅ |
+| `ZSTD_frameHeaderSize` | — | — |
+| `ZSTD_getDecompressedSize` | — ᵈ | — |
+| `ZSTD_getFrameHeader` | ✅ | — |
+| `ZSTD_getFrameHeader_advanced` | — | ✅ |
+| `ZSTD_getFrameProgression` | — | ✅ |
+| `ZSTD_isFrame` | ✅ | — |
+| `ZSTD_isSkippableFrame` | ✅ | — |
+| `ZSTD_readSkippableFrame` | ✅ | — |
+| `ZSTD_writeSkippableFrame` | ✅ | — |
 
 ### Memory sizing (0/14)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_decodingBufferSize_min` | — |
-| `ZSTD_decompressionMargin` | — |
-| `ZSTD_estimateCCtxSize` | — |
-| `ZSTD_estimateCCtxSize_usingCParams` | — |
-| `ZSTD_estimateCDictSize` | — |
-| `ZSTD_estimateCDictSize_advanced` | — |
-| `ZSTD_estimateDCtxSize` | — |
-| `ZSTD_estimateDDictSize` | — |
-| `ZSTD_getBlockSize` | — ᵈ |
-| `ZSTD_sequenceBound` | — |
-| `ZSTD_sizeof_CCtx` | — |
-| `ZSTD_sizeof_CDict` | — |
-| `ZSTD_sizeof_DCtx` | — |
-| `ZSTD_sizeof_DDict` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_decodingBufferSize_min` | — | — |
+| `ZSTD_decompressionMargin` | — | — |
+| `ZSTD_estimateCCtxSize` | — | — |
+| `ZSTD_estimateCCtxSize_usingCParams` | — | — |
+| `ZSTD_estimateCDictSize` | — | — |
+| `ZSTD_estimateCDictSize_advanced` | — | — |
+| `ZSTD_estimateDCtxSize` | — | — |
+| `ZSTD_estimateDDictSize` | — | — |
+| `ZSTD_getBlockSize` | — ᵈ | — |
+| `ZSTD_sequenceBound` | — | — |
+| `ZSTD_sizeof_CCtx` | — | — |
+| `ZSTD_sizeof_CDict` | — | — |
+| `ZSTD_sizeof_DCtx` | — | — |
+| `ZSTD_sizeof_DDict` | — | — |
 
 ### Low-level block (0/12)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_compressBegin` | — ᵈ |
-| `ZSTD_compressBegin_advanced` | — ᵈ |
-| `ZSTD_compressBlock` | — ᵈ |
-| `ZSTD_compressContinue` | — ᵈ |
-| `ZSTD_compressEnd` | — ᵈ |
-| `ZSTD_decompressBegin` | — |
-| `ZSTD_decompressBlock` | — ᵈ |
-| `ZSTD_decompressContinue` | — |
-| `ZSTD_insertBlock` | — ᵈ |
-| `ZSTD_nextInputType` | — |
-| `ZSTD_nextSrcSizeToDecompress` | — |
-| `ZSTD_toFlushNow` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_compressBegin` | — ᵈ | — |
+| `ZSTD_compressBegin_advanced` | — ᵈ | — |
+| `ZSTD_compressBlock` | — ᵈ | — |
+| `ZSTD_compressContinue` | — ᵈ | — |
+| `ZSTD_compressEnd` | — ᵈ | — |
+| `ZSTD_decompressBegin` | — | — |
+| `ZSTD_decompressBlock` | — ᵈ | — |
+| `ZSTD_decompressContinue` | — | — |
+| `ZSTD_insertBlock` | — ᵈ | — |
+| `ZSTD_nextInputType` | — | — |
+| `ZSTD_nextSrcSizeToDecompress` | — | — |
+| `ZSTD_toFlushNow` | — | — |
 
 ### Sequences (0/5)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_compressSequences` | — |
-| `ZSTD_compressSequencesAndLiterals` | — |
-| `ZSTD_generateSequences` | — |
-| `ZSTD_mergeBlockDelimiters` | — |
-| `ZSTD_registerSequenceProducer` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_compressSequences` | — | — |
+| `ZSTD_compressSequencesAndLiterals` | — | — |
+| `ZSTD_generateSequences` | — | ✅ |
+| `ZSTD_mergeBlockDelimiters` | — | — |
+| `ZSTD_registerSequenceProducer` | — | ✅ |
 
 ### Misc / experimental (0/11)
 
-| Symbol | Bound |
-|---|:---:|
-| `ZSTD_adjustCParams` | — |
-| `ZSTD_checkCParams` | — |
-| `ZSTD_copyCCtx` | — ᵈ |
-| `ZSTD_copyDCtx` | — ᵈ |
-| `ZSTD_getCParams` | — |
-| `ZSTD_getParams` | — |
-| `ZSTD_initStaticCCtx` | — |
-| `ZSTD_initStaticCDict` | — |
-| `ZSTD_initStaticDCtx` | — |
-| `ZSTD_initStaticDDict` | — |
-| `ZSTD_isDeterministicBuild` | — |
+| Symbol | Bound | zstd-jni |
+|---|:---:|:---:|
+| `ZSTD_adjustCParams` | — | — |
+| `ZSTD_checkCParams` | — | — |
+| `ZSTD_copyCCtx` | — ᵈ | — |
+| `ZSTD_copyDCtx` | — ᵈ | — |
+| `ZSTD_getCParams` | — | — |
+| `ZSTD_getParams` | — | — |
+| `ZSTD_initStaticCCtx` | — | — |
+| `ZSTD_initStaticCDict` | — | — |
+| `ZSTD_initStaticDCtx` | — | — |
+| `ZSTD_initStaticDDict` | — | — |
+| `ZSTD_isDeterministicBuild` | — | — |

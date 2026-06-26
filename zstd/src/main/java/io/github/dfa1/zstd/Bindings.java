@@ -16,6 +16,9 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// `size_t` and `unsigned long long` are modelled as
 /// {@link java.lang.foreign.ValueLayout#JAVA_LONG} (LP64); the public API guards
 /// against negative interpretations where zstd uses sentinel values.
+///
+/// For the full coverage map — every public zstd symbol, what is bound, and which
+/// deprecated functions are intentionally left out — see `docs/supported.md`.
 final class Bindings {
 
     // size_t ZSTD_compressBound(size_t srcSize)
@@ -249,30 +252,6 @@ final class Bindings {
     // unsigned ZDICT_getDictID(const void* dictBuffer, size_t dictSize)
     static final MethodHandle ZDICT_GET_DICT_ID =
             NativeLibrary.lookup("ZDICT_getDictID", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
-
-    // --- deprecated zstd functions: intentionally NOT bound ---
-    //
-    // These carry ZSTD_DEPRECATED in zstd.h (as of the vendored submodule). Do not
-    // bind them — every one is superseded by API already registered above. Listed
-    // so the gap is a decision, not an oversight.
-    //
-    // Old streaming / block API (use CCtx_setParameter + compressStream2/compress2,
-    // and decompressStream):
-    //   ZSTD_compressBegin, ZSTD_compressBegin_advanced,
-    //   ZSTD_compressBegin_usingDict, ZSTD_compressBegin_usingCDict,
-    //   ZSTD_compressBegin_usingCDict_advanced, ZSTD_compressContinue,
-    //   ZSTD_compressEnd, ZSTD_compressBlock, ZSTD_decompressBlock,
-    //   ZSTD_insertBlock, ZSTD_getBlockSize,
-    //   ZSTD_initCStream_srcSize, ZSTD_initCStream_advanced,
-    //   ZSTD_initCStream_usingDict, ZSTD_initCStream_usingCDict,
-    //   ZSTD_initCStream_usingCDict_advanced, ZSTD_resetCStream,
-    //   ZSTD_initDStream_usingDict, ZSTD_initDStream_usingDDict, ZSTD_resetDStream
-    //
-    // Old one-shot / context helpers:
-    //   ZSTD_compress_advanced (use compress2),
-    //   ZSTD_compress_usingCDict_advanced (use compress_usingCDict),
-    //   ZSTD_copyCCtx, ZSTD_copyDCtx,
-    //   ZSTD_getDecompressedSize (use getFrameContentSize)
 
     private Bindings() {
         // no instances

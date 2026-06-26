@@ -1,5 +1,6 @@
 # zstd-java
 
+[![CI](https://github.com/dfa1/zstd-java/actions/workflows/ci.yml/badge.svg)](https://github.com/dfa1/zstd-java/actions/workflows/ci.yml)
 ![zstd](https://img.shields.io/badge/zstd-1.6.0-green.svg)
 ![Java](https://img.shields.io/badge/Java-25%2B-orange.svg)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)

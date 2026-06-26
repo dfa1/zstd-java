@@ -162,6 +162,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or compression fails
     public long compress(MemorySegment dst, MemorySegment src) {
+        Zstd.requireNative(dst, "dst");
+        Zstd.requireNative(src, "src");
         return Zstd.call(() -> (long) Bindings.COMPRESS2.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize()));
     }
@@ -173,6 +175,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param dict the pre-digested compression dictionary
     /// @return the number of bytes written into `dst`
     public long compress(MemorySegment dst, MemorySegment src, ZstdCompressDict dict) {
+        Zstd.requireNative(dst, "dst");
+        Zstd.requireNative(src, "src");
         MemorySegment cdict = dict.ptr();
         return Zstd.call(() -> (long) Bindings.COMPRESS_USING_CDICT.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize(), cdict));

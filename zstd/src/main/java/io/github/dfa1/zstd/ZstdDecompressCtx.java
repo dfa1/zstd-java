@@ -115,6 +115,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @return the number of bytes written into `dst`
     /// @throws ZstdException if `dst` is too small or the frame is invalid
     public long decompress(MemorySegment dst, MemorySegment src) {
+        Zstd.requireNative(dst, "dst");
+        Zstd.requireNative(src, "src");
         return Zstd.call(() -> (long) Bindings.DECOMPRESS_DCTX.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize()));
     }
@@ -126,6 +128,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict the pre-digested decompression dictionary
     /// @return the number of bytes written into `dst`
     public long decompress(MemorySegment dst, MemorySegment src, ZstdDecompressDict dict) {
+        Zstd.requireNative(dst, "dst");
+        Zstd.requireNative(src, "src");
         MemorySegment ddict = dict.ptr();
         return Zstd.call(() -> (long) Bindings.DECOMPRESS_USING_DDICT.invokeExact(
                 ptr(), dst, dst.byteSize(), src, src.byteSize(), ddict));

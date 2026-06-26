@@ -1,12 +1,15 @@
 package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
@@ -27,6 +30,39 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// }
 /// }
 public final class ZstdDictionary {
+
+    // ZDICT_cover_params_t { unsigned k,d,steps,nbThreads; double splitPoint;
+    //   unsigned shrinkDict, shrinkDictMaxRegression; ZDICT_params_t zParams; }
+    // ZDICT_params_t { int compressionLevel; unsigned notificationLevel, dictID; }
+    private static final MemoryLayout COVER_PARAMS = MemoryLayout.structLayout(
+            JAVA_INT.withName("k"),
+            JAVA_INT.withName("d"),
+            JAVA_INT.withName("steps"),
+            JAVA_INT.withName("nbThreads"),
+            JAVA_DOUBLE.withName("splitPoint"),
+            JAVA_INT.withName("shrinkDict"),
+            JAVA_INT.withName("shrinkDictMaxRegression"),
+            JAVA_INT.withName("compressionLevel"),
+            JAVA_INT.withName("notificationLevel"),
+            JAVA_INT.withName("dictID"),
+            MemoryLayout.paddingLayout(4)); // trailing pad to the C struct's 8-byte alignment
+
+    // ZDICT_fastCover_params_t adds `unsigned f` after d and `unsigned accel`
+    // after splitPoint; the 4-byte gap before the 8-aligned double is explicit.
+    private static final MemoryLayout FASTCOVER_PARAMS = MemoryLayout.structLayout(
+            JAVA_INT.withName("k"),
+            JAVA_INT.withName("d"),
+            JAVA_INT.withName("f"),
+            JAVA_INT.withName("steps"),
+            JAVA_INT.withName("nbThreads"),
+            MemoryLayout.paddingLayout(4),
+            JAVA_DOUBLE.withName("splitPoint"),
+            JAVA_INT.withName("accel"),
+            JAVA_INT.withName("shrinkDict"),
+            JAVA_INT.withName("shrinkDictMaxRegression"),
+            JAVA_INT.withName("compressionLevel"),
+            JAVA_INT.withName("notificationLevel"),
+            JAVA_INT.withName("dictID"));
 
     private final byte[] bytes;
 
@@ -154,11 +190,10 @@ public final class ZstdDictionary {
                 offset += s.length;
             }
             // zeroed params (auto-tune k/d/steps); set single-threaded + target level.
-            // fastCover: nbThreads@16, compressionLevel@44, size 56.
-            // cover:     nbThreads@12, compressionLevel@32, size 48.
-            MemorySegment params = arena.allocate(fast ? 56 : 48);
-            params.set(JAVA_INT, fast ? 16 : 12, 1);
-            params.set(JAVA_INT, fast ? 44 : 32, compressionLevel);
+            MemoryLayout layout = fast ? FASTCOVER_PARAMS : COVER_PARAMS;
+            MemorySegment params = arena.allocate(layout);
+            params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement("nbThreads")), 1);
+            params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement("compressionLevel")), compressionLevel);
             MethodHandle handle = fast ? Bindings.ZDICT_OPTIMIZE_FASTCOVER : Bindings.ZDICT_OPTIMIZE_COVER;
             MemorySegment dictBuf = arena.allocate(maxDictBytes);
             long produced;

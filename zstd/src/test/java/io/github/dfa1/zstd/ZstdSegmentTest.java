@@ -11,6 +11,7 @@ import java.util.List;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ZstdSegmentTest {
 
@@ -94,6 +95,45 @@ class ZstdSegmentTest {
                 // Then the record is recovered
                 assertThat(bytesOf(out, written)).isEqualTo(record);
             }
+        }
+    }
+
+    @Nested
+    class HeapSegmentGuard {
+
+        @Test
+        void compressRejectsHeapSource() {
+            // Given a heap-backed segment (not off-heap) handed to the zero-copy API
+            MemorySegment heap = MemorySegment.ofArray(new byte[64]);
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                MemorySegment dst = arena.allocate(64);
+
+                // Then it fails fast with a clear message instead of a cryptic FFM error
+                assertThatThrownBy(() -> cctx.compress(dst, heap))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void decompressRejectsHeapDestination() {
+            MemorySegment heapDst = MemorySegment.ofArray(new byte[64]);
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                MemorySegment src = arena.allocate(64);
+
+                assertThatThrownBy(() -> dctx.decompress(heapDst, src))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void decompressedSizeRejectsHeapFrame() {
+            assertThatThrownBy(() -> Zstd.decompressedSize(MemorySegment.ofArray(new byte[8])))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("native");
         }
     }
 

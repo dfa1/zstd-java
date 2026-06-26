@@ -54,6 +54,7 @@
 		<maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
 		<maven-source-plugin.version>3.4.0</maven-source-plugin.version>
 		<maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+		<maven-release-plugin.version>3.3.1</maven-release-plugin.version>
 	</properties>
 
 	<dependencyManagement>
@@ -174,6 +175,17 @@
 							<version>13.6.0</version>
 						</dependency>
 					</dependencies>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-release-plugin</artifactId>
+					<version>${maven-release-plugin.version}</version>
+					<configuration>
+						<autoVersionSubmodules>true</autoVersionSubmodules>
+						<tagNameFormat>v@{project.version}</tagNameFormat>
+						<pushChanges>false</pushChanges>
+						<localCheckout>true</localCheckout>
+					</configuration>
 				</plugin>
 			</plugins>
 		</pluginManagement>

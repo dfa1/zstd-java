@@ -91,6 +91,7 @@ public final class Zstd {
     /// @return the decompressed length in bytes
     /// @throws ZstdException if the frame is invalid or does not store its size
     public static long decompressedSize(MemorySegment frame) {
+        requireNative(frame, "frame");
         long size;
         try {
             size = (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(frame, frame.byteSize());
@@ -273,6 +274,17 @@ public final class Zstd {
         } catch (Throwable t) {
             throw sneaky(t);
         }
+    }
+
+    /// Guards a zero-copy entry point: the segment handed to zstd must be backed
+    /// by native (off-heap) memory, since its address is dereferenced in C. Fails
+    /// fast with a clear message instead of the FFM linker's cryptic error.
+    static MemorySegment requireNative(MemorySegment seg, String name) {
+        if (!seg.isNative()) {
+            throw new IllegalArgumentException(
+                    name + " must be a native (off-heap) MemorySegment; got a heap segment");
+        }
+        return seg;
     }
 
     static MemorySegment copyIn(Arena arena, byte[] src) {

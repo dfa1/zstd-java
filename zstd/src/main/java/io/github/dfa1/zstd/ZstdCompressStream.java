@@ -86,6 +86,8 @@ public final class ZstdCompressStream extends NativeObject {
     /// @return how much was consumed and produced, and the remaining hint
     /// @throws ZstdException if compression fails
     public ZstdStreamResult compress(MemorySegment dst, MemorySegment src, ZstdEndDirective directive) {
+        Zstd.requireNative(dst, "dst");
+        Zstd.requireNative(src, "src");
         in.set(src, src.byteSize(), 0);
         out.set(dst, dst.byteSize(), 0);
         long remaining = Zstd.call(() -> (long) Bindings.COMPRESS_STREAM2.invokeExact(

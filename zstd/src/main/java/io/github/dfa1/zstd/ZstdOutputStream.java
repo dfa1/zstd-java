@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Objects;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
@@ -22,6 +23,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 ///     source.transferTo(zout);
 /// }
 /// }
+///
+/// Not thread-safe: confine an instance to a single thread.
 public final class ZstdOutputStream extends OutputStream {
 
     // ZSTD_cParameter / ZSTD_EndDirective values from zstd.h — see
@@ -92,7 +95,7 @@ public final class ZstdOutputStream extends OutputStream {
     /// @param level      the compression level
     /// @param dictionary the dictionary to compress against, or `null` for none
     public ZstdOutputStream(OutputStream out, int level, ZstdDictionary dictionary) {
-        this.out = out;
+        this.out = Objects.requireNonNull(out, "out");
         MemorySegment c = null;
         try {
             c = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();

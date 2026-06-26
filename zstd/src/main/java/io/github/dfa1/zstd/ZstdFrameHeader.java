@@ -22,14 +22,11 @@ public record ZstdFrameHeader(
         int dictId,
         boolean hasChecksum) {
 
-    /// Sentinel meaning the decompressed size is not recorded in the frame.
-    private static final long CONTENTSIZE_UNKNOWN = -1L;
-
     /// The decompressed size, if the frame records it.
     ///
     /// @return the content size, or empty if the frame does not store it
     public OptionalLong contentSize() {
-        return frameContentSize == CONTENTSIZE_UNKNOWN
+        return frameContentSize == Zstd.CONTENTSIZE_UNKNOWN
                 ? OptionalLong.empty()
                 : OptionalLong.of(frameContentSize);
     }

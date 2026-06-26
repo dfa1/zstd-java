@@ -2,6 +2,7 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Objects;
 
 /// A reusable decompression context.
 ///
@@ -52,6 +53,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param maxSize    upper bound on the decompressed length
     /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize) {
+        Objects.requireNonNull(compressed, "compressed");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
@@ -72,6 +74,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict       the dictionary the frame was compressed against
     /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize, ZstdDictionary dict) {
+        Objects.requireNonNull(compressed, "compressed");
+        Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
             byte[] d = dict.raw();
@@ -90,6 +94,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict       the pre-digested decompression dictionary
     /// @return the original bytes
     public byte[] decompress(byte[] compressed, int maxSize, ZstdDecompressDict dict) {
+        Objects.requireNonNull(compressed, "compressed");
+        Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = Zstd.copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));

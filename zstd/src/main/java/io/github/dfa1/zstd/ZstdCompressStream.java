@@ -26,6 +26,8 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 ///     } while (!r.isComplete());
 /// }
 /// }
+///
+/// Not thread-safe: confine an instance to a single thread.
 public final class ZstdCompressStream extends NativeObject {
 
     private final Arena arena = Arena.ofConfined();

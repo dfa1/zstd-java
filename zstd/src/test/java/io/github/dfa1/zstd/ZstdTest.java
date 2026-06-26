@@ -125,6 +125,21 @@ class ZstdTest {
             // Then it fails
             assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
+
+        @Test
+        void rejectsNullInputWithANamedMessage() {
+            // When null is passed where bytes are required
+            ThrowingCallable compressNull = () -> Zstd.compress(null);
+            ThrowingCallable decompressNull = () -> Zstd.decompress(null);
+
+            // Then it fails fast with a NullPointerException naming the parameter
+            assertThatThrownBy(compressNull)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("src");
+            assertThatThrownBy(decompressNull)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("compressed");
+        }
     }
 
     @Nested

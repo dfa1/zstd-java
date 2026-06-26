@@ -3,6 +3,7 @@ package io.github.dfa1.zstd;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
@@ -19,9 +20,9 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 public final class Zstd {
 
     /// Sentinel returned by zstd when a frame carries no decompressed-size header.
-    private static final long CONTENTSIZE_UNKNOWN = -1L;
+    static final long CONTENTSIZE_UNKNOWN = -1L;
     /// Sentinel returned by zstd when the input is not a valid zstd frame.
-    private static final long CONTENTSIZE_ERROR = -2L;
+    static final long CONTENTSIZE_ERROR = -2L;
 
     /// Compresses `src` at the library default level.
     ///
@@ -38,6 +39,7 @@ public final class Zstd {
     ///              higher is smaller but slower
     /// @return a self-describing zstd frame
     public static byte[] compress(byte[] src, int level) {
+        Objects.requireNonNull(src, "src");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, src);
             long bound = compressBound(src.length);
@@ -56,6 +58,7 @@ public final class Zstd {
     /// @throws ZstdException if the frame is invalid or its content size is not stored;
     ///                       use {@link #decompress(byte[], int)} for the latter
     public static byte[] decompress(byte[] compressed) {
+        Objects.requireNonNull(compressed, "compressed");
         long size = frameContentSize(compressed);
         if (size == CONTENTSIZE_UNKNOWN) {
             throw new ZstdException("decompressed size not stored in frame; call decompress(src, maxSize)");
@@ -74,6 +77,7 @@ public final class Zstd {
     /// @return the original bytes (length ≤ `maxSize`)
     /// @throws ZstdException if the frame is invalid or larger than `maxSize`
     public static byte[] decompress(byte[] compressed, int maxSize) {
+        Objects.requireNonNull(compressed, "compressed");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));

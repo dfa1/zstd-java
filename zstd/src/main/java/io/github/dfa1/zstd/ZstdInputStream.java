@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Objects;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
@@ -22,6 +23,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 ///     zin.transferTo(sink);
 /// }
 /// }
+///
+/// Not thread-safe: confine an instance to a single thread.
 public final class ZstdInputStream extends InputStream {
 
     private final InputStream in;
@@ -55,7 +58,7 @@ public final class ZstdInputStream extends InputStream {
     /// @param in         the stream to read the compressed frame from
     /// @param dictionary the dictionary the frame was compressed against, or `null` for none
     public ZstdInputStream(InputStream in, ZstdDictionary dictionary) {
-        this.in = in;
+        this.in = Objects.requireNonNull(in, "in");
         MemorySegment d = null;
         try {
             d = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();

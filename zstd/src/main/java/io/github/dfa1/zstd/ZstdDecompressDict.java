@@ -2,6 +2,7 @@ package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Objects;
 
 /// A dictionary digested once for decompression.
 ///
@@ -9,6 +10,8 @@ import java.lang.foreign.MemorySegment;
 /// {@link ZstdDecompressCtx#decompress(byte[], int, ZstdDecompressDict)} call
 /// skips that cost. The raw {@link ZstdDictionary} bytes are copied into native
 /// memory, so the source may be discarded afterwards.
+///
+/// Immutable once built and safe to share across threads (the digested dictionary is read-only).
 public final class ZstdDecompressDict extends NativeObject {
 
     /// Digests `dict` for decompression.
@@ -31,6 +34,7 @@ public final class ZstdDecompressDict extends NativeObject {
     }
 
     private static MemorySegment create(ZstdDictionary dict) {
+        Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);

@@ -22,7 +22,7 @@ documentation, each serving a different need:
 
 | | Purpose | Start here |
 |---|---|---|
-| **[Tutorial](#tutorial-getting-started)** | Learning by doing | [Getting started](#tutorial-getting-started) |
+| **[Tutorial](docs/tutorial.md)** | Learning by doing | [Getting started](docs/tutorial.md) |
 | **[How-to guides](#how-to-guides)** | Solving a specific task | [Hot paths](#compress-on-a-hot-path), [Dictionaries](#compress-many-small-payloads-with-a-dictionary), [Zero-copy](#avoid-heap-copies-with-memorysegment), [Self-built lib](#run-against-a-self-built-libzstd) |
 | **[Reference](#reference)** | Looking up facts | [Platforms](#supported-platforms), [API surface](#api-surface), [Symbol coverage](docs/supported.md), [Build](#build-from-source) |
 | **[Explanation](#explanation)** | Understanding the why | [Why FFM + Zig](#why-ffm-and-zig), [When zero-copy pays](docs/zero-copy.md), [Benchmarks](docs/benchmarks.md) |
@@ -31,40 +31,8 @@ documentation, each serving a different need:
 
 ## Tutorial: Getting started
 
-This walks you from a clean checkout to your first compress/decompress round-trip.
-
-**1. Clone with the zstd submodule and build.** You need JDK 25+, Maven, and
-[Zig](https://ziglang.org/) on `PATH` (Zig is the C compiler for the native lib).
-
-```bash
-git clone --recurse-submodules https://github.com/dfa1/zstd-java.git
-cd zstd-java
-mvn install
-```
-
-The build invokes `scripts/build-zstd.sh`, compiling `libzstd` from the vendored
-source — no autotools or CMake needed.
-
-**2. Write your first round-trip.**
-
-```java
-import io.github.dfa1.zstd.Zstd;
-
-byte[] original = "hello world".getBytes();
-byte[] packed   = Zstd.compress(original);
-byte[] restored = Zstd.decompress(packed);   // size read from the frame header
-
-assert java.util.Arrays.equals(original, restored);
-```
-
-**3. Run it with native access enabled.** The FFM API requires an explicit flag:
-
-```bash
-java --enable-native-access=ALL-UNNAMED Demo.java
-```
-
-That's the whole loop. From here, pick a [how-to guide](#how-to-guides) for your
-actual task, or browse the [reference](#reference).
+New here? **[docs/tutorial.md](docs/tutorial.md)** takes you from a clean checkout
+to your first compress/decompress round-trip, step by step.
 
 ## How-to guides
 

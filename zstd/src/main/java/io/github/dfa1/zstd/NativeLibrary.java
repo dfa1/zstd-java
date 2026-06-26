@@ -7,9 +7,12 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermissions;
 
 /// Infrastructure — loads the bundled `libzstd` shared library and binds
 /// native symbols to {@link MethodHandle}s via the Foreign Function & Memory API.
@@ -45,9 +48,10 @@ final class NativeLibrary {
                 throw new UnsatisfiedLinkError("No bundled zstd library found for platform " + classifier);
             }
             // Extract into a private, owner-only temp directory rather than a file
-            // loose in the shared temp root: createTempDirectory is 0700 on POSIX, so
-            // no other local user can swap the library between extraction and dlopen.
-            Path dir = Files.createTempDirectory("zstd-");
+            // loose in the shared temp root, so no other local user can swap the
+            // library between extraction and dlopen. The owner-only (0700) mode is
+            // set atomically at creation via a POSIX permission attribute.
+            Path dir = Files.createTempDirectory("zstd-", ownerOnlyAttributes());
             Path lib = dir.resolve("libzstd." + ext);
             Files.copy(in, lib, StandardCopyOption.REPLACE_EXISTING);
             lib.toFile().deleteOnExit();
@@ -56,6 +60,18 @@ final class NativeLibrary {
         } catch (IOException e) {
             throw new UnsatisfiedLinkError("Failed to extract bundled zstd: " + e.getMessage());
         }
+    }
+
+    /// Owner-only (`rwx------`) directory permissions as a creation attribute on
+    /// POSIX file systems; an empty array elsewhere (a Windows temp directory is
+    /// already per-user, and the POSIX attribute is unsupported there).
+    private static FileAttribute<?>[] ownerOnlyAttributes() {
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            return new FileAttribute<?>[] {
+                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))
+            };
+        }
+        return new FileAttribute<?>[0];
     }
 
     private static String libExtension(String classifier) {

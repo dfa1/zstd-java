@@ -29,6 +29,15 @@ The docs follow the [Diátaxis](https://diataxis.fr) framework:
 | **[Reference](docs/reference.md)** | Looking up facts | Platforms, API surface, symbol coverage, build |
 | **[Explanation](docs/explanation.md)** | Understanding the why | Why FFM + Zig, when zero-copy pays, benchmarks |
 
+## Install
+
+The `zstd` jar is pure Java and ships no `libzstd` — you always pair it with a
+native artifact. Two ways:
+
+**1. Everything, any platform** — one dependency on `zstd-platform`, an empty jar
+that transitively pulls the bindings plus all six natives (~3.8 MB). Zero choices;
+the build runs on any OS/arch.
+
 ```xml
 <dependency>
   <groupId>io.github.dfa1.zstd</groupId>
@@ -37,10 +46,40 @@ The docs follow the [Diátaxis](https://diataxis.fr) framework:
 </dependency>
 ```
 
-`zstd-platform` bundles the bindings plus every platform's native library. For a
-single-platform, leaner setup (one native), see the [tutorial](docs/tutorial.md).
-Requires JDK 25+ and `--enable-native-access=ALL-UNNAMED` at runtime. Building
-from source is for contributors — see the [reference](docs/reference.md).
+**2. Leaner, one platform** — import `zstd-bom` to pin versions, then take `zstd`
+plus only the `zstd-native-<classifier>` you target.
+
+```xml
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.github.dfa1.zstd</groupId>
+      <artifactId>zstd-bom</artifactId>
+      <version>0.2</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+
+<dependencies>
+  <dependency>
+    <groupId>io.github.dfa1.zstd</groupId>
+    <artifactId>zstd</artifactId>
+  </dependency>
+  <dependency>
+    <groupId>io.github.dfa1.zstd</groupId>
+    <artifactId>zstd-native-osx-aarch64</artifactId>
+    <scope>runtime</scope>
+  </dependency>
+</dependencies>
+```
+
+Classifiers: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
+`windows-x86_64`, `windows-aarch64`. Gradle and more detail in the
+[tutorial](docs/tutorial.md). Requires JDK 25+ and
+`--enable-native-access=ALL-UNNAMED` at runtime. Building from source is for
+contributors — see the [reference](docs/reference.md).
 
 ## License
 

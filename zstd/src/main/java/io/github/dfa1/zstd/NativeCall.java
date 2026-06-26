@@ -59,12 +59,11 @@ final class NativeCall {
     /// Guards a zero-copy entry point: the segment handed to zstd must be backed
     /// by native (off-heap) memory, since its address is dereferenced in C. Fails
     /// fast with a clear message instead of the FFM linker's cryptic error.
-    static MemorySegment requireNative(MemorySegment seg, String name) {
+    static void requireNative(MemorySegment seg, String name) {
         if (!seg.isNative()) {
             throw new IllegalArgumentException(
                     name + " must be a native (off-heap) MemorySegment; got a heap segment");
         }
-        return seg;
     }
 
     /// Rethrows any `Throwable` as if unchecked, laundering the checked

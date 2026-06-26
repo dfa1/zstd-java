@@ -6,3 +6,4 @@ native/*/src/main/resources/native/
 *.o
 .idea/
 *.iml
+dependency-reduced-pom.xml

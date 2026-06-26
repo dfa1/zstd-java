@@ -158,8 +158,11 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_getDictID_fromDDict", FunctionDescriptor.of(JAVA_INT, ADDRESS));
 
     // ZSTD_bounds { size_t error; int lowerBound; int upperBound; } — returned by value
-    private static final MemoryLayout BOUNDS_LAYOUT =
-            MemoryLayout.structLayout(JAVA_LONG, JAVA_INT, JAVA_INT);
+    static final MemoryLayout BOUNDS_LAYOUT =
+            MemoryLayout.structLayout(
+                    JAVA_LONG.withName("error"),
+                    JAVA_INT.withName("lowerBound"),
+                    JAVA_INT.withName("upperBound"));
     // ZSTD_bounds ZSTD_cParam_getBounds(ZSTD_cParameter) / ZSTD_dParam_getBounds(ZSTD_dParameter)
     static final MethodHandle CPARAM_GET_BOUNDS =
             NativeLibrary.lookup("ZSTD_cParam_getBounds", FunctionDescriptor.of(BOUNDS_LAYOUT, JAVA_INT));

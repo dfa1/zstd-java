@@ -1,64 +1,24 @@
 # Changelog
 
-All notable changes to this project are documented here. Format loosely follows
-[Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
-git tags, which trigger publication to Maven Central.
+Notable changes, one line each — follow the link to the commit for detail.
+Versions are `v*` git tags, which trigger publication to Maven Central.
 
 ## [0.3]
 
-### Changed
-- `zstd-platform` is now an ordinary (empty) jar instead of a `pom` aggregator:
-  depend on it like any other artifact — drop the `<type>pom</type>` you needed
-  before. It still transitively pulls the bindings plus all six native libraries.
-
-### Security
-- Native loading is bundled-only. Removed the `-Dzstd.lib.path` override —
-  loading a caller-supplied native library is arbitrary native code execution in
-  the JVM, so the loader now trusts only the artifact bundled on the classpath.
-  The bundled library is extracted into a private, owner-only temp directory
-  (closing a swap/symlink window in the shared temp root). To run a self-built
-  `libzstd`, rebuild it into the native resource jar (see `docs/how-to.md`).
-
-### Fixed
-- `ZstdSkippableContent` now compares by content: `equals` / `hashCode` /
-  `toString` consider the payload bytes instead of array identity.
+- [`zstd-platform` is now an empty convenience jar (not a `pom`)][9]
+- [Bundled-only native loader; fix Sonar vulnerability + bug][8]
+- [`ByteBuffer` interop + pledged-size zero-copy decode][6]
 
 ## [0.2]
 
-### Added
-- `zstd-platform` aggregator artifact: one dependency pulls the bindings plus
-  every platform's native library, so a build runs on any OS/arch without
-  choosing a classifier.
-- `MemorySegment` constructors on `ZstdCompressDict` / `ZstdDecompressDict` to
-  digest a dictionary straight from off-heap memory (e.g. an mmap slice) with no
-  heap `byte[]` copy.
+- [`zstd-platform` aggregator; off-heap `MemorySegment` dictionary constructors][v0.2]
 
 ## [0.1]
 
-First release. Java 25 Foreign Function & Memory (FFM) bindings for
-[Zstandard](https://github.com/facebook/zstd) 1.5.7, built hermetically from
-vendored source with `zig cc` (no JNI, no prebuilt binaries). 68 of the public
-zstd symbols are bound; see `docs/supported.md`.
+- [First release: JDK 25 FFM bindings for Zstandard 1.5.7, built with `zig cc`][v0.1]
 
-### Added
-- One-shot compression/decompression over `byte[]` and zero-copy `MemorySegment`
-  (`Zstd`, `ZstdCompressCtx`, `ZstdDecompressCtx`).
-- Dictionaries: training (`ZDICT_trainFromBuffer`, COVER / fast-COVER optimisers,
-  `finalizeDictionary`), digested `ZstdCompressDict` / `ZstdDecompressDict`,
-  dictionary ids and header size.
-- Streaming: `ZstdOutputStream` / `ZstdInputStream` (java.io) and a zero-copy
-  `MemorySegment` driver (`ZstdCompressStream` / `ZstdDecompressStream`), with
-  dictionaries, `pledgedSrcSize`, and live `progress()`.
-- All advanced parameters (`ZstdCompressParameter` / `ZstdDecompressParameter`)
-  with bounds queries; checksum, long-distance matching, window log, etc.
-- Frame inspection (`ZstdFrame`): header, content/compressed size, dictionary id,
-  skippable frames.
-- Typed errors (`ZstdException.code()` / `ZstdErrorCode`) and memory accounting
-  (`sizeOf()`, `Zstd.estimate*Size`).
-- Native artifacts for macOS, Linux and Windows on x86_64 and aarch64,
-  cross-compiled from a single host with `zig cc`.
-- Format-compatibility tests against the reference zstd-jni binding.
-
-[0.3]: https://github.com/dfa1/zstd-java/releases/tag/v0.3
-[0.2]: https://github.com/dfa1/zstd-java/releases/tag/v0.2
-[0.1]: https://github.com/dfa1/zstd-java/releases/tag/v0.1
+[9]: https://github.com/dfa1/zstd-java/commit/ba5593a
+[8]: https://github.com/dfa1/zstd-java/commit/8d0ea6a
+[6]: https://github.com/dfa1/zstd-java/commit/8bfe272
+[v0.2]: https://github.com/dfa1/zstd-java/releases/tag/v0.2
+[v0.1]: https://github.com/dfa1/zstd-java/releases/tag/v0.1

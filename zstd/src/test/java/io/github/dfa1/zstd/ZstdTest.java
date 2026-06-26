@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -106,8 +107,11 @@ class ZstdTest {
             // Given bytes that are not a zstd frame
             byte[] garbage = "not a zstd frame".getBytes(StandardCharsets.UTF_8);
 
-            // When decompressing / Then it fails
-            assertThatThrownBy(() -> Zstd.decompress(garbage)).isInstanceOf(ZstdException.class);
+            // When decompressing
+            ThrowingCallable result = () -> Zstd.decompress(garbage);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
 
         @Test
@@ -115,8 +119,11 @@ class ZstdTest {
             // Given a frame whose content exceeds the caller's maxSize
             byte[] frame = Zstd.compress("0123456789".getBytes(StandardCharsets.UTF_8));
 
-            // When decompressing into too small a buffer / Then it fails
-            assertThatThrownBy(() -> Zstd.decompress(frame, 1)).isInstanceOf(ZstdException.class);
+            // When decompressing into too small a buffer
+            ThrowingCallable result = () -> Zstd.decompress(frame, 1);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
     }
 

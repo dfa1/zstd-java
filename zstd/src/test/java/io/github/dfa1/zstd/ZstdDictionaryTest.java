@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -128,9 +129,11 @@ class ZstdDictionaryTest {
 
         @Test
         void failsWithoutSamples() {
-            // When training on no samples / Then it fails
-            assertThatThrownBy(() -> ZstdDictionary.train(List.of(), 4096))
-                    .isInstanceOf(ZstdException.class);
+            // When training on no samples
+            ThrowingCallable result = () -> ZstdDictionary.train(List.of(), 4096);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
     }
 

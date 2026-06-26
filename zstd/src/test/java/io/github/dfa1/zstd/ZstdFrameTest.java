@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -57,8 +58,14 @@ class ZstdFrameTest {
 
         @Test
         void rejectsGarbage() {
-            assertThatThrownBy(() -> ZstdFrame.compressedSize("xxxx".getBytes(StandardCharsets.UTF_8)))
-                    .isInstanceOf(ZstdException.class);
+            // Given bytes that are not a zstd frame
+            byte[] garbage = "xxxx".getBytes(StandardCharsets.UTF_8);
+
+            // When asking for the first frame's compressed size
+            ThrowingCallable result = () -> ZstdFrame.compressedSize(garbage);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
     }
 
@@ -73,8 +80,14 @@ class ZstdFrameTest {
 
         @Test
         void rejectsGarbage() {
-            assertThatThrownBy(() -> ZstdFrame.decompressedBound("xx".getBytes(StandardCharsets.UTF_8)))
-                    .isInstanceOf(ZstdException.class);
+            // Given bytes that are not valid zstd data
+            byte[] garbage = "xx".getBytes(StandardCharsets.UTF_8);
+
+            // When asking for the decompressed bound
+            ThrowingCallable result = () -> ZstdFrame.decompressedBound(garbage);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
     }
 

@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -161,10 +162,12 @@ class ZstdStreamTest {
             byte[] frame = streamCompress(original, 6);
             byte[] cut = java.util.Arrays.copyOf(frame, frame.length - bytesDropped);
 
-            // When the streaming decompressor drains it
-            // Then it reports the truncation instead of returning a clean EOF
-            try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(cut))) {
-                assertThatThrownBy(zin::readAllBytes)
+            try (ZstdInputStream sut = new ZstdInputStream(new ByteArrayInputStream(cut))) {
+                // When the streaming decompressor drains it
+                ThrowingCallable result = sut::readAllBytes;
+
+                // Then it reports the truncation instead of returning a clean EOF
+                assertThatThrownBy(result)
                         .isInstanceOf(ZstdException.class)
                         .hasMessageContaining("truncated");
             }

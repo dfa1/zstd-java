@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,9 +44,11 @@ class ZstdParameterTest {
             }
             frame[frame.length / 2] ^= 0x01;
 
-            // When decompressed / Then the integrity check fails
-            assertThatThrownBy(() -> Zstd.decompress(frame, PAYLOAD.length))
-                    .isInstanceOf(ZstdException.class);
+            // When decompressed
+            ThrowingCallable result = () -> Zstd.decompress(frame, PAYLOAD.length);
+
+            // Then the integrity check fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
     }
 
@@ -129,9 +132,13 @@ class ZstdParameterTest {
 
         @Test
         void rejectsOutOfRangeValue() {
-            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
-                assertThatThrownBy(() -> ctx.parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, 99))
-                        .isInstanceOf(ZstdException.class);
+            // Given a decompression context
+            try (ZstdDecompressCtx sut = new ZstdDecompressCtx()) {
+                // When setting an absurd window-log-max
+                ThrowingCallable result = () -> sut.parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, 99);
+
+                // Then it is rejected natively
+                assertThatThrownBy(result).isInstanceOf(ZstdException.class);
             }
         }
     }
@@ -156,11 +163,13 @@ class ZstdParameterTest {
 
         @Test
         void rejectsOutOfRangeValue() {
-            // Given an absurd window log
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                // When set / Then it is rejected natively
-                assertThatThrownBy(() -> ctx.parameter(ZstdCompressParameter.WINDOW_LOG, 99))
-                        .isInstanceOf(ZstdException.class);
+            // Given a compression context
+            try (ZstdCompressCtx sut = new ZstdCompressCtx()) {
+                // When setting an absurd window log
+                ThrowingCallable result = () -> sut.parameter(ZstdCompressParameter.WINDOW_LOG, 99);
+
+                // Then it is rejected natively
+                assertThatThrownBy(result).isInstanceOf(ZstdException.class);
             }
         }
     }

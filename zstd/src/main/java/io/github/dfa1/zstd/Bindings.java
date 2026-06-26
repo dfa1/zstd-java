@@ -111,10 +111,6 @@ final class Bindings {
     // size_t ZSTD_freeCCtx(ZSTD_CCtx*)
     static final MethodHandle FREE_CCTX =
             NativeLibrary.lookup("ZSTD_freeCCtx", FunctionDescriptor.of(JAVA_LONG, ADDRESS));
-    // size_t ZSTD_compressCCtx(ZSTD_CCtx*, void* dst, size_t dstCap, const void* src, size_t srcSize, int level)
-    static final MethodHandle COMPRESS_CCTX =
-            NativeLibrary.lookup("ZSTD_compressCCtx",
-                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT));
 
     // ZSTD_DCtx* ZSTD_createDCtx(void)
     static final MethodHandle CREATE_DCTX =

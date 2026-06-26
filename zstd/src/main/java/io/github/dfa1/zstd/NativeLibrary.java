@@ -95,7 +95,16 @@ final class NativeLibrary {
         } else {
             osName = "linux";
         }
-        String archName = (arch.equals("aarch64") || arch.equals("arm64")) ? "aarch64" : "x86_64";
+        String archName;
+        if (arch.equals("aarch64") || arch.equals("arm64")) {
+            archName = "aarch64";
+        } else if (arch.equals("x86_64") || arch.equals("amd64")) {
+            archName = "x86_64";
+        } else {
+            throw new UnsatisfiedLinkError(
+                    "Unsupported CPU architecture '" + arch + "'; zstd-java ships native libraries "
+                            + "only for x86_64 and aarch64");
+        }
         return osName + "-" + archName;
     }
 

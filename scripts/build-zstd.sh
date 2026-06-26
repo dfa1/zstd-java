@@ -75,8 +75,14 @@ trap 'rm -rf "$WORK"' EXIT
 # symbol into the PE export table (the classic, reliable MinGW DLL path).
 VIS_FLAG="-fvisibility=hidden"
 LINK_EXTRA=""
+# Strip the symbol/debug tables at link time. An unstripped ELF .so carries full
+# debug_info and is ~6x larger than needed (4.0M -> ~250K); -s drops it. PE/COFF
+# keeps its exports in the export table (separate from the symbol table), but
+# lld still emits a multi-megabyte .pdb and an import .lib next to the .dll —
+# those are deleted after the link below rather than suppressed via strip.
+STRIP_FLAG="-s"
 case "$CLASSIFIER" in
-    windows-*) VIS_FLAG=""; LINK_EXTRA="-Wl,--export-all-symbols" ;;
+    windows-*) VIS_FLAG=""; LINK_EXTRA="-Wl,--export-all-symbols"; STRIP_FLAG="" ;;
 esac
 CFLAGS="-O3 -DNDEBUG -DZSTD_DISABLE_ASM=1 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
         -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
@@ -95,6 +101,11 @@ wait
 SONAME_FLAG=""
 [ "$LIB_NAME" = "libzstd.so" ] && SONAME_FLAG="-Wl,-soname,libzstd.so.1"
 
-zig cc -target "$ZIG_TARGET" -shared $SONAME_FLAG $LINK_EXTRA -o "$DEST_DIR/$LIB_NAME" "$WORK"/*.o
+zig cc -target "$ZIG_TARGET" -shared $STRIP_FLAG $SONAME_FLAG $LINK_EXTRA -o "$DEST_DIR/$LIB_NAME" "$WORK"/*.o
+
+# lld emits a .pdb (debug database, multiple MB) and a .lib (import library) next
+# to a Windows .dll; neither is needed at runtime and both would be bundled into
+# the native JAR. Keep only the shared library itself in the resources directory.
+find "$DEST_DIR" -type f ! -name "$LIB_NAME" -delete
 
 echo "[build-zstd] Installed: $DEST_DIR/$LIB_NAME"

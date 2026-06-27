@@ -9,12 +9,12 @@ import java.util.Objects;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 /// A streaming zstd compressor that writes a single zstd frame to an underlying
-/// {@link OutputStream}.
+/// [OutputStream].
 ///
 /// Memory use is bounded and independent of the total payload size, so this is
 /// the way to compress data that does not fit in memory or arrives incrementally
 /// (files, sockets, serialization). For a whole in-memory payload of known size,
-/// {@link Zstd#compress(byte[])} or {@link ZstdCompressCtx} is simpler.
+/// [Zstd#compress(byte[])] or [ZstdCompressCtx] is simpler.
 ///
 /// Closing finishes the frame and closes the underlying stream.
 ///

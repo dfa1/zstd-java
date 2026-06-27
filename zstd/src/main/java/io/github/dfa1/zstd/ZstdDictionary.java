@@ -18,11 +18,11 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// similar payloads (log lines, JSON records, protobufs) dramatically smaller
 /// than compressing each one independently.
 ///
-/// Obtain one by {@linkplain #train(List, int) training} on representative
-/// samples, or wrap dictionary bytes you already have with {@link #of(byte[])}.
-/// Pass it to {@link ZstdCompressCtx} / {@link ZstdDecompressCtx} to compress and
+/// Obtain one by [training][#train(List, int)] on representative
+/// samples, or wrap dictionary bytes you already have with [#of(byte[])].
+/// Pass it to [ZstdCompressCtx] / [ZstdDecompressCtx] to compress and
 /// decompress against it. For a hot path, digest it once into a
-/// {@link ZstdCompressDict} / {@link ZstdDecompressDict}.
+/// [ZstdCompressDict] / [ZstdDecompressDict].
 ///
 /// {@snippet :
 /// ZstdDictionary dict = ZstdDictionary.train(sampleRecords, 64 * 1024);
@@ -112,8 +112,8 @@ public final class ZstdDictionary {
     }
 
     /// Trains a dictionary with the COVER algorithm, auto-tuning its parameters
-    /// for the best dictionary it can find. Higher quality than {@link #train},
-    /// but slower; for a faster near-equal result use {@link #trainFastCover}.
+    /// for the best dictionary it can find. Higher quality than [#train],
+    /// but slower; for a faster near-equal result use [#trainFastCover].
     ///
     /// @param samples      representative payloads to learn from
     /// @param maxDictBytes upper bound on the produced dictionary size
@@ -136,7 +136,7 @@ public final class ZstdDictionary {
 
     /// Trains a dictionary with the fast COVER algorithm, auto-tuning its
     /// parameters. The recommended optimiser: nearly the quality of
-    /// {@link #trainCover} at a fraction of the time.
+    /// [#trainCover] at a fraction of the time.
     ///
     /// @param samples      representative payloads to learn from
     /// @param maxDictBytes upper bound on the produced dictionary size

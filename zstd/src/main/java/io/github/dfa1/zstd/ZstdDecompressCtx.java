@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /// A reusable decompression context.
 ///
-/// Reusing one context across many {@link #decompress} calls amortises native
+/// Reusing one context across many [#decompress] calls amortises native
 /// state allocation. Not thread-safe: confine an instance to one thread or pool it.
 public final class ZstdDecompressCtx extends NativeObject {
 
@@ -175,8 +175,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// Decompresses a frame that was compressed against `dict`.
     ///
     /// The dictionary is re-digested on every call; for repeated use digest it
-    /// once into a {@link ZstdDecompressDict} and use
-    /// {@link #decompress(byte[], int, ZstdDecompressDict)}.
+    /// once into a [ZstdDecompressDict] and use
+    /// [#decompress(byte[], int, ZstdDecompressDict)].
     ///
     /// @param compressed a complete zstd frame
     /// @param maxSize    upper bound on the decompressed length
@@ -216,14 +216,14 @@ public final class ZstdDecompressCtx extends NativeObject {
     }
 
     /// Zero-copy decompression: reads the frame from `src` and writes the
-    /// result straight into `dst`, both native {@link MemorySegment}s the
+    /// result straight into `dst`, both native [MemorySegment]s the
     /// caller owns. No heap `byte[]` bounce — the segment addresses go
     /// directly to zstd. This is the fast path when input is an mmap slice and
     /// output is an arena buffer that becomes the materialized array as-is;
     /// see `docs/zero-copy.md`.
     ///
     /// Size `dst` to the decompressed length (read it from the frame with
-    /// {@link Zstd#decompress(byte[])}'s header logic, or known out-of-band).
+    /// [Zstd#decompress(byte[])]'s header logic, or known out-of-band).
     ///
     /// @param dst the native destination buffer to write the result into
     /// @param src the native source frame to decompress
@@ -256,7 +256,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// segment is owned by `arena` and ready to use as a backing buffer.
     ///
     /// Requires the frame to store its decompressed size (frames produced by this
-    /// library do); for size-less frames use {@link #decompress(MemorySegment, MemorySegment)}
+    /// library do); for size-less frames use [#decompress(MemorySegment, MemorySegment)]
     /// with a destination you size yourself.
     ///
     /// @param arena the arena to allocate the output segment in

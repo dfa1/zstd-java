@@ -7,9 +7,9 @@ import java.util.Objects;
 /// A dictionary digested once for compression at a fixed level.
 ///
 /// Building a `ZstdCompressDict` pre-processes the dictionary so that each
-/// {@link ZstdCompressCtx#compress(byte[], ZstdCompressDict)} call skips that
+/// [ZstdCompressCtx#compress(byte[], ZstdCompressDict)] call skips that
 /// cost — the right choice when compressing many payloads against the same
-/// dictionary. The raw {@link ZstdDictionary} bytes are copied into native
+/// dictionary. The raw [ZstdDictionary] bytes are copied into native
 /// memory, so the source may be discarded afterwards.
 ///
 /// Immutable once built and safe to share across threads (the digested dictionary is read-only).

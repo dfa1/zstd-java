@@ -9,7 +9,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// Inspection of zstd frames without decompressing them — useful for parsing a
 /// stream of concatenated frames, sizing buffers, or routing by dictionary id.
 ///
-/// Each method has a `byte[]` form and a zero-copy {@link MemorySegment} form for
+/// Each method has a `byte[]` form and a zero-copy [MemorySegment] form for
 /// data already off-heap (e.g. an mmap slice); see `docs/zero-copy.md`.
 public final class ZstdFrame {
 

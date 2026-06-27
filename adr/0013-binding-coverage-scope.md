@@ -1,4 +1,4 @@
-# ADR 0013: Binding coverage scope — exclude legacy/deprecated
+# ADR 0013: Binding coverage scope — exclude legacy/deprecated/experimental
 
 - **Status:** Accepted
 - **Date:** 2026-06-27
@@ -17,6 +17,16 @@ context-parameter API, streaming, dictionaries (raw, digested, and ZDICT
 training), and frame/skippable-frame introspection. **Exclude** deprecated
 functions and the `legacy/` and `deprecated/` source trees (the native build
 compiles only `common`, `compress`, `decompress`, `dictBuilder`).
+
+Also **exclude the experimental tier** — symbols declared `ZSTDLIB_STATIC_API`.
+These are exported by the build (the macro resolves to `visibility("default")`,
+so the FFM layer could bind them by name), but they carry no API-stability
+guarantee and may change or be removed between zstd releases. Notably this
+covers the `ZSTD_CCtx_params` bundle (`ZSTD_createCCtxParams`,
+`ZSTD_CCtxParams_setParameter`, `ZSTD_CCtx_setParametersUsingCCtxParams`, …):
+it only saves a few `setParameter` calls at context init — never on a hot path —
+so the experimental-API risk is not worth the marginal value. The stable,
+already-bound per-context `ZSTD_CCtx_setParameter` path covers the same need.
 
 The full coverage map — every public symbol, what is bound, and what is
 intentionally omitted — is maintained in `docs/supported.md`.
@@ -46,5 +56,6 @@ intentionally omitted — is maintained in `docs/supported.md`.
 
 ## References
 
-- [docs/supported.md](../docs/supported.md), [Bindings.java]
+- [docs/supported.md](../docs/supported.md),
+  [Bindings.java](../zstd/src/main/java/io/github/dfa1/zstd/Bindings.java)
 - [scripts/build-zstd.sh](../scripts/build-zstd.sh)

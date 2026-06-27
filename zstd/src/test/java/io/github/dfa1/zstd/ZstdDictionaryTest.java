@@ -482,6 +482,38 @@ class ZstdDictionaryTest {
             assertThat(cleared).isEqualTo(noDict);
         }
 
+        @Test
+        void loadAndRefReturnTheSameCompressContext() {
+            // Given a compress context and dictionaries to load and reference
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdCompressDict cdict = new ZstdCompressDict(sut, 19)) {
+
+                // Then every sticky-dictionary call returns the same context, for chaining
+                assertThat(cctx.loadDictionary(sut)).isSameAs(cctx);
+                assertThat(cctx.loadDictionary(nativeDict(arena, sut.toByteArray()))).isSameAs(cctx);
+                assertThat(cctx.loadDictionary((ZstdDictionary) null)).isSameAs(cctx);
+                assertThat(cctx.refDictionary(cdict)).isSameAs(cctx);
+                assertThat(cctx.refDictionary(null)).isSameAs(cctx);
+            }
+        }
+
+        @Test
+        void loadAndRefReturnTheSameDecompressContext() {
+            // Given a decompress context and dictionaries to load and reference
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx();
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
+
+                // Then every sticky-dictionary call returns the same context, for chaining
+                assertThat(dctx.loadDictionary(sut)).isSameAs(dctx);
+                assertThat(dctx.loadDictionary(nativeDict(arena, sut.toByteArray()))).isSameAs(dctx);
+                assertThat(dctx.loadDictionary((ZstdDictionary) null)).isSameAs(dctx);
+                assertThat(dctx.refDictionary(ddict)).isSameAs(dctx);
+                assertThat(dctx.refDictionary(null)).isSameAs(dctx);
+            }
+        }
+
         private MemorySegment nativeDict(Arena arena, byte[] raw) {
             MemorySegment seg = arena.allocate(raw.length);
             MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);

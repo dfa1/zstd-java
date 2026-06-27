@@ -139,6 +139,122 @@ class ZstdSegmentTest {
         }
 
         @Test
+        void compressRejectsHeapDestination() {
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx sut = new ZstdCompressCtx()) {
+                // Given a heap-backed destination segment handed to the zero-copy API
+                MemorySegment heapDst = MemorySegment.ofArray(new byte[64]);
+                MemorySegment src = arena.allocate(64);
+
+                // When compressing into it
+                ThrowingCallable result = () -> sut.compress(heapDst, src);
+
+                // Then it fails fast with a clear message instead of a cryptic FFM error
+                assertThatThrownBy(result)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void decompressRejectsHeapSource() {
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx sut = new ZstdDecompressCtx()) {
+                // Given a heap-backed source segment handed to the zero-copy API
+                MemorySegment heapSrc = MemorySegment.ofArray(new byte[64]);
+                MemorySegment dst = arena.allocate(64);
+
+                // When decompressing from it
+                ThrowingCallable result = () -> sut.decompress(dst, heapSrc);
+
+                // Then it fails fast with a clear message instead of a cryptic FFM error
+                assertThatThrownBy(result)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void compressWithDictionaryRejectsHeapSource() {
+            ZstdDictionary dict = trainSmallDictionary();
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx sut = new ZstdCompressCtx();
+                 ZstdCompressDict cdict = new ZstdCompressDict(dict)) {
+                // Given a heap-backed source handed to the dictionary zero-copy API
+                MemorySegment heapSrc = MemorySegment.ofArray(new byte[64]);
+                MemorySegment dst = arena.allocate(64);
+
+                // When compressing against the digested dictionary
+                ThrowingCallable result = () -> sut.compress(dst, heapSrc, cdict);
+
+                // Then it fails fast before reaching native code
+                assertThatThrownBy(result)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void compressWithDictionaryRejectsHeapDestination() {
+            ZstdDictionary dict = trainSmallDictionary();
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx sut = new ZstdCompressCtx();
+                 ZstdCompressDict cdict = new ZstdCompressDict(dict)) {
+                // Given a heap-backed destination handed to the dictionary zero-copy API
+                MemorySegment heapDst = MemorySegment.ofArray(new byte[64]);
+                MemorySegment src = arena.allocate(64);
+
+                // When compressing against the digested dictionary
+                ThrowingCallable result = () -> sut.compress(heapDst, src, cdict);
+
+                // Then it fails fast before reaching native code
+                assertThatThrownBy(result)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void decompressWithDictionaryRejectsHeapSource() {
+            ZstdDictionary dict = trainSmallDictionary();
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx sut = new ZstdDecompressCtx();
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
+                // Given a heap-backed source handed to the dictionary zero-copy API
+                MemorySegment heapSrc = MemorySegment.ofArray(new byte[64]);
+                MemorySegment dst = arena.allocate(64);
+
+                // When decompressing against the digested dictionary
+                ThrowingCallable result = () -> sut.decompress(dst, heapSrc, ddict);
+
+                // Then it fails fast before reaching native code
+                assertThatThrownBy(result)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
+        void decompressWithDictionaryRejectsHeapDestination() {
+            ZstdDictionary dict = trainSmallDictionary();
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx sut = new ZstdDecompressCtx();
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
+                // Given a heap-backed destination handed to the dictionary zero-copy API
+                MemorySegment heapDst = MemorySegment.ofArray(new byte[64]);
+                MemorySegment src = arena.allocate(64);
+
+                // When decompressing against the digested dictionary
+                ThrowingCallable result = () -> sut.decompress(heapDst, src, ddict);
+
+                // Then it fails fast before reaching native code
+                assertThatThrownBy(result)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("native");
+            }
+        }
+
+        @Test
         void decompressedSizeRejectsHeapFrame() {
             // Given a heap-backed frame segment
             MemorySegment heapFrame = MemorySegment.ofArray(new byte[8]);

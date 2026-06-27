@@ -83,6 +83,12 @@ class ZstdTest {
             assertThat(min).isLessThanOrEqualTo(def);
             assertThat(def).isLessThanOrEqualTo(max);
         }
+
+        @Test
+        void defaultLevelIsThree() {
+            // Then the library default level is zstd's documented ZSTD_CLEVEL_DEFAULT
+            assertThat(Zstd.defaultCompressionLevel()).isEqualTo(3);
+        }
     }
 
     @Nested

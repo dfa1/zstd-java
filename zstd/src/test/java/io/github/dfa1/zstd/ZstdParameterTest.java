@@ -217,6 +217,59 @@ class ZstdParameterTest {
         }
 
         @Test
+        void resetReturnsTheSameContext() {
+            // Given both contexts
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                // Then reset returns the same instance, for chaining
+                assertThat(cctx.reset(ZstdResetDirective.SESSION_ONLY)).isSameAs(cctx);
+                assertThat(dctx.reset(ZstdResetDirective.SESSION_ONLY)).isSameAs(dctx);
+            }
+        }
+
+        @Test
+        void sessionOnlyKeepsTheCachedLevelForTheLegacyDictionaryPath() {
+            // Given a level-19 context reset for the session only, then compressing
+            // against a dictionary — the legacy path that reads the cached level field
+            ZstdDictionary dict =
+                    ZstdDictionary.of("dictionary sample payload ".repeat(64).getBytes(StandardCharsets.UTF_8));
+            byte[] afterSessionReset;
+            try (ZstdCompressCtx sut = new ZstdCompressCtx().level(19)) {
+                sut.compress(PAYLOAD, dict);
+                sut.reset(ZstdResetDirective.SESSION_ONLY);
+                afterSessionReset = sut.compress(PAYLOAD, dict);
+            }
+            byte[] freshLevel19;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx().level(19)) {
+                freshLevel19 = ctx.compress(PAYLOAD, dict);
+            }
+
+            // Then the cached level survives the session-only reset
+            assertThat(afterSessionReset).isEqualTo(freshLevel19);
+        }
+
+        @Test
+        void parameterResetClearsTheCachedLevelForTheLegacyDictionaryPath() {
+            // Given a level-19 context with parameters reset, then compressing against
+            // a dictionary via the legacy path that reads the cached level field
+            ZstdDictionary dict =
+                    ZstdDictionary.of("dictionary sample payload ".repeat(64).getBytes(StandardCharsets.UTF_8));
+            byte[] afterParameterReset;
+            try (ZstdCompressCtx sut = new ZstdCompressCtx().level(19)) {
+                sut.compress(PAYLOAD, dict);
+                sut.reset(ZstdResetDirective.PARAMETERS);
+                afterParameterReset = sut.compress(PAYLOAD, dict);
+            }
+            byte[] freshDefaultLevel;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                freshDefaultLevel = ctx.compress(PAYLOAD, dict);
+            }
+
+            // Then the cached level fell back to the default
+            assertThat(afterParameterReset).isEqualTo(freshDefaultLevel);
+        }
+
+        @Test
         void rejectsNullDirective() {
             // Given a compression context
             try (ZstdCompressCtx sut = new ZstdCompressCtx()) {

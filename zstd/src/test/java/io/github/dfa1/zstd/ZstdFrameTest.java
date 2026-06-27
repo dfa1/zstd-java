@@ -9,6 +9,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,6 +118,28 @@ class ZstdFrameTest {
             }
             assertThat(ZstdFrame.header(frame).hasChecksum()).isTrue();
         }
+
+        @Test
+        void reportsASaneBlockSizeMax() {
+            // Given a default frame
+            ZstdFrameHeader header = ZstdFrame.header(Zstd.compress(PAYLOAD));
+
+            // Then blockSizeMax is the masked 32-bit field — a real block size, never
+            // the all-ones value a sign-extension or wrong mask would produce
+            assertThat(header.blockSizeMax()).isPositive().isLessThanOrEqualTo(128 * 1024L);
+        }
+
+        @Test
+        void rejectsATruncatedHeader() {
+            // Given the first two bytes of a frame — too short to hold a header
+            byte[] truncated = Arrays.copyOf(Zstd.compress(PAYLOAD), 2);
+
+            // When its header is parsed
+            ThrowingCallable result = () -> ZstdFrame.header(truncated);
+
+            // Then it fails instead of returning a bogus header
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+        }
     }
 
     @Nested
@@ -196,6 +219,22 @@ class ZstdFrameTest {
             assertThat(ZstdFrame.dictId(frame)).isEqualTo(dict.id());
         }
 
+        @Test
+        void matchesThroughTheSegmentOverload() {
+            // Given a dictionary frame in a native segment
+            ZstdDictionary dict = trainDict();
+            byte[] frame;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                frame = ctx.compress(PAYLOAD, dict);
+            }
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+
+                // Then the segment overload reports the same non-zero id
+                assertThat(ZstdFrame.dictId(seg)).isNotZero().isEqualTo(dict.id());
+            }
+        }
+
         private ZstdDictionary trainDict() {
             List<byte[]> samples = new ArrayList<>();
             for (int i = 0; i < 3000; i++) {
@@ -233,6 +272,40 @@ class ZstdFrameTest {
 
                 // When tested through the MemorySegment overload / Then it is skippable
                 assertThat(ZstdFrame.isSkippableFrame(seg)).isTrue();
+            }
+        }
+
+        @Test
+        void headerThroughTheSegmentOverloadMatchesTheByteArrayForm() {
+            // Given a frame in a native segment
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+
+                // Then the parsed header equals the one from the byte[] overload
+                assertThat(ZstdFrame.header(seg)).isEqualTo(ZstdFrame.header(frame));
+            }
+        }
+
+        @Test
+        void garbageNativeSegmentIsNotAFrame() {
+            // Given non-frame bytes in a native segment
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, "not a frame".getBytes(StandardCharsets.UTF_8));
+
+                // Then the segment overload rejects it
+                assertThat(ZstdFrame.isZstdFrame(seg)).isFalse();
+            }
+        }
+
+        @Test
+        void standardNativeFrameIsNotSkippable() {
+            // Given a standard frame in a native segment
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, Zstd.compress(PAYLOAD));
+
+                // Then the segment overload reports it is not skippable
+                assertThat(ZstdFrame.isSkippableFrame(seg)).isFalse();
             }
         }
     }

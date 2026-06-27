@@ -58,6 +58,8 @@
 		<maven-release-plugin.version>3.3.1</maven-release-plugin.version>
 		<maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
 		<jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+		<pitest-maven.version>1.25.5</pitest-maven.version>
+		<pitest-junit5-plugin.version>1.2.3</pitest-junit5-plugin.version>
 
 		<!-- SonarCloud analysis (.github/workflows/sonar.yml). -->
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -406,6 +408,50 @@
 						</configuration>
 					</plugin>
 				</plugins>
+			</build>
+		</profile>
+		<!-- Mutation testing (opt-in: -P pitest). Common PIT setup lives here once; the
+		     zstd module's own `pitest` profile only adds the plugin to <plugins> and names
+		     its <targetClasses>. PIT forks minion JVMs that exercise the native library, so
+		     they get the same enable-native-access flag as surefire. -->
+		<profile>
+			<id>pitest</id>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.pitest</groupId>
+							<artifactId>pitest-maven</artifactId>
+							<version>${pitest-maven.version}</version>
+							<dependencies>
+								<dependency>
+									<groupId>org.pitest</groupId>
+									<artifactId>pitest-junit5-plugin</artifactId>
+									<version>${pitest-junit5-plugin.version}</version>
+								</dependency>
+							</dependencies>
+							<executions>
+								<execution>
+									<id>pit-report</id>
+									<phase>verify</phase>
+									<goals>
+										<goal>mutationCoverage</goal>
+									</goals>
+								</execution>
+							</executions>
+							<configuration>
+								<jvmArgs>
+									<param>--enable-native-access=ALL-UNNAMED</param>
+								</jvmArgs>
+								<outputFormats>
+									<param>HTML</param>
+									<param>XML</param>
+								</outputFormats>
+								<timestampedReports>false</timestampedReports>
+							</configuration>
+						</plugin>
+					</plugins>
+				</pluginManagement>
 			</build>
 		</profile>
 	</profiles>

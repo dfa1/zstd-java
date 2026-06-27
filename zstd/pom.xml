@@ -116,5 +116,24 @@
 				</dependency>
 			</dependencies>
 		</profile>
+		<!-- Mutation testing (opt-in): ./mvnw -pl zstd -P pitest verify
+		     Common PIT setup is inherited from the parent `pitest` profile; this only
+		     names the scope. Report: zstd/target/pit-reports/. -->
+		<profile>
+			<id>pitest</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<configuration>
+							<targetClasses>
+								<param>io.github.dfa1.zstd.*</param>
+							</targetClasses>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 	</profiles>
 </project>

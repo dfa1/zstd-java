@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [Unreleased]
+
+### Added
+- `ZstdCompressCtx.refPrefix(MemorySegment)` / `ZstdDecompressCtx.refPrefix(...)`
+  — reference native content as a single-use prefix (raw-content dictionary) for
+  the next frame only: the building block for delta compression (compress a new
+  version against a similar previous one). The prefix is referenced, not copied
+  or digested, and writes no dictionary ID; the decompressor must reference the
+  same prefix to decode. Binds `ZSTD_CCtx_refPrefix` / `ZSTD_DCtx_refPrefix`.
+  Segment-only by design — heap callers that need a copy should use
+  `loadDictionary` instead.
+
 ## [0.5]
 
 ### Added

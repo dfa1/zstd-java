@@ -177,6 +177,38 @@ public final class ZstdCompressCtx extends NativeObject {
         return this;
     }
 
+    /// References native `prefix` content as a single-use dictionary for the
+    /// **next** compression only — the building block for delta compression:
+    /// compress a new version against a similar previous one as the prefix,
+    /// storing little more than the difference.
+    ///
+    /// Unlike [#loadDictionary(ZstdDictionary)], a prefix is referenced (no
+    /// digest, no heap copy), writes no dictionary ID into the frame, and is
+    /// consumed by the next [#compress(MemorySegment, MemorySegment)] /
+    /// [#compress(byte[])] — it does not stick across frames. The decompressor
+    /// must reference the **same** prefix with
+    /// [ZstdDecompressCtx#refPrefix(MemorySegment)] to decode the frame.
+    ///
+    /// Because the prefix is referenced, `prefix` must stay valid until the next
+    /// compression completes. Heap callers that cannot manage native lifetime
+    /// should use a copying dictionary ([#loadDictionary(ZstdDictionary)]) instead.
+    ///
+    /// @param prefix native prefix content, or `null` / [MemorySegment#NULL] to clear it
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the prefix cannot be referenced
+    public ZstdCompressCtx refPrefix(MemorySegment prefix) {
+        if (NativeCall.isNull(prefix)) {
+            return refPrefix(MemorySegment.NULL, 0L);
+        }
+        NativeCall.requireNative(prefix, "prefix");
+        return refPrefix(prefix, prefix.byteSize());
+    }
+
+    private ZstdCompressCtx refPrefix(MemorySegment prefix, long size) {
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_REF_PREFIX.invokeExact(ptr(), prefix, size));
+        return this;
+    }
+
     /// Compresses `src` into a new zstd frame using this context and its
     /// advanced parameters.
     ///

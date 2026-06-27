@@ -126,6 +126,36 @@ public final class ZstdDecompressCtx extends NativeObject {
         return this;
     }
 
+    /// References native `prefix` content as a single-use dictionary for decoding
+    /// the **next** frame only — the decompression counterpart of
+    /// [ZstdCompressCtx#refPrefix(MemorySegment)]. It must be the **same** content
+    /// the frame was compressed against, or decoding fails.
+    ///
+    /// The prefix is referenced, not copied (no digest, no heap copy): `prefix`
+    /// must stay valid until the next [#decompress(byte[], int)] /
+    /// [#decompress(MemorySegment, MemorySegment)], which consumes it — it does not
+    /// stick across frames. Pass `null` / [MemorySegment#NULL] to clear a prefix
+    /// set but not yet consumed.
+    ///
+    /// Heap callers that cannot manage native lifetime should use a copying
+    /// dictionary ([#loadDictionary(ZstdDictionary)]) instead.
+    ///
+    /// @param prefix native prefix content, or `null` / [MemorySegment#NULL] to clear it
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the prefix cannot be referenced
+    public ZstdDecompressCtx refPrefix(MemorySegment prefix) {
+        if (NativeCall.isNull(prefix)) {
+            return refPrefix(MemorySegment.NULL, 0L);
+        }
+        NativeCall.requireNative(prefix, "prefix");
+        return refPrefix(prefix, prefix.byteSize());
+    }
+
+    private ZstdDecompressCtx refPrefix(MemorySegment prefix, long size) {
+        NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_REF_PREFIX.invokeExact(ptr(), prefix, size));
+        return this;
+    }
+
     /// Decompresses a frame into a buffer of at most `maxSize` bytes.
     ///
     /// @param compressed a complete zstd frame

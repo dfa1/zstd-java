@@ -138,6 +138,11 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_CCtx_setParameter",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT, JAVA_INT));
 
+    // size_t ZSTD_CCtx_reset(ZSTD_CCtx*, ZSTD_ResetDirective)
+    static final MethodHandle CCTX_RESET =
+            NativeLibrary.lookup("ZSTD_CCtx_reset",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT));
+
     // size_t ZSTD_compress2(ZSTD_CCtx*, void* dst, size_t dstCap, const void* src, size_t srcSize)
     // Uses the advanced parameters set on the context (unlike ZSTD_compressCCtx).
     static final MethodHandle COMPRESS2 =
@@ -148,6 +153,11 @@ final class Bindings {
     static final MethodHandle DCTX_SET_PARAMETER =
             NativeLibrary.lookup("ZSTD_DCtx_setParameter",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT, JAVA_INT));
+
+    // size_t ZSTD_DCtx_reset(ZSTD_DCtx*, ZSTD_ResetDirective)
+    static final MethodHandle DCTX_RESET =
+            NativeLibrary.lookup("ZSTD_DCtx_reset",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_INT));
 
     // size_t ZSTD_CCtx_setPledgedSrcSize(ZSTD_CCtx*, unsigned long long pledgedSrcSize)
     static final MethodHandle CCTX_SET_PLEDGED_SRC_SIZE =
@@ -238,6 +248,10 @@ final class Bindings {
     static final MethodHandle COMPRESS_USING_CDICT =
             NativeLibrary.lookup("ZSTD_compress_usingCDict",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
+    // size_t ZSTD_CCtx_refCDict(ZSTD_CCtx*, const ZSTD_CDict*)
+    static final MethodHandle CCTX_REF_CDICT =
+            NativeLibrary.lookup("ZSTD_CCtx_refCDict",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS));
 
     // ZSTD_DDict* ZSTD_createDDict(const void* dict, size_t dictSize)
     static final MethodHandle CREATE_DDICT =
@@ -250,6 +264,10 @@ final class Bindings {
     static final MethodHandle DECOMPRESS_USING_DDICT =
             NativeLibrary.lookup("ZSTD_decompress_usingDDict",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
+    // size_t ZSTD_DCtx_refDDict(ZSTD_DCtx*, const ZSTD_DDict*)
+    static final MethodHandle DCTX_REF_DDICT =
+            NativeLibrary.lookup("ZSTD_DCtx_refDDict",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS));
 
     // --- dictionary training (ZDICT, from dictBuilder) ---
 

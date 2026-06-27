@@ -4,6 +4,7 @@ import com.github.luben.zstd.ZstdDictCompress;
 import com.github.luben.zstd.ZstdDictDecompress;
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressCtx;
+import io.github.dfa1.zstd.ZstdCompressDict;
 import io.github.dfa1.zstd.ZstdDecompressCtx;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdInputStream;
@@ -122,6 +123,39 @@ class ZstdJniInteropTest {
                 restored = ctx.decompress(frame, record.length, dict);
             }
             assertThat(restored).isEqualTo(record);
+        }
+
+        @Test
+        void javaLoadedDictWithChecksumJniDictDecompress() {
+            // A sticky loaded dictionary combined with an advanced parameter
+            // (checksum) — the COMPRESS2 path — must still produce a frame zstd-jni
+            // decodes against the same dictionary.
+            ZstdDictionary dict = trainDict();
+            byte[] record = record(33);
+
+            byte[] frame;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx().checksum(true)) {
+                ctx.loadDictionary(dict);
+                frame = ctx.compress(record);
+            }
+            ZstdDictDecompress jniDict = new ZstdDictDecompress(dict.toByteArray());
+            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, record.length)).isEqualTo(record);
+        }
+
+        @Test
+        void javaReferencedDigestedDictJniDictDecompress() {
+            // A frame from a context referencing a digested CDict must decode in zstd-jni.
+            ZstdDictionary dict = trainDict();
+            byte[] record = record(44);
+
+            byte[] frame;
+            try (ZstdCompressDict cdict = new ZstdCompressDict(dict, Zstd.defaultCompressionLevel());
+                 ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                ctx.refDictionary(cdict);
+                frame = ctx.compress(record);
+            }
+            ZstdDictDecompress jniDict = new ZstdDictDecompress(dict.toByteArray());
+            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, record.length)).isEqualTo(record);
         }
 
         private ZstdDictionary trainDict() {

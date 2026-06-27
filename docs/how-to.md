@@ -18,6 +18,64 @@ try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19);
 Pick the level explicitly with `Zstd.maxCompressionLevel()` /
 `minCompressionLevel()` when you need the extreme ends.
 
+## Reset a context to recycle it
+
+A context is already reusable across whole `compress` / `decompress` calls. Reset
+goes further: it recycles the *native state* of one context — for pooled contexts,
+or to abort a half-written frame and start clean — without freeing and recreating
+it. Pick what to clear with `ZstdResetDirective`:
+
+```java
+try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
+    byte[] a = cctx.compress(first);
+
+    // Cheap: drop any unflushed frame state, keep the level and parameters.
+    cctx.reset(ZstdResetDirective.SESSION_ONLY);
+    byte[] b = cctx.compress(second);
+
+    // Full wipe: parameters back to default, dictionary cleared, level reset to
+    // Zstd.defaultCompressionLevel(). Only valid between frames, not mid-frame.
+    cctx.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
+}
+```
+
+`ZstdDecompressCtx.reset(...)` works the same way. Reuse alone amortises
+allocation; reset lets a long-lived or pooled context return to a known state
+without churning native memory.
+
+## Compress with a dictionary *and* advanced parameters
+
+The per-call `compress(src, dict)` overloads take the legacy dictionary path,
+which ignores the advanced parameters (checksum, window log, long-distance
+matching) set on the context. To combine the two, make the dictionary *sticky*
+with `loadDictionary` — then the normal `compress` path honours both:
+
+```java
+try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19).checksum(true)) {
+    cctx.loadDictionary(dict);          // ZstdDictionary, or a native MemorySegment
+    byte[] frame = cctx.compress(record); // dictionary + checksum, together
+}
+```
+
+For a dictionary reused across a pool of contexts, digest it once and attach it
+by reference — no per-call digesting, no copy. It pairs with `reset` for a
+pooled, recycled context:
+
+```java
+try (ZstdCompressDict cdict = new ZstdCompressDict(dict, 19)) {
+    // one cctx per pooled worker, all sharing the one digested dictionary
+    try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+        cctx.refDictionary(cdict);          // borrowed; cdict must outlive cctx
+        byte[] a = cctx.compress(first);
+        cctx.reset(ZstdResetDirective.SESSION_ONLY); // recycle, keep the dictionary
+        byte[] b = cctx.compress(second);
+    }
+}
+```
+
+A loaded or referenced dictionary stays until replaced, cleared with `null`, or
+dropped by a parameter `reset`. `ZstdDecompressCtx` mirrors all of this.
+
 ## Compress many small payloads with a dictionary
 
 For many small, similar payloads (log lines, JSON records, protobufs), a

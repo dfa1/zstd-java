@@ -1,6 +1,6 @@
 # ADR 0012: Benchmark methodology and publishing
 
-- **Status:** Accepted
+- **Status:** Proposed
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0002: Build the native library with `zig cc`
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

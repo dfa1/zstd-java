@@ -1,6 +1,6 @@
 # ADR 0004: Per-classifier native JARs
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0014: Single-threaded native build (no `nbWorkers`)
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0003: MemorySegment-first API with thin `byte[]` overloads
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0005: No `-Dzstd.lib.path` override
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 
@@ -39,15 +39,9 @@ directory created atomically, and `dlopen`s that. To run a self-built
 - **`-Dzstd.lib.path` override:** convenient, but an RCE-shaped foot-gun.
 - **Allow override only when a flag is set:** still ships the dangerous path.
 
-## Implementation
-
-- `9e505c6` / `8d0ea6a` (#8) — bundled-only native loader; removed any path
-  override, load solely from the classpath artifact.
-- `b2ed28b` — set owner-only (`0700`) temp dir permissions atomically (Sonar
-  S5443).
-- `c9929b9` (#20) — follow-up Sonar SECURITY-category fixes.
-
 ## References
 
 - [NativeLibrary.java], [docs/how-to.md](../docs/how-to.md)
 - [ADR 0004 — per-classifier native jars](0004-per-classifier-native-jars.md)
+- Implemented in `9e505c6` / `8d0ea6a` (#8, bundled-only loader), `b2ed28b`
+  (owner-only temp dir, Sonar S5443), `c9929b9` (#20, follow-up Sonar fixes).

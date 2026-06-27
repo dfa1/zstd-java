@@ -1,6 +1,6 @@
 # ADR 0007: Integration tests as ground truth
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

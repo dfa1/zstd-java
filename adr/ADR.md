@@ -7,7 +7,10 @@ This directory contains ADRs following the
 
 Each ADR is a Markdown file named `NNNN-short-title.md`. Use `template.md` as the starting point.
 
-**Status values:** Proposed → Accepted → Completed | Deferred | Deprecated | Superseded
+**Status values:** Proposed → Accepted → Deprecated → Superseded (also: Rejected, Deferred)
+
+`Accepted` is the decision's lifecycle state — it stays Accepted until something
+Supersedes it — tracked independently of whether the code has shipped.
 
 Most of the early ADRs are retrospective: they record decisions already made and
 shipped, so contributors can see *why* the project looks the way it does.
@@ -16,17 +19,17 @@ shipped, so contributors can see *why* the project looks the way it does.
 
 | ADR  | Title                                              | Status    |
 |------|----------------------------------------------------|-----------|
-| 0001 | FFM bindings over JNI                               | Completed |
-| 0002 | Build the native library with `zig cc`             | Completed |
-| 0003 | MemorySegment-first API with thin `byte[]` overloads | Completed |
-| 0004 | Per-classifier native JARs                          | Completed |
-| 0005 | No `-Dzstd.lib.path` override                       | Completed |
-| 0006 | Native compile flags                               | Completed |
-| 0007 | Integration tests as ground truth                  | Completed |
-| 0008 | `size_t` maps to `JAVA_LONG`, guard sentinels      | Completed |
-| 0009 | `NativeObject`: AutoCloseable, idempotent close    | Completed |
+| 0001 | FFM bindings over JNI                               | Accepted  |
+| 0002 | Build the native library with `zig cc`             | Accepted  |
+| 0003 | MemorySegment-first API with thin `byte[]` overloads | Accepted  |
+| 0004 | Per-classifier native JARs                          | Accepted  |
+| 0005 | No `-Dzstd.lib.path` override                       | Accepted  |
+| 0006 | Native compile flags                               | Accepted  |
+| 0007 | Integration tests as ground truth                  | Accepted  |
+| 0008 | `size_t` maps to `JAVA_LONG`, guard sentinels      | Accepted  |
+| 0009 | `NativeObject`: AutoCloseable, idempotent close    | Accepted  |
 | 0010 | Bounded native-context pool for virtual threads    | Proposed  |
-| 0011 | JPMS module descriptor                             | Accepted  |
-| 0012 | Benchmark methodology and publishing               | Accepted  |
-| 0013 | Binding coverage scope — exclude legacy/deprecated | Completed |
-| 0014 | Single-threaded native build (no `nbWorkers`)      | Completed |
+| 0011 | JPMS module descriptor                             | Proposed  |
+| 0012 | Benchmark methodology and publishing               | Proposed  |
+| 0013 | Binding coverage scope — exclude legacy/deprecated | Accepted  |
+| 0014 | Single-threaded native build (no `nbWorkers`)      | Accepted  |

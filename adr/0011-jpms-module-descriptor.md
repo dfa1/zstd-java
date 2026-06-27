@@ -1,6 +1,6 @@
 # ADR 0011: JPMS module descriptor
 
-- **Status:** Accepted — implemented on `feat/jpms-module-info`, not yet merged to main
+- **Status:** Proposed
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0009: `NativeObject` — AutoCloseable, idempotent close
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0001: FFM bindings over JNI
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0013: Binding coverage scope — exclude legacy/deprecated
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

@@ -1,6 +1,6 @@
 # ADR 0008: `size_t` maps to `JAVA_LONG`, guard sentinels
 
-- **Status:** Completed
+- **Status:** Accepted
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
 

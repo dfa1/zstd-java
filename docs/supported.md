@@ -34,7 +34,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
 | Advanced parameters | 14 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `C/DCtx_refPrefix`, `c/dParam_getBounds`; MT inert on single-thread build |
-| Frame inspection | 10 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
+| Frame inspection | 12 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
 | Memory sizing | 8 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
 | Sequences | 0 / 5 | sequence producer API not bound |
@@ -81,7 +81,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 
 1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`compressStream2`, `decompressStream`, bounded buffers, dictionary constructors, `pledgedSrcSize` via `withPledgedSize`). Remaining: `MemorySegment`-buffer driver.
 2. ~~**Advanced parameters**~~ — done: every `ZSTD_cParameter`/`ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter` (+ `bounds()`), on both contexts; `pledgedSrcSize`. `nbWorkers` is settable but inert until the native build enables multithreading.
-3. ~~**Frame inspection**~~ — done: `ZstdFrame` (`isFrame`, `header`, `compressedSize`, `decompressedBound`, `dictId`, skippable, `getFrameProgression`); dict-id from raw/CDict/DDict.
+3. ~~**Frame inspection**~~ — done: `ZstdFrame` (`isFrame`, `header`, `compressedSize`, `decompressedBound`, `decompressedSize`, `dictId`, skippable, `getFrameProgression`); dict-id from raw/CDict/DDict.
 4. ~~**Better dictionaries**~~ — done: COVER / fast-COVER optimisers, `finalizeDictionary`, `getDictHeaderSize`.
 5. ~~**Typed errors**~~ — done: `ZstdException.code()` returns `ZstdErrorCode` (via `getErrorCode`).
 
@@ -276,15 +276,15 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_estimateCCtxSize_usingCCtxParams` | — | — |
 | `ZSTD_freeCCtxParams` | — | — |
 
-### Frame inspection (10/13)
+### Frame inspection (12/13)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
 | `ZSTD_getFrameContentSize` | ✅ | ✅ |
 | `ZSTD_decompressBound` | ✅ | — |
-| `ZSTD_findDecompressedSize` | — | — |
+| `ZSTD_findDecompressedSize` | ✅ | — |
 | `ZSTD_findFrameCompressedSize` | ✅ | ✅ |
-| `ZSTD_frameHeaderSize` | — | — |
+| `ZSTD_frameHeaderSize` | ✅ | — |
 | `ZSTD_getDecompressedSize` | — ᵈ | — |
 | `ZSTD_getFrameHeader` | ✅ | — |
 | `ZSTD_getFrameHeader_advanced` | — | ✅ |

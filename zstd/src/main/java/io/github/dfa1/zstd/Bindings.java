@@ -54,6 +54,11 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_decompressBound",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
 
+    // unsigned long long ZSTD_findDecompressedSize(const void* src, size_t srcSize)
+    static final MethodHandle FIND_DECOMPRESSED_SIZE =
+            NativeLibrary.lookup("ZSTD_findDecompressedSize",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
+
     // unsigned ZSTD_getDictID_fromFrame(const void* src, size_t srcSize)
     static final MethodHandle GET_DICT_ID_FROM_FRAME =
             NativeLibrary.lookup("ZSTD_getDictID_fromFrame",
@@ -63,6 +68,11 @@ final class Bindings {
     static final MethodHandle GET_FRAME_HEADER =
             NativeLibrary.lookup("ZSTD_getFrameHeader",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG));
+
+    // size_t ZSTD_frameHeaderSize(const void* src, size_t srcSize)
+    static final MethodHandle FRAME_HEADER_SIZE =
+            NativeLibrary.lookup("ZSTD_frameHeaderSize",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
 
     // unsigned ZSTD_isSkippableFrame(const void* buffer, size_t size)
     static final MethodHandle IS_SKIPPABLE_FRAME =

@@ -14,9 +14,9 @@ import java.lang.foreign.MemorySegment;
 /// Not thread-safe: confine an instance to a single thread.
 public final class ZstdDecompressStream extends NativeObject {
 
-    private final Arena arena = Arena.ofConfined();
-    private final ZstdStreamBuffer in = new ZstdStreamBuffer(arena);
-    private final ZstdStreamBuffer out = new ZstdStreamBuffer(arena);
+    private final Arena arena;
+    private final ZstdStreamBuffer in;
+    private final ZstdStreamBuffer out;
 
     /// Creates a streaming decompressor.
     public ZstdDecompressStream() {
@@ -30,6 +30,9 @@ public final class ZstdDecompressStream extends NativeObject {
         // Own the context first, so any failure setting it up is cleaned up by
         // close() — one release path, no leak on a half-built stream.
         super(createDctx());
+        this.arena = Arena.ofConfined();
+        this.in = new ZstdStreamBuffer(arena);
+        this.out = new ZstdStreamBuffer(arena);
         try {
             if (dictionary != null) {
                 loadDictionary(dictionary);

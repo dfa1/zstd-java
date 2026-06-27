@@ -30,9 +30,9 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// Not thread-safe: confine an instance to a single thread.
 public final class ZstdCompressStream extends NativeObject {
 
-    private final Arena arena = Arena.ofConfined();
-    private final ZstdStreamBuffer in = new ZstdStreamBuffer(arena);
-    private final ZstdStreamBuffer out = new ZstdStreamBuffer(arena);
+    private final Arena arena;
+    private final ZstdStreamBuffer in;
+    private final ZstdStreamBuffer out;
 
     /// Creates a streaming compressor at the default level.
     public ZstdCompressStream() {
@@ -54,6 +54,9 @@ public final class ZstdCompressStream extends NativeObject {
         // Own the context first, so any failure setting it up is cleaned up by
         // close() — one release path, no leak on a half-built stream.
         super(createCctx());
+        this.arena = Arena.ofConfined();
+        this.in = new ZstdStreamBuffer(arena);
+        this.out = new ZstdStreamBuffer(arena);
         try {
             NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     ptr(), ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));

@@ -28,16 +28,16 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 public final class ZstdInputStream extends InputStream {
 
     private final InputStream in;
-    private final Arena arena = Arena.ofConfined();
+    private final Arena arena;
     private final MemorySegment dctx;
     private final MemorySegment inSeg;
     private final MemorySegment outSeg;
     private final long outCap;
-    private final ZstdStreamBuffer inBuf = new ZstdStreamBuffer(arena);
-    private final ZstdStreamBuffer outBufView = new ZstdStreamBuffer(arena);
+    private final ZstdStreamBuffer inBuf;
+    private final ZstdStreamBuffer outBufView;
     private final byte[] feed;
     private final byte[] hold;
-    private final byte[] single = new byte[1];
+    private final byte[] single;
     private int holdStart;
     private int holdEnd;
     private boolean inputEof;
@@ -59,6 +59,10 @@ public final class ZstdInputStream extends InputStream {
     /// @param dictionary the dictionary the frame was compressed against, or `null` for none
     public ZstdInputStream(InputStream in, ZstdDictionary dictionary) {
         this.in = Objects.requireNonNull(in, "in");
+        this.arena = Arena.ofConfined();
+        this.inBuf = new ZstdStreamBuffer(arena);
+        this.outBufView = new ZstdStreamBuffer(arena);
+        this.single = new byte[1];
         MemorySegment d = null;
         try {
             d = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();

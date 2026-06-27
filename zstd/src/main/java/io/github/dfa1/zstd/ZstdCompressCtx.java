@@ -19,11 +19,12 @@ import java.util.Objects;
 /// }
 public final class ZstdCompressCtx extends NativeObject {
 
-    private int level = Zstd.defaultCompressionLevel();
+    private int level;
 
     /// Creates a new compression context at the default level.
     public ZstdCompressCtx() {
         super(create());
+        this.level = Zstd.defaultCompressionLevel();
     }
 
     private static MemorySegment create() {

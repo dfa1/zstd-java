@@ -35,16 +35,16 @@ public final class ZstdOutputStream extends OutputStream {
     private static final int ZSTD_E_END = 2;
 
     private final OutputStream out;
-    private final Arena arena = Arena.ofConfined();
+    private final Arena arena;
     private final MemorySegment cctx;
     private final MemorySegment inSeg;
     private final MemorySegment outSeg;
     private final long inCap;
     private final long outCap;
-    private final ZstdStreamBuffer in = new ZstdStreamBuffer(arena);
-    private final ZstdStreamBuffer outBuf = new ZstdStreamBuffer(arena);
+    private final ZstdStreamBuffer in;
+    private final ZstdStreamBuffer outBuf;
     private final byte[] drain;
-    private final byte[] single = new byte[1];
+    private final byte[] single;
     private boolean closed;
 
     /// Wraps `out`, compressing at the library default level.
@@ -96,6 +96,10 @@ public final class ZstdOutputStream extends OutputStream {
     /// @param dictionary the dictionary to compress against, or `null` for none
     public ZstdOutputStream(OutputStream out, int level, ZstdDictionary dictionary) {
         this.out = Objects.requireNonNull(out, "out");
+        this.arena = Arena.ofConfined();
+        this.in = new ZstdStreamBuffer(arena);
+        this.outBuf = new ZstdStreamBuffer(arena);
+        this.single = new byte[1];
         MemorySegment c = null;
         try {
             c = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();

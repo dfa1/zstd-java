@@ -9,10 +9,9 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
+import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -409,11 +408,7 @@ class ZstdFrameTest {
         }
 
         private ZstdDictionary trainDict() {
-            List<byte[]> samples = new ArrayList<>();
-            for (int i = 0; i < 3000; i++) {
-                samples.add(("{\"id\":" + i + ",\"k\":\"v" + (i % 30) + "\"}").getBytes(StandardCharsets.UTF_8));
-            }
-            return ZstdDictionary.train(samples, 8 * 1024);
+            return trainDictionary(3000);
         }
     }
 

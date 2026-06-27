@@ -1,6 +1,7 @@
 package io.github.dfa1.zstd;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static io.github.dfa1.zstd.ZstdTestSupport.bytesOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -21,8 +22,8 @@ class RefPrefixTest {
         try (Arena arena = Arena.ofConfined();
              ZstdCompressCtx cctx = new ZstdCompressCtx();
              ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-            MemorySegment prefix = copy(arena, prefixBytes);
-            MemorySegment src = copy(arena, dataBytes);
+            MemorySegment prefix = segmentOf(arena, prefixBytes);
+            MemorySegment src = segmentOf(arena, dataBytes);
             MemorySegment frame = arena.allocate(Zstd.compressBound(dataBytes.length));
             MemorySegment out = arena.allocate(dataBytes.length);
 
@@ -34,7 +35,7 @@ class RefPrefixTest {
 
             // Then
             assertThat(m).isEqualTo(dataBytes.length);
-            assertThat(bytes(out, (int) m)).isEqualTo(dataBytes);
+            assertThat(bytesOf(out, (int) m)).isEqualTo(dataBytes);
         }
     }
 
@@ -47,8 +48,8 @@ class RefPrefixTest {
         // for random content.)
         byte[] random = randomBytes(0xBEEF, 16384);
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment prefix = copy(arena, random);
-            MemorySegment src = copy(arena, random);
+            MemorySegment prefix = segmentOf(arena, random);
+            MemorySegment src = segmentOf(arena, random);
 
             long baseline;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
@@ -58,7 +59,7 @@ class RefPrefixTest {
             try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
                 cctx.refPrefix(prefix);
                 MemorySegment f = cctx.compress(arena, src);
-                frame = bytes(f, (int) f.byteSize());
+                frame = bytesOf(f, (int) f.byteSize());
             }
 
             // Then — the prefix slashes the frame (16 KiB random → tens of bytes)
@@ -68,16 +69,16 @@ class RefPrefixTest {
             try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 MemorySegment out = arena.allocate(random.length);
                 dctx.refPrefix(prefix);
-                long m = dctx.decompress(out, copy(arena, frame));
-                assertThat(bytes(out, (int) m)).isEqualTo(random);
+                long m = dctx.decompress(out, segmentOf(arena, frame));
+                assertThat(bytesOf(out, (int) m)).isEqualTo(random);
             }
 
             // But — it cannot be recovered without the prefix
             boolean reproduced;
             try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 MemorySegment out = arena.allocate(random.length);
-                long m = dctx.decompress(out, copy(arena, frame));
-                reproduced = Arrays.equals(bytes(out, (int) m), random);
+                long m = dctx.decompress(out, segmentOf(arena, frame));
+                reproduced = Arrays.equals(bytesOf(out, (int) m), random);
             } catch (ZstdException e) {
                 reproduced = false;
             }
@@ -91,8 +92,8 @@ class RefPrefixTest {
         byte[] dataBytes = "the quick brown fox".getBytes();
         try (Arena arena = Arena.ofConfined();
              ZstdCompressCtx cctx = new ZstdCompressCtx()) {
-            MemorySegment prefix = copy(arena, "a prior version of the text".getBytes());
-            MemorySegment src = copy(arena, dataBytes);
+            MemorySegment prefix = segmentOf(arena, "a prior version of the text".getBytes());
+            MemorySegment src = segmentOf(arena, dataBytes);
             MemorySegment frame = arena.allocate(Zstd.compressBound(dataBytes.length));
 
             // When — set then clear the prefix before compressing
@@ -105,7 +106,7 @@ class RefPrefixTest {
             try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 MemorySegment out = arena.allocate(dataBytes.length);
                 long m = dctx.decompress(out, frame.asSlice(0, n));
-                restored = bytes(out, (int) m);
+                restored = bytesOf(out, (int) m);
             }
             assertThat(restored).isEqualTo(dataBytes);
         }
@@ -118,8 +119,8 @@ class RefPrefixTest {
         byte[] random = randomBytes(0xCAFE, 16384);
         try (Arena arena = Arena.ofConfined();
              ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
-            MemorySegment prefix = copy(arena, random);
-            MemorySegment src = copy(arena, random);
+            MemorySegment prefix = segmentOf(arena, random);
+            MemorySegment src = segmentOf(arena, random);
             MemorySegment first = arena.allocate(Zstd.compressBound(random.length));
             MemorySegment second = arena.allocate(Zstd.compressBound(random.length));
 
@@ -137,7 +138,7 @@ class RefPrefixTest {
             try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 MemorySegment out = arena.allocate(random.length);
                 long m = dctx.decompress(out, second.asSlice(0, n2));
-                restored = bytes(out, (int) m);
+                restored = bytesOf(out, (int) m);
             }
             assertThat(restored).isEqualTo(random);
         }
@@ -221,7 +222,7 @@ class RefPrefixTest {
         try (Arena arena = Arena.ofConfined();
              ZstdCompressCtx cctx = new ZstdCompressCtx();
              ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-            MemorySegment prefix = copy(arena, "a prior version".getBytes());
+            MemorySegment prefix = segmentOf(arena, "a prior version".getBytes());
 
             // When setting and then clearing a prefix on both contexts
             ZstdCompressCtx cSet = cctx.refPrefix(prefix);
@@ -243,7 +244,7 @@ class RefPrefixTest {
         try (Arena arena = Arena.ofConfined();
              ZstdCompressCtx cctx = new ZstdCompressCtx();
              ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-            MemorySegment dict = copy(arena, "dictionary sample payload ".repeat(64).getBytes());
+            MemorySegment dict = segmentOf(arena, "dictionary sample payload ".repeat(64).getBytes());
 
             // When loading and then clearing a segment dictionary on both contexts
             ZstdCompressCtx cSet = cctx.loadDictionary(dict);
@@ -257,18 +258,6 @@ class RefPrefixTest {
             assertThat(dSet).isSameAs(dctx);
             assertThat(dCleared).isSameAs(dctx);
         }
-    }
-
-    private static MemorySegment copy(Arena arena, byte[] src) {
-        MemorySegment seg = arena.allocate(src.length);
-        MemorySegment.copy(src, 0, seg, JAVA_BYTE, 0, src.length);
-        return seg;
-    }
-
-    private static byte[] bytes(MemorySegment seg, int len) {
-        byte[] out = new byte[len];
-        MemorySegment.copy(seg, JAVA_BYTE, 0, out, 0, len);
-        return out;
     }
 
     private static byte[] randomBytes(long seed, int n) {

@@ -429,12 +429,6 @@ class ZstdDictionaryTest {
             // Then it fails fast
             assertThatThrownBy(result).isInstanceOf(IllegalArgumentException.class);
         }
-
-        private MemorySegment nativeDict(Arena arena, byte[] raw) {
-            MemorySegment seg = arena.allocate(raw.length);
-            MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);
-            return seg;
-        }
     }
 
     @Nested
@@ -614,12 +608,6 @@ class ZstdDictionaryTest {
                 assertThat(dctx.refDictionary(null)).isSameAs(dctx);
             }
         }
-
-        private MemorySegment nativeDict(Arena arena, byte[] raw) {
-            MemorySegment seg = arena.allocate(raw.length);
-            MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);
-            return seg;
-        }
     }
 
     private static byte[] record(int i) {
@@ -628,5 +616,11 @@ class ZstdDictionaryTest {
                 + "\",\"active\":" + (i % 2 == 0)
                 + ",\"score\":" + (i * 7 % 1000)
                 + ",\"tag\":\"event\"}").getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static MemorySegment nativeDict(Arena arena, byte[] raw) {
+        MemorySegment seg = arena.allocate(raw.length);
+        MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);
+        return seg;
     }
 }

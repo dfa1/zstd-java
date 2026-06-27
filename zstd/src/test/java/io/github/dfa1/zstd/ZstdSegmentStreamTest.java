@@ -7,11 +7,11 @@ import java.io.ByteArrayOutputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static io.github.dfa1.zstd.ZstdTestSupport.bytesOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ZstdSegmentStreamTest {
@@ -26,7 +26,7 @@ class ZstdSegmentStreamTest {
                  ZstdCompressStream cs = new ZstdCompressStream();
                  ZstdDecompressStream ds = new ZstdDecompressStream()) {
 
-                MemorySegment src = segment(arena, original);
+                MemorySegment src = segmentOf(arena, original);
                 MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
 
                 // When compressed in one END step
@@ -42,7 +42,7 @@ class ZstdSegmentStreamTest {
 
                 assertThat(d.isComplete()).isTrue();
                 assertThat(d.bytesProduced()).isEqualTo(original.length);
-                assertThat(bytes(out, d.bytesProduced())).isEqualTo(original);
+                assertThat(bytesOf(out, d.bytesProduced())).isEqualTo(original);
             }
         }
     }
@@ -71,7 +71,7 @@ class ZstdSegmentStreamTest {
                  ZstdCompressStream cs = compress ? new ZstdCompressStream() : null;
                  ZstdDecompressStream ds = compress ? null : new ZstdDecompressStream()) {
 
-                MemorySegment src = segment(arena, input);
+                MemorySegment src = segmentOf(arena, input);
                 MemorySegment dst = arena.allocate(chunk);
                 long srcOff = 0;
                 ZstdStreamResult r;
@@ -81,7 +81,7 @@ class ZstdSegmentStreamTest {
                             ? cs.compress(dst, srcSlice, ZstdEndDirective.END)
                             : ds.decompress(dst, srcSlice);
                     srcOff += r.bytesConsumed();
-                    collected.writeBytes(bytes(dst, r.bytesProduced()));
+                    collected.writeBytes(bytesOf(dst, r.bytesProduced()));
                 } while (!r.isComplete());
                 return collected.toByteArray();
             }
@@ -97,7 +97,7 @@ class ZstdSegmentStreamTest {
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressStream cs = new ZstdCompressStream()) {
 
-                MemorySegment src = segment(arena, original);
+                MemorySegment src = segmentOf(arena, original);
                 MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
 
                 // fresh stream: nothing moved yet
@@ -127,35 +127,18 @@ class ZstdSegmentStreamTest {
                  ZstdCompressStream cs = new ZstdCompressStream(3, dict);
                  ZstdDecompressStream ds = new ZstdDecompressStream(dict)) {
 
-                MemorySegment src = segment(arena, record);
+                MemorySegment src = segmentOf(arena, record);
                 MemorySegment dst = arena.allocate(Zstd.compressBound(record.length));
                 ZstdStreamResult c = cs.compress(dst, src, ZstdEndDirective.END);
 
                 MemorySegment out = arena.allocate(record.length);
                 ds.decompress(out, dst.asSlice(0, c.bytesProduced()));
-                assertThat(bytes(out, record.length)).isEqualTo(record);
+                assertThat(bytesOf(out, record.length)).isEqualTo(record);
             }
         }
 
         private ZstdDictionary trainDict() {
-            List<byte[]> samples = new ArrayList<>();
-            for (int i = 0; i < 3000; i++) {
-                samples.add(("{\"id\":" + i + ",\"user\":\"u" + (i % 30) + "\",\"event\":\"x\"}")
-                        .getBytes(StandardCharsets.UTF_8));
-            }
-            return ZstdDictionary.train(samples, 8 * 1024);
+            return trainDictionary(3000);
         }
-    }
-
-    private static MemorySegment segment(Arena arena, byte[] bytes) {
-        MemorySegment seg = arena.allocate(Math.max(bytes.length, 1));
-        MemorySegment.copy(bytes, 0, seg, JAVA_BYTE, 0, bytes.length);
-        return seg;
-    }
-
-    private static byte[] bytes(MemorySegment seg, long len) {
-        byte[] out = new byte[Math.toIntExact(len)];
-        MemorySegment.copy(seg, JAVA_BYTE, 0, out, 0, out.length);
-        return out;
     }
 }

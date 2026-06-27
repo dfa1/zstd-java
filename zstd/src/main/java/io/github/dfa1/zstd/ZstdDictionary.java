@@ -253,13 +253,13 @@ public final class ZstdDictionary {
     }
 
     /// The dictionary id zstd stamps into frames compressed with this dictionary,
-    /// or `0` for a raw/content-only dictionary with no header.
+    /// or [ZstdDictionaryId#NONE] for a raw/content-only dictionary with no header.
     ///
-    /// @return the dictionary id, or `0` if none
-    public int id() {
+    /// @return the dictionary id, or [ZstdDictionaryId#NONE] if none
+    public ZstdDictionaryId id() {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment seg = Zstd.copyIn(arena, bytes);
-            return (int) Bindings.ZDICT_GET_DICT_ID.invokeExact(seg, (long) bytes.length);
+            return ZstdDictionaryId.of((int) Bindings.ZDICT_GET_DICT_ID.invokeExact(seg, (long) bytes.length));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

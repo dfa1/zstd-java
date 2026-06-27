@@ -1,5 +1,6 @@
 package io.github.dfa1.zstd.it;
 
+import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressCtx;
 import io.github.dfa1.zstd.ZstdDecompressCtx;
@@ -250,11 +251,11 @@ class GoldenCorpusTest {
             }
 
             // When
-            int frameDictId = ZstdFrame.dictId(frame);
+            ZstdDictionaryId frameDictId = ZstdFrame.dictId(frame);
 
             // Then
             assertThat(frameDictId).isEqualTo(dict.id());
-            assertThat(frameDictId).isNotZero();
+            assertThat(frameDictId).isNotEqualTo(ZstdDictionaryId.NONE);
         }
     }
 }

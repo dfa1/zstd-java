@@ -15,6 +15,17 @@ git tags, which trigger publication to Maven Central.
   same prefix to decode. Binds `ZSTD_CCtx_refPrefix` / `ZSTD_DCtx_refPrefix`.
   Segment-only by design — heap callers that need a copy should use
   `loadDictionary` instead.
+- `Zstd.dictId(byte[])` / `Zstd.dictId(MemorySegment)` — read the dictionary id
+  stamped in raw dictionary bytes without wrapping them in a `ZstdDictionary`.
+  Binds `ZSTD_getDictID_fromDict`.
+- `ZstdDictionaryId` value type — a `record` wrapping the 32-bit dictionary id
+  with an unsigned `value()`, `isPresent()`, and the `NONE` sentinel for "no id".
+
+### Changed
+- Every dictionary-id accessor now returns `ZstdDictionaryId` instead of `int`:
+  `ZstdDictionary.id()`, `ZstdCompressDict.id()`, `ZstdDecompressDict.id()`,
+  `ZstdFrame.dictId(...)`, and `ZstdFrameHeader.dictId()`. The `0` sentinel is now
+  `ZstdDictionaryId.NONE`, and the id reads as unsigned via `value()`.
 
 ## [0.5]
 

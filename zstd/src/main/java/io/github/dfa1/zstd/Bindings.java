@@ -170,6 +170,10 @@ final class Bindings {
     // unsigned ZSTD_getDictID_fromDDict(const ZSTD_DDict*)
     static final MethodHandle GET_DICT_ID_FROM_DDICT =
             NativeLibrary.lookup("ZSTD_getDictID_fromDDict", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    // unsigned ZSTD_getDictID_fromDict(const void* dict, size_t dictSize)
+    static final MethodHandle GET_DICT_ID_FROM_DICT =
+            NativeLibrary.lookup("ZSTD_getDictID_fromDict",
+                    FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG));
 
     // ZSTD_bounds { size_t error; int lowerBound; int upperBound; } — returned by value
     static final MemoryLayout BOUNDS_LAYOUT =

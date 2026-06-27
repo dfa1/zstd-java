@@ -42,6 +42,6 @@ it is idempotent (skips if the library exists).
 
 ## References
 
-- [scripts/build-zstd.sh](../../scripts/build-zstd.sh)
+- [scripts/build-zstd.sh](../scripts/build-zstd.sh)
 - [ADR 0006 — native compile flags](0006-native-compile-flags.md)
 - [ADR 0014 — single-threaded native build](0014-single-threaded-native-build.md)

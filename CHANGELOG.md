@@ -12,6 +12,7 @@ git tags, which trigger publication to Maven Central.
   it. `SESSION_ONLY` keeps the level, parameters, and dictionary; `PARAMETERS` /
   `SESSION_AND_PARAMETERS` restore the defaults. Binds `ZSTD_CCtx_reset` /
   `ZSTD_DCtx_reset`.
+  ([3dfd5b8](https://github.com/dfa1/zstd-java/commit/3dfd5b8))
 - `ZstdCompressCtx.loadDictionary(...)` / `ZstdDecompressCtx.loadDictionary(...)`
   (a `ZstdDictionary` or a native `MemorySegment`) and `refDictionary(...)` (a
   pre-digested `ZstdCompressDict` / `ZstdDecompressDict`, attached by reference,
@@ -21,6 +22,7 @@ git tags, which trigger publication to Maven Central.
   which route the legacy dictionary path. A parameter `reset(...)` clears it.
   Binds `ZSTD_CCtx_loadDictionary` / `ZSTD_DCtx_loadDictionary` (now on contexts,
   not just streams), `ZSTD_CCtx_refCDict`, `ZSTD_DCtx_refDDict`.
+  ([3dfd5b8](https://github.com/dfa1/zstd-java/commit/3dfd5b8))
 
 ### Changed
 - `NativeLibrary.classifier()` now throws a clear `UnsatisfiedLinkError` naming

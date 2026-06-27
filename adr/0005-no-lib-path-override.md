@@ -49,5 +49,5 @@ directory created atomically, and `dlopen`s that. To run a self-built
 
 ## References
 
-- [NativeLibrary.java], [docs/how-to.md](../how-to.md)
+- [NativeLibrary.java], [docs/how-to.md](../docs/how-to.md)
 - [ADR 0004 — per-classifier native jars](0004-per-classifier-native-jars.md)

@@ -45,6 +45,6 @@ frame splitting — not native worker threads.
 
 ## References
 
-- [scripts/build-zstd.sh](../../scripts/build-zstd.sh)
+- [scripts/build-zstd.sh](../scripts/build-zstd.sh)
 - [ADR 0002 — zig cc native build](0002-zig-cc-native-build.md)
 - [ADR 0010 — native-context pool](0010-native-context-pool.md)

@@ -45,5 +45,5 @@ diverging from the established coordinates.
 
 ## References
 
-- [zstd/src/main/java/module-info.java](../../zstd/src/main/java/module-info.java)
+- [zstd/src/main/java/module-info.java](../zstd/src/main/java/module-info.java)
 - [ADR 0004 — per-classifier native jars](0004-per-classifier-native-jars.md)

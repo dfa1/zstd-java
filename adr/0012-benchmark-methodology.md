@@ -50,4 +50,4 @@ iteration counts.
 
 ## References
 
-- [docs/benchmarks.md](../benchmarks.md), [benchmark/](../../benchmark)
+- [docs/benchmarks.md](../docs/benchmarks.md), [benchmark/](../benchmark)

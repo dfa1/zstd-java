@@ -46,5 +46,5 @@ intentionally omitted — is maintained in `docs/supported.md`.
 
 ## References
 
-- [docs/supported.md](../supported.md), [Bindings.java]
-- [scripts/build-zstd.sh](../../scripts/build-zstd.sh)
+- [docs/supported.md](../docs/supported.md), [Bindings.java]
+- [scripts/build-zstd.sh](../scripts/build-zstd.sh)

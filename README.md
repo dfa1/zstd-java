@@ -29,6 +29,9 @@ The docs follow the [Diátaxis](https://diataxis.fr) framework:
 | **[Reference](docs/reference.md)** | Looking up facts | Platforms, API surface, symbol coverage, build |
 | **[Explanation](docs/explanation.md)** | Understanding the why | Why FFM + Zig, when zero-copy pays, benchmarks |
 
+Architecture decisions are recorded as [ADRs](adr/ADR.md) (MADR 3.0) — the
+foundational choices and their trade-offs, one file per decision.
+
 ## Install
 
 The `zstd` jar is pure Java and ships no `libzstd` — you always pair it with a

@@ -42,5 +42,5 @@ native jar for their platform (or via the BOM).
 
 ## References
 
-- [NativeLibrary.java], [bom/](../../bom)
+- [NativeLibrary.java], [bom/](../bom)
 - [ADR 0005 — no lib-path override](0005-no-lib-path-override.md)

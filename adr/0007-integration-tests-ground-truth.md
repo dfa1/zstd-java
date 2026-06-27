@@ -46,5 +46,5 @@ round-trip and file-format boundary gets an integration test.
 
 ## References
 
-- [integration-tests/](../../integration-tests)
-- [third_party/zstd/tests/](../../third_party/zstd/tests)
+- [integration-tests/](../integration-tests)
+- [third_party/zstd/tests/](../third_party/zstd/tests)

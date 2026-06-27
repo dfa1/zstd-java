@@ -51,5 +51,5 @@ and import `.lib` on Windows are deleted after link so they are not bundled.
 
 ## References
 
-- [scripts/build-zstd.sh](../../scripts/build-zstd.sh)
+- [scripts/build-zstd.sh](../scripts/build-zstd.sh)
 - [ADR 0002 — zig cc native build](0002-zig-cc-native-build.md)

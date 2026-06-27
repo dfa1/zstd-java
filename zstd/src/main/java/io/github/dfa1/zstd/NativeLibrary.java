@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Locale;
 
 /// Infrastructure — loads the bundled `libzstd` shared library and binds
 /// native symbols to {@link MethodHandle}s via the Foreign Function & Memory API.
@@ -74,7 +75,7 @@ final class NativeLibrary {
         return new FileAttribute<?>[0];
     }
 
-    private static String libExtension(String classifier) {
+    static String libExtension(String classifier) {
         if (classifier.startsWith("osx")) {
             return "dylib";
         }
@@ -85,27 +86,39 @@ final class NativeLibrary {
     }
 
     private static String classifier() {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        String arch = System.getProperty("os.arch", "").toLowerCase();
-        String osName;
+        return classifier(System.getProperty("os.name", ""), System.getProperty("os.arch", ""));
+    }
+
+    /// Maps a JVM `os.name` / `os.arch` pair to a native-jar classifier
+    /// (`<os>-<arch>`). A pure function of its inputs so it can be unit-tested
+    /// across platforms without touching the real system properties.
+    ///
+    /// @param osName  the raw `os.name` value (any case)
+    /// @param osArch  the raw `os.arch` value (any case)
+    /// @return the `<os>-<arch>` classifier naming the platform's native jar
+    /// @throws UnsatisfiedLinkError if the CPU architecture is not supported
+    static String classifier(String osName, String osArch) {
+        String os = osName.toLowerCase(Locale.ROOT);
+        String arch = osArch.toLowerCase(Locale.ROOT);
+        String osPart;
         if (os.contains("mac") || os.contains("darwin")) {
-            osName = "osx";
+            osPart = "osx";
         } else if (os.contains("win")) {
-            osName = "windows";
+            osPart = "windows";
         } else {
-            osName = "linux";
+            osPart = "linux";
         }
-        String archName;
+        String archPart;
         if (arch.equals("aarch64") || arch.equals("arm64")) {
-            archName = "aarch64";
+            archPart = "aarch64";
         } else if (arch.equals("x86_64") || arch.equals("amd64")) {
-            archName = "x86_64";
+            archPart = "x86_64";
         } else {
             throw new UnsatisfiedLinkError(
                     "Unsupported CPU architecture '" + arch + "'; zstd-java ships native libraries "
                             + "only for x86_64 and aarch64");
         }
-        return osName + "-" + archName;
+        return osPart + "-" + archPart;
     }
 
     private NativeLibrary() {

@@ -69,6 +69,71 @@ public final class ZstdDecompressCtx extends NativeObject {
         return this;
     }
 
+    /// Loads `dict` as the sticky dictionary for this context, so subsequent
+    /// [#decompress(byte[], int)] / [#decompress(MemorySegment, MemorySegment)]
+    /// calls decode frames compressed against it while still honouring the
+    /// advanced parameters (e.g. window-log max) set on this context.
+    ///
+    /// The dictionary is copied internally, so `dict` may be discarded afterwards.
+    /// It stays loaded until replaced, cleared with [#loadDictionary(ZstdDictionary)]
+    /// passing `null`, or dropped by a parameter [#reset(ZstdResetDirective)]. For
+    /// a dictionary reused across many contexts, digest it once and attach it with
+    /// [#refDictionary(ZstdDecompressDict)] instead.
+    ///
+    /// @param dict the dictionary to load, or `null` to clear the loaded dictionary
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the dictionary cannot be loaded
+    public ZstdDecompressCtx loadDictionary(ZstdDictionary dict) {
+        if (dict == null) {
+            return loadDictionary(MemorySegment.NULL, 0L);
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            byte[] raw = dict.raw();
+            return loadDictionary(Zstd.copyIn(arena, raw), raw.length);
+        }
+    }
+
+    /// Loads dictionary content straight from a native [MemorySegment], without a
+    /// heap copy — the zero-copy path when your dictionary is already off-heap
+    /// (e.g. an mmap slice). Otherwise identical to
+    /// [#loadDictionary(ZstdDictionary)].
+    ///
+    /// @param dict native dictionary content (its bytes are copied into the
+    ///             context), or `null` / [MemorySegment#NULL] to clear the loaded dictionary
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the dictionary cannot be loaded
+    public ZstdDecompressCtx loadDictionary(MemorySegment dict) {
+        if (NativeCall.isNull(dict)) {
+            return loadDictionary(MemorySegment.NULL, 0L);
+        }
+        NativeCall.requireNative(dict, "dict");
+        return loadDictionary(dict, dict.byteSize());
+    }
+
+    private ZstdDecompressCtx loadDictionary(MemorySegment dict, long size) {
+        NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(ptr(), dict, size));
+        return this;
+    }
+
+    /// Attaches a pre-digested `dict` to this context by reference — no per-call
+    /// digesting and no copy. Subsequent [#decompress(byte[], int)] /
+    /// [#decompress(MemorySegment, MemorySegment)] calls decode against it while
+    /// honouring this context's advanced parameters. This is the hot path for a
+    /// pooled context recycled with [#reset(ZstdResetDirective)] between frames.
+    ///
+    /// The reference is borrowed: `dict` must stay open for as long as this
+    /// context uses it. The reference is dropped by a parameter
+    /// [#reset(ZstdResetDirective)] or by passing `null`.
+    ///
+    /// @param dict the digested dictionary to reference, or `null` to clear it
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the dictionary cannot be referenced
+    public ZstdDecompressCtx refDictionary(ZstdDecompressDict dict) {
+        MemorySegment ddict = dict == null ? MemorySegment.NULL : dict.ptr();
+        NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_REF_DDICT.invokeExact(ptr(), ddict));
+        return this;
+    }
+
     /// Decompresses a frame into a buffer of at most `maxSize` bytes.
     ///
     /// @param compressed a complete zstd frame

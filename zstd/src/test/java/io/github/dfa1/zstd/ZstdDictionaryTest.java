@@ -336,6 +336,159 @@ class ZstdDictionaryTest {
         }
     }
 
+    @Nested
+    class StickyDictionary {
+
+        @Test
+        void loadedDictionaryCombinesWithAdvancedParameters() {
+            // Given a context with both a loaded dictionary AND a checksum — the
+            // combination the per-call compress(src, dict) overloads cannot give
+            byte[] record = samples.get(123);
+            byte[] frame;
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx().checksum(true)) {
+                cctx.loadDictionary(sut);
+                frame = cctx.compress(record);
+            }
+            byte[] plain;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                plain = ctx.compress(record);
+            }
+
+            // Then the dictionary is honoured (smaller than dictionaryless) and decodes
+            assertThat(frame.length).isLessThan(plain.length);
+            byte[] restored;
+            try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                dctx.loadDictionary(sut);
+                restored = dctx.decompress(frame, record.length);
+            }
+            assertThat(restored).isEqualTo(record);
+        }
+
+        @Test
+        void referencedDigestedDictionarySurvivesSessionReset() {
+            // Given a pooled context referencing a digested dictionary, recycled between frames
+            byte[] first = samples.get(1);
+            byte[] second = samples.get(2);
+            byte[] restoredFirst;
+            byte[] restoredSecond;
+            try (ZstdCompressDict cdict = new ZstdCompressDict(sut, 19);
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(sut);
+                 ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                cctx.refDictionary(cdict);
+                byte[] frameFirst = cctx.compress(first);
+                cctx.reset(ZstdResetDirective.SESSION_ONLY);
+                byte[] frameSecond = cctx.compress(second);
+
+                dctx.refDictionary(ddict);
+                restoredFirst = dctx.decompress(frameFirst, first.length);
+                dctx.reset(ZstdResetDirective.SESSION_ONLY);
+                restoredSecond = dctx.decompress(frameSecond, second.length);
+            }
+
+            // Then both frames round-trip: the reference outlived the session reset
+            assertThat(restoredFirst).isEqualTo(first);
+            assertThat(restoredSecond).isEqualTo(second);
+        }
+
+        @Test
+        void parameterResetClearsTheLoadedDictionary() {
+            // Given a context that loaded a dictionary, then cleared its parameters
+            byte[] record = samples.get(7);
+            byte[] afterReset;
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                cctx.loadDictionary(sut);
+                cctx.compress(record);
+                cctx.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
+                afterReset = cctx.compress(record);
+            }
+            byte[] noDict;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                noDict = ctx.compress(record);
+            }
+
+            // Then the dictionary is gone: the frame matches a fresh dictionaryless one
+            assertThat(afterReset).isEqualTo(noDict);
+        }
+
+        @Test
+        void nullClearsTheLoadedDictionary() {
+            // Given a context whose loaded dictionary is then cleared with null
+            byte[] record = samples.get(7);
+            byte[] cleared;
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                cctx.loadDictionary(sut);
+                cctx.loadDictionary((ZstdDictionary) null);
+                cleared = cctx.compress(record);
+            }
+            byte[] noDict;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                noDict = ctx.compress(record);
+            }
+
+            // Then it compresses as if no dictionary was ever loaded
+            assertThat(cleared).isEqualTo(noDict);
+        }
+
+        @Test
+        void loadsDictionaryFromNativeSegmentWithoutHeapCopy() {
+            // Given a dictionary loaded straight from native segments (zero-copy path)
+            byte[] record = samples.get(2048);
+            byte[] raw = sut.toByteArray();
+            byte[] restored;
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                cctx.loadDictionary(nativeDict(arena, raw));
+                byte[] frame = cctx.compress(record);
+                dctx.loadDictionary(nativeDict(arena, raw));
+                restored = dctx.decompress(frame, record.length);
+            }
+
+            // Then the record round-trips through the segment-loaded dictionary
+            assertThat(restored).isEqualTo(record);
+        }
+
+        @Test
+        void rejectsHeapDictionarySegment() {
+            // Given a heap-backed dictionary segment
+            MemorySegment heap = MemorySegment.ofArray(sut.toByteArray());
+
+            // When loaded into a context
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                ThrowingCallable result = () -> cctx.loadDictionary(heap);
+
+                // Then it fails fast rather than handing C a heap address
+                assertThatThrownBy(result).isInstanceOf(IllegalArgumentException.class);
+            }
+        }
+
+        @Test
+        void nullNativeSegmentClearsTheLoadedDictionary() {
+            // Given a context whose dictionary is cleared through the native overload
+            byte[] record = samples.get(7);
+            byte[] cleared;
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                cctx.loadDictionary(sut);
+                cctx.loadDictionary((MemorySegment) null);
+                cleared = cctx.compress(record);
+            }
+            byte[] noDict;
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                noDict = ctx.compress(record);
+            }
+
+            // Then it compresses as if no dictionary was ever loaded
+            assertThat(cleared).isEqualTo(noDict);
+        }
+
+        private MemorySegment nativeDict(Arena arena, byte[] raw) {
+            MemorySegment seg = arena.allocate(raw.length);
+            MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);
+            return seg;
+        }
+    }
+
     private static byte[] record(int i) {
         return ("{\"id\":" + i
                 + ",\"user\":\"user_" + (i % 50)

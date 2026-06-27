@@ -248,6 +248,10 @@ final class Bindings {
     static final MethodHandle COMPRESS_USING_CDICT =
             NativeLibrary.lookup("ZSTD_compress_usingCDict",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
+    // size_t ZSTD_CCtx_refCDict(ZSTD_CCtx*, const ZSTD_CDict*)
+    static final MethodHandle CCTX_REF_CDICT =
+            NativeLibrary.lookup("ZSTD_CCtx_refCDict",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS));
 
     // ZSTD_DDict* ZSTD_createDDict(const void* dict, size_t dictSize)
     static final MethodHandle CREATE_DDICT =
@@ -260,6 +264,10 @@ final class Bindings {
     static final MethodHandle DECOMPRESS_USING_DDICT =
             NativeLibrary.lookup("ZSTD_decompress_usingDDict",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
+    // size_t ZSTD_DCtx_refDDict(ZSTD_DCtx*, const ZSTD_DDict*)
+    static final MethodHandle DCTX_REF_DDICT =
+            NativeLibrary.lookup("ZSTD_DCtx_refDDict",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS));
 
     // --- dictionary training (ZDICT, from dictBuilder) ---
 

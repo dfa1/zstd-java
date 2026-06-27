@@ -12,6 +12,15 @@ git tags, which trigger publication to Maven Central.
   it. `SESSION_ONLY` keeps the level, parameters, and dictionary; `PARAMETERS` /
   `SESSION_AND_PARAMETERS` restore the defaults. Binds `ZSTD_CCtx_reset` /
   `ZSTD_DCtx_reset`.
+- `ZstdCompressCtx.loadDictionary(...)` / `ZstdDecompressCtx.loadDictionary(...)`
+  (a `ZstdDictionary` or a native `MemorySegment`) and `refDictionary(...)` (a
+  pre-digested `ZstdCompressDict` / `ZstdDecompressDict`, attached by reference,
+  no copy). A sticky dictionary on the context lets compression combine a
+  dictionary with the advanced parameters (checksum, window log, long-distance
+  matching) — impossible through the per-call `compress(src, dict)` overloads,
+  which route the legacy dictionary path. A parameter `reset(...)` clears it.
+  Binds `ZSTD_CCtx_loadDictionary` / `ZSTD_DCtx_loadDictionary` (now on contexts,
+  not just streams), `ZSTD_CCtx_refCDict`, `ZSTD_DCtx_refDDict`.
 
 ### Changed
 - `NativeLibrary.classifier()` now throws a clear `UnsatisfiedLinkError` naming

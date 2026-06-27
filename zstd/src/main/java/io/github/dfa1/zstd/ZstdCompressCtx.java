@@ -114,6 +114,76 @@ public final class ZstdCompressCtx extends NativeObject {
         return this;
     }
 
+    /// Loads `dict` as the sticky dictionary for this context, so subsequent
+    /// [#compress(byte[])] / [#compress(MemorySegment, MemorySegment)] calls
+    /// compress against it **while still honouring the advanced parameters**
+    /// (checksum, window log, long-distance matching) set on this context — the
+    /// combination the per-call `compress(src, dict)` overloads cannot give you,
+    /// since they route through the legacy dictionary path.
+    ///
+    /// The dictionary is copied internally and digested at the next compression
+    /// using this context's level and parameters, so `dict` may be discarded
+    /// afterwards.
+    /// It stays loaded until replaced, cleared with [#loadDictionary(ZstdDictionary)]
+    /// passing `null`, or dropped by a parameter [#reset(ZstdResetDirective)]. For
+    /// a dictionary reused across many contexts, digest it once and attach it with
+    /// [#refDictionary(ZstdCompressDict)] instead.
+    ///
+    /// @param dict the dictionary to load, or `null` to clear the loaded dictionary
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the dictionary cannot be loaded
+    public ZstdCompressCtx loadDictionary(ZstdDictionary dict) {
+        if (dict == null) {
+            return loadDictionary(MemorySegment.NULL, 0L);
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            byte[] raw = dict.raw();
+            return loadDictionary(Zstd.copyIn(arena, raw), raw.length);
+        }
+    }
+
+    /// Loads dictionary content straight from a native [MemorySegment], without a
+    /// heap copy — the zero-copy path when your dictionary is already off-heap
+    /// (e.g. an mmap slice). Otherwise identical to
+    /// [#loadDictionary(ZstdDictionary)].
+    ///
+    /// @param dict native dictionary content (its bytes are copied into the
+    ///             context), or `null` / [MemorySegment#NULL] to clear the loaded dictionary
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the dictionary cannot be loaded
+    public ZstdCompressCtx loadDictionary(MemorySegment dict) {
+        if (NativeCall.isNull(dict)) {
+            return loadDictionary(MemorySegment.NULL, 0L);
+        }
+        NativeCall.requireNative(dict, "dict");
+        return loadDictionary(dict, dict.byteSize());
+    }
+
+    private ZstdCompressCtx loadDictionary(MemorySegment dict, long size) {
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(ptr(), dict, size));
+        return this;
+    }
+
+    /// Attaches a pre-digested `dict` to this context by reference — no per-call
+    /// digesting and no copy. Subsequent [#compress(byte[])] /
+    /// [#compress(MemorySegment, MemorySegment)] calls compress against it while
+    /// honouring this context's advanced parameters; the compression level comes
+    /// from the [ZstdCompressDict]. This is the hot path for a pooled context
+    /// recycled with [#reset(ZstdResetDirective)] between frames.
+    ///
+    /// The reference is borrowed: `dict` must stay open for as long as this
+    /// context uses it. The reference is dropped by a parameter
+    /// [#reset(ZstdResetDirective)] or by passing `null`.
+    ///
+    /// @param dict the digested dictionary to reference, or `null` to clear it
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the dictionary cannot be referenced
+    public ZstdCompressCtx refDictionary(ZstdCompressDict dict) {
+        MemorySegment cdict = dict == null ? MemorySegment.NULL : dict.ptr();
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_REF_CDICT.invokeExact(ptr(), cdict));
+        return this;
+    }
+
     /// Compresses `src` into a new zstd frame using this context and its
     /// advanced parameters.
     ///

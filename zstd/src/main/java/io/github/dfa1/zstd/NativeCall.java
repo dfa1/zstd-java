@@ -57,6 +57,13 @@ final class NativeCall {
         }
     }
 
+    /// Whether `seg` denotes "no segment": either a Java `null` reference or the
+    /// [MemorySegment#NULL] zero-address sentinel. Both map to a null pointer in C,
+    /// which the dictionary entry points read as "clear".
+    static boolean isNull(MemorySegment seg) {
+        return seg == null || MemorySegment.NULL.equals(seg);
+    }
+
     /// Guards a zero-copy entry point: the segment handed to zstd must be backed
     /// by native (off-heap) memory, since its address is dereferenced in C. Fails
     /// fast with a clear message instead of the FFM linker's cryptic error.

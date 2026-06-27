@@ -33,7 +33,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Dictionary training (ZDICT) | 8 / 12 | trainFromBuffer, cover/fastCover optimizers, finalizeDictionary, getDictHeaderSize |
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
-| Advanced parameters | 10 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `loadDictionary`, `c/dParam_getBounds`; MT inert on single-thread build |
+| Advanced parameters | 12 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `c/dParam_getBounds`; MT inert on single-thread build |
 | Frame inspection | 10 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
 | Memory sizing | 8 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
@@ -67,7 +67,8 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | `ZSTD_getDictID_fromCDict`, `ZSTD_getDictID_fromDDict` | `ZstdCompressDict.id()` / `ZstdDecompressDict.id()` |
 | `ZSTD_getErrorString` | `ZstdErrorCode.description()` |
 | `ZSTD_cParam_getBounds`, `ZSTD_dParam_getBounds` | `ZstdCompressParameter.bounds()` / `ZstdDecompressParameter.bounds()` (`ZstdBounds`) |
-| `ZSTD_CCtx_loadDictionary`, `ZSTD_DCtx_loadDictionary` | `ZstdOutputStream` / `ZstdInputStream` dictionary constructors |
+| `ZSTD_CCtx_loadDictionary`, `ZSTD_DCtx_loadDictionary` | `ZstdCompressCtx.loadDictionary` / `ZstdDecompressCtx.loadDictionary`; `ZstdOutputStream` / `ZstdInputStream` dictionary constructors |
+| `ZSTD_CCtx_refCDict`, `ZSTD_DCtx_refDDict` | `ZstdCompressCtx.refDictionary` / `ZstdDecompressCtx.refDictionary` |
 | `ZSTD_isFrame`, `ZSTD_findFrameCompressedSize`, `ZSTD_decompressBound`, `ZSTD_getDictID_fromFrame`, `ZSTD_getFrameHeader`, `ZSTD_isSkippableFrame`, `ZSTD_writeSkippableFrame`, `ZSTD_readSkippableFrame` | `ZstdFrame` (+ `ZstdFrameHeader`, `ZstdFrameType`, `ZstdSkippableContent`) |
 | `ZSTD_getErrorCode` | `ZstdException.code()` (+ `ZstdErrorCode`) |
 | `ZSTD_getFrameProgression` | `ZstdCompressStream.progress()` (`ZstdFrameProgression`) |
@@ -91,7 +92,7 @@ zstd-jni's JNI sources (v1.5.7-11, `src/main/native/*.c`). The latter is
 symbol-exact, not functional equivalence: zstd-jni may expose an operation through
 a different symbol than this library — e.g. it routes one-shot compression through
 `ZSTD_compress2`, so `ZSTD_compress` reads `—` for it even though `Zstd.compress`
-works. zstd-jni references 53 of these symbols; this library binds 57. They
+works. zstd-jni references 53 of these symbols; this library binds 59. They
 overlap on the modern context/streaming API and diverge mainly on zstd-jni's
 sequence-producer hooks vs this library's frame-inspection and typed-error surface.
 
@@ -232,7 +233,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_resetDStream` | — ᵈ | — |
 | `ZSTD_sizeof_DStream` | — | — |
 
-### Advanced parameters (10/38)
+### Advanced parameters (12/38)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
@@ -246,7 +247,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_CCtx_loadDictionary` | ✅ | ✅ |
 | `ZSTD_CCtx_loadDictionary_advanced` | — | — |
 | `ZSTD_CCtx_loadDictionary_byReference` | — | — |
-| `ZSTD_CCtx_refCDict` | — | ✅ |
+| `ZSTD_CCtx_refCDict` | ✅ | ✅ |
 | `ZSTD_CCtx_refPrefix` | — | — |
 | `ZSTD_CCtx_refPrefix_advanced` | — | — |
 | `ZSTD_CCtx_refThreadPool` | — | — |
@@ -261,7 +262,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_DCtx_loadDictionary` | ✅ | ✅ |
 | `ZSTD_DCtx_loadDictionary_advanced` | — | — |
 | `ZSTD_DCtx_loadDictionary_byReference` | — | — |
-| `ZSTD_DCtx_refDDict` | — | ✅ |
+| `ZSTD_DCtx_refDDict` | ✅ | ✅ |
 | `ZSTD_DCtx_refPrefix` | — | — |
 | `ZSTD_DCtx_refPrefix_advanced` | — | — |
 | `ZSTD_DCtx_reset` | ✅ | ✅ |

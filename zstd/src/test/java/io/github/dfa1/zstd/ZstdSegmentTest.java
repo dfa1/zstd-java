@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static io.github.dfa1.zstd.ZstdTestSupport.bytesOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -77,7 +77,7 @@ class ZstdSegmentTest {
         @Test
         void roundTripsWithDigestedDictionary() {
             // Given a digested dictionary and a record in a native segment
-            ZstdDictionary dict = trainSmallDictionary();
+            ZstdDictionary dict = trainDictionary(2000);
             byte[] record = "{\"id\":42,\"user\":\"u\",\"active\":true}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
@@ -101,7 +101,7 @@ class ZstdSegmentTest {
         @Test
         void arenaAllocatingDecompressSizesOutputFromTheDigestedDictionaryFrame() {
             // Given a digested-dictionary frame that stores its decompressed size
-            ZstdDictionary dict = trainSmallDictionary();
+            ZstdDictionary dict = trainDictionary(2000);
             byte[] record = "{\"id\":99,\"user\":\"u\",\"active\":false}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
@@ -201,7 +201,7 @@ class ZstdSegmentTest {
 
         @Test
         void compressWithDictionaryRejectsHeapSource() {
-            ZstdDictionary dict = trainSmallDictionary();
+            ZstdDictionary dict = trainDictionary(2000);
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx sut = new ZstdCompressCtx();
                  ZstdCompressDict cdict = new ZstdCompressDict(dict)) {
@@ -221,7 +221,7 @@ class ZstdSegmentTest {
 
         @Test
         void compressWithDictionaryRejectsHeapDestination() {
-            ZstdDictionary dict = trainSmallDictionary();
+            ZstdDictionary dict = trainDictionary(2000);
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx sut = new ZstdCompressCtx();
                  ZstdCompressDict cdict = new ZstdCompressDict(dict)) {
@@ -241,7 +241,7 @@ class ZstdSegmentTest {
 
         @Test
         void decompressWithDictionaryRejectsHeapSource() {
-            ZstdDictionary dict = trainSmallDictionary();
+            ZstdDictionary dict = trainDictionary(2000);
             try (Arena arena = Arena.ofConfined();
                  ZstdDecompressCtx sut = new ZstdDecompressCtx();
                  ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
@@ -261,7 +261,7 @@ class ZstdSegmentTest {
 
         @Test
         void decompressWithDictionaryRejectsHeapDestination() {
-            ZstdDictionary dict = trainSmallDictionary();
+            ZstdDictionary dict = trainDictionary(2000);
             try (Arena arena = Arena.ofConfined();
                  ZstdDecompressCtx sut = new ZstdDecompressCtx();
                  ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
@@ -294,24 +294,4 @@ class ZstdSegmentTest {
         }
     }
 
-    private static MemorySegment segmentOf(Arena arena, byte[] bytes) {
-        MemorySegment seg = arena.allocate(Math.max(bytes.length, 1));
-        MemorySegment.copy(bytes, 0, seg, JAVA_BYTE, 0, bytes.length);
-        return seg;
-    }
-
-    private static byte[] bytesOf(MemorySegment seg, long len) {
-        byte[] out = new byte[Math.toIntExact(len)];
-        MemorySegment.copy(seg, JAVA_BYTE, 0, out, 0, out.length);
-        return out;
-    }
-
-    private static ZstdDictionary trainSmallDictionary() {
-        List<byte[]> samples = new ArrayList<>();
-        for (int i = 0; i < 2000; i++) {
-            samples.add(("{\"id\":" + i + ",\"user\":\"u\",\"active\":" + (i % 2 == 0) + "}")
-                    .getBytes(StandardCharsets.UTF_8));
-        }
-        return ZstdDictionary.train(samples, 8 * 1024);
-    }
 }

@@ -4,9 +4,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
+import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ZstdMemoryTest {
@@ -76,11 +75,7 @@ class ZstdMemoryTest {
         }
 
         private ZstdDictionary trainDict() {
-            List<byte[]> samples = new ArrayList<>();
-            for (int i = 0; i < 2000; i++) {
-                samples.add(("{\"id\":" + i + ",\"k\":\"v" + (i % 20) + "\"}").getBytes(StandardCharsets.UTF_8));
-            }
-            return ZstdDictionary.train(samples, 8 * 1024);
+            return trainDictionary(2000);
         }
     }
 }

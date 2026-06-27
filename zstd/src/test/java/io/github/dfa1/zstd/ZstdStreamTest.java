@@ -16,6 +16,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
+import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -141,11 +142,7 @@ class ZstdStreamTest {
         }
 
         private ZstdDictionary trainDict() {
-            java.util.List<byte[]> samples = new java.util.ArrayList<>();
-            for (int i = 0; i < 3000; i++) {
-                samples.add(record(i));
-            }
-            return ZstdDictionary.train(samples, 8 * 1024);
+            return trainDictionary(3000);
         }
 
         private byte[] record(int i) {

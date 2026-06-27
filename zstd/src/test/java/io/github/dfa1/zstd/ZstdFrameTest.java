@@ -365,8 +365,9 @@ class ZstdFrameTest {
             // Then equality and hashCode follow the content bytes, and toString omits the identity hash
             assertThat(sameBytesEqual).isTrue();
             assertThat(differentVariantEqual).isFalse();
-            assertThat(a).hasSameHashCodeAs(b);
-            assertThat(a).hasToString("ZstdSkippableContent[content=4 bytes, magicVariant=3]");
+            assertThat(a)
+                    .hasSameHashCodeAs(b)
+                    .hasToString("ZstdSkippableContent[content=4 bytes, magicVariant=3]");
         }
     }
 

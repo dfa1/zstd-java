@@ -44,7 +44,7 @@ class ZstdStreamTest {
 
             byte[] frame = streamCompress(text, 9);
 
-            assertThat(frame.length).isLessThan(text.length);
+            assertThat(frame).hasSizeLessThan(text.length);
             assertThat(streamDecompress(frame)).isEqualTo(text);
         }
 
@@ -93,51 +93,51 @@ class ZstdStreamTest {
 
         @Test
         void roundTripsWithDictionary() throws IOException {
-            // Given a dictionary and a small record
+            // Given a dictionary and a small sample
             ZstdDictionary dict = trainDict();
-            byte[] record = record(42);
+            byte[] sample = sample(42);
 
             // When streamed through compress and decompress with the same dictionary
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             try (ZstdOutputStream zout = new ZstdOutputStream(sink, dict)) {
-                zout.write(record);
+                zout.write(sample);
             }
             byte[] restored;
             try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(sink.toByteArray()), dict)) {
                 restored = zin.readAllBytes();
             }
 
-            // Then the record is recovered
-            assertThat(restored).isEqualTo(record);
+            // Then the sample is recovered
+            assertThat(restored).isEqualTo(sample);
         }
 
         @Test
         void dictionaryShrinksStreamedRecord() throws IOException {
             ZstdDictionary dict = trainDict();
-            byte[] record = record(123);
+            byte[] sample = sample(123);
 
             ByteArrayOutputStream withDict = new ByteArrayOutputStream();
             try (ZstdOutputStream zout = new ZstdOutputStream(withDict, dict)) {
-                zout.write(record);
+                zout.write(sample);
             }
 
-            // a dictionary frame of a tiny record is smaller than a plain stream frame
-            assertThat(withDict.size()).isLessThan(streamCompress(record, Zstd.defaultCompressionLevel()).length);
+            // a dictionary frame of a tiny sample is smaller than a plain stream frame
+            assertThat(withDict.size()).isLessThan(streamCompress(sample, Zstd.defaultCompressionLevel()).length);
         }
 
         @Test
         void streamWithDictionaryDecodesWithOneShot() throws IOException {
             // Given a dictionary frame produced by the streaming compressor
             ZstdDictionary dict = trainDict();
-            byte[] record = record(7);
+            byte[] sample = sample(7);
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             try (ZstdOutputStream zout = new ZstdOutputStream(sink, dict)) {
-                zout.write(record);
+                zout.write(sample);
             }
 
             // Then the one-shot context decodes it with the same dictionary
             try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
-                assertThat(ctx.decompress(sink.toByteArray(), record.length, dict)).isEqualTo(record);
+                assertThat(ctx.decompress(sink.toByteArray(), sample.length, dict)).isEqualTo(sample);
             }
         }
 
@@ -145,7 +145,7 @@ class ZstdStreamTest {
             return trainDictionary(3000);
         }
 
-        private byte[] record(int i) {
+        private byte[] sample(int i) {
             return ("{\"id\":" + i + ",\"user\":\"user_" + (i % 40) + "\",\"event\":\"click\"}")
                     .getBytes(StandardCharsets.UTF_8);
         }

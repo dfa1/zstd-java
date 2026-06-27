@@ -53,7 +53,7 @@ class ZstdTest {
             byte[] frame = Zstd.compress(original);
 
             // Then the frame is smaller than the input
-            assertThat(frame.length).isLessThan(original.length);
+            assertThat(frame).hasSizeLessThan(original.length);
         }
     }
 
@@ -264,7 +264,7 @@ class ZstdTest {
         void boundedDecompressRefusesADecompressionBomb() {
             // Given a tiny frame that expands enormously (8 MiB of zeros -> a few bytes)
             byte[] bomb = Zstd.compress(new byte[8 * 1024 * 1024]);
-            assertThat(bomb.length).isLessThan(1024); // huge amplification ratio
+            assertThat(bomb).hasSizeLessThan(1024); // huge amplification ratio
 
             // When decompressed with a small bound (the safe path for untrusted input)
             ThrowingCallable result = () -> Zstd.decompress(bomb, 64 * 1024);

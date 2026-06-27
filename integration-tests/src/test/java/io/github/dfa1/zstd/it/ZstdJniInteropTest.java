@@ -100,29 +100,29 @@ class ZstdJniInteropTest {
         @Test
         void javaDictCompressJniDictDecompress() {
             ZstdDictionary dict = trainDict();
-            byte[] record = record(11);
+            byte[] sample = sample(11);
 
             byte[] frame;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                frame = ctx.compress(record, dict);
+                frame = ctx.compress(sample, dict);
             }
             ZstdDictDecompress jniDict = new ZstdDictDecompress(dict.toByteArray());
-            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, record.length)).isEqualTo(record);
+            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, sample.length)).isEqualTo(sample);
         }
 
         @Test
         void jniDictCompressJavaDictDecompress() {
             ZstdDictionary dict = trainDict();
-            byte[] record = record(22);
+            byte[] sample = sample(22);
 
             ZstdDictCompress jniDict = new ZstdDictCompress(dict.toByteArray(), Zstd.defaultCompressionLevel());
-            byte[] frame = com.github.luben.zstd.Zstd.compress(record, jniDict);
+            byte[] frame = com.github.luben.zstd.Zstd.compress(sample, jniDict);
 
             byte[] restored;
             try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
-                restored = ctx.decompress(frame, record.length, dict);
+                restored = ctx.decompress(frame, sample.length, dict);
             }
-            assertThat(restored).isEqualTo(record);
+            assertThat(restored).isEqualTo(sample);
         }
 
         @Test
@@ -131,42 +131,42 @@ class ZstdJniInteropTest {
             // (checksum) — the COMPRESS2 path — must still produce a frame zstd-jni
             // decodes against the same dictionary.
             ZstdDictionary dict = trainDict();
-            byte[] record = record(33);
+            byte[] sample = sample(33);
 
             byte[] frame;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx().checksum(true)) {
                 ctx.loadDictionary(dict);
-                frame = ctx.compress(record);
+                frame = ctx.compress(sample);
             }
             ZstdDictDecompress jniDict = new ZstdDictDecompress(dict.toByteArray());
-            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, record.length)).isEqualTo(record);
+            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, sample.length)).isEqualTo(sample);
         }
 
         @Test
         void javaReferencedDigestedDictJniDictDecompress() {
             // A frame from a context referencing a digested CDict must decode in zstd-jni.
             ZstdDictionary dict = trainDict();
-            byte[] record = record(44);
+            byte[] sample = sample(44);
 
             byte[] frame;
             try (ZstdCompressDict cdict = new ZstdCompressDict(dict, Zstd.defaultCompressionLevel());
                  ZstdCompressCtx ctx = new ZstdCompressCtx()) {
                 ctx.refDictionary(cdict);
-                frame = ctx.compress(record);
+                frame = ctx.compress(sample);
             }
             ZstdDictDecompress jniDict = new ZstdDictDecompress(dict.toByteArray());
-            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, record.length)).isEqualTo(record);
+            assertThat(com.github.luben.zstd.Zstd.decompress(frame, jniDict, sample.length)).isEqualTo(sample);
         }
 
         private ZstdDictionary trainDict() {
             List<byte[]> samples = new ArrayList<>();
             for (int i = 0; i < 3000; i++) {
-                samples.add(record(i));
+                samples.add(sample(i));
             }
             return ZstdDictionary.train(samples, 8 * 1024);
         }
 
-        private byte[] record(int i) {
+        private byte[] sample(int i) {
             return ("{\"id\":" + i + ",\"user\":\"u" + (i % 30) + "\",\"event\":\"click\"}")
                     .getBytes(StandardCharsets.UTF_8);
         }

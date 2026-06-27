@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 
-class NativeObjectTest {
+class   NativeObjectTest {
 
     // A non-NULL stand-in pointer; never dereferenced, only compared by identity.
     private static final MemorySegment POINTER = MemorySegment.ofAddress(0x1234);

@@ -254,8 +254,9 @@ class GoldenCorpusTest {
             ZstdDictionaryId frameDictId = ZstdFrame.dictId(frame);
 
             // Then
-            assertThat(frameDictId).isEqualTo(dict.id());
-            assertThat(frameDictId).isNotEqualTo(ZstdDictionaryId.NONE);
+            assertThat(frameDictId)
+                    .isEqualTo(dict.id())
+                    .isNotEqualTo(ZstdDictionaryId.NONE);
         }
     }
 }

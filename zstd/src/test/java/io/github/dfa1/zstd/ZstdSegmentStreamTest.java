@@ -121,19 +121,19 @@ class ZstdSegmentStreamTest {
         @Test
         void roundTripsAgainstDictionary() {
             ZstdDictionary dict = trainDict();
-            byte[] record = "{\"id\":1,\"user\":\"u\",\"event\":\"x\"}".getBytes(StandardCharsets.UTF_8);
+            byte[] sample = "{\"id\":1,\"user\":\"u\",\"event\":\"x\"}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressStream cs = new ZstdCompressStream(3, dict);
                  ZstdDecompressStream ds = new ZstdDecompressStream(dict)) {
 
-                MemorySegment src = segmentOf(arena, record);
-                MemorySegment dst = arena.allocate(Zstd.compressBound(record.length));
+                MemorySegment src = segmentOf(arena, sample);
+                MemorySegment dst = arena.allocate(Zstd.compressBound(sample.length));
                 ZstdStreamResult c = cs.compress(dst, src, ZstdEndDirective.END);
 
-                MemorySegment out = arena.allocate(record.length);
+                MemorySegment out = arena.allocate(sample.length);
                 ds.decompress(out, dst.asSlice(0, c.bytesProduced()));
-                assertThat(bytesOf(out, record.length)).isEqualTo(record);
+                assertThat(bytesOf(out, sample.length)).isEqualTo(sample);
             }
         }
 

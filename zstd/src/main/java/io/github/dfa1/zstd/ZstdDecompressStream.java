@@ -26,6 +26,7 @@ public final class ZstdDecompressStream extends NativeObject {
     /// Creates a streaming decompressor for frames built with `dictionary`.
     ///
     /// @param dictionary the dictionary the frames were compressed against, or `null` for none
+    @SuppressWarnings("java:S1181") // loadDictionary wraps MethodHandle.invokeExact (throws Throwable); must catch Throwable
     public ZstdDecompressStream(ZstdDictionary dictionary) {
         // Own the context first, so any failure setting it up is cleaned up by
         // close() — one release path, no leak on a half-built stream.

@@ -9,6 +9,7 @@ import java.io.UncheckedIOException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +59,8 @@ public class GoldenCorpusBenchmark {
     private int srcSize;
     private byte[] frame;
 
+    private int bound;
+
     private ZstdCompressCtx cctx;
     private ZstdDecompressCtx dctx;
     private byte[] compressDst;
@@ -68,6 +71,17 @@ public class GoldenCorpusBenchmark {
     private MemorySegment compressDstSeg;
     private MemorySegment decompressDstSeg;
 
+    // zstd-jni's own zero-copy path: reusable context + direct (off-heap)
+    // ByteBuffers, reused across calls — the fair peer of our MemorySegment path
+    // (no per-call allocation, no heap bounce), not the allocating
+    // Zstd.compress(byte[]) used by compressJni/decompressJni.
+    private com.github.luben.zstd.ZstdCompressCtx jniCctx;
+    private com.github.luben.zstd.ZstdDecompressCtx jniDctx;
+    private ByteBuffer jniSrcBuf;
+    private ByteBuffer jniFrameBuf;
+    private ByteBuffer jniCompressDstBuf;
+    private ByteBuffer jniDecompressDstBuf;
+
     @Setup(Level.Trial)
     public void setup() {
         src = read(corpus().resolve("golden-compression").resolve(file));
@@ -76,7 +90,7 @@ public class GoldenCorpusBenchmark {
 
         cctx = new ZstdCompressCtx().level(level);
         dctx = new ZstdDecompressCtx();
-        int bound = (int) Zstd.compressBound(srcSize);
+        bound = (int) Zstd.compressBound(srcSize);
         compressDst = new byte[bound];
 
         arena = Arena.ofConfined();
@@ -86,6 +100,13 @@ public class GoldenCorpusBenchmark {
         MemorySegment.copy(frame, 0, frameSeg, JAVA_BYTE, 0, frame.length);
         compressDstSeg = arena.allocate(bound);
         decompressDstSeg = arena.allocate(srcSize);
+
+        jniCctx = new com.github.luben.zstd.ZstdCompressCtx().setLevel(level);
+        jniDctx = new com.github.luben.zstd.ZstdDecompressCtx();
+        jniSrcBuf = ByteBuffer.allocateDirect(srcSize).put(src).flip();
+        jniFrameBuf = ByteBuffer.allocateDirect(frame.length).put(frame).flip();
+        jniCompressDstBuf = ByteBuffer.allocateDirect(bound);
+        jniDecompressDstBuf = ByteBuffer.allocateDirect(srcSize);
     }
 
     @TearDown(Level.Trial)
@@ -93,6 +114,8 @@ public class GoldenCorpusBenchmark {
         cctx.close();
         dctx.close();
         arena.close();
+        jniCctx.close();
+        jniDctx.close();
     }
 
     @Benchmark
@@ -111,6 +134,11 @@ public class GoldenCorpusBenchmark {
     }
 
     @Benchmark
+    public int compressJniByteBuffer() {
+        return jniCctx.compressDirectByteBuffer(jniCompressDstBuf, 0, bound, jniSrcBuf, 0, srcSize);
+    }
+
+    @Benchmark
     public byte[] decompressJavaBytes() {
         return dctx.decompress(frame, srcSize);
     }
@@ -123,6 +151,12 @@ public class GoldenCorpusBenchmark {
     @Benchmark
     public byte[] decompressJni() {
         return com.github.luben.zstd.Zstd.decompress(frame, srcSize);
+    }
+
+    @Benchmark
+    public int decompressJniByteBuffer() {
+        return jniDctx.decompressDirectByteBuffer(
+                jniDecompressDstBuf, 0, srcSize, jniFrameBuf, 0, frame.length);
     }
 
     private static byte[] read(Path file) {

@@ -127,6 +127,30 @@ There are matching `compress(dst, src)` / `decompress(dst, src)` overloads (plus
 dictionary variants) returning the number of bytes written. For *why and when*
 this pays off, see the [explanation](zero-copy.md).
 
+## Compress a `ByteBuffer` (NIO / Netty) without copying
+
+Much of the ecosystem speaks `ByteBuffer`. There is no separate `ByteBuffer` API —
+wrap the buffer as a `MemorySegment` with `MemorySegment.ofBuffer(...)` and use the
+segment overloads above. A **direct** buffer wraps with zero copy; a heap buffer is
+rejected by the native guard (wrap is a heap segment), so copy it to a direct buffer
+or a `byte[]` first.
+
+```java
+try (Arena arena = Arena.ofConfined();
+     ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+    ByteBuffer src = channel.map(READ_ONLY, 0, size, arena); // direct, off-heap
+    MemorySegment in  = MemorySegment.ofBuffer(src);         // zero-copy view
+    MemorySegment out = cctx.compress(arena, in);            // arena-owned frame
+    ByteBuffer frame  = out.asByteBuffer();                  // zero-copy hand-off
+}
+```
+
+`ofBuffer` covers the buffer's `[position, limit)` and a read-only buffer yields a
+read-only segment. The wrapped segment borrows the buffer's lifetime, so keep the
+buffer reachable while compressing. For the round trip back to a `ByteBuffer`
+(including the `BIG_ENDIAN` byte-order wart on `asByteBuffer()`), see
+[zero-copy.md § ByteBuffer interop](zero-copy.md).
+
 ## Run against a self-built libzstd
 
 The loader only ever loads the library bundled in the platform native jar on the

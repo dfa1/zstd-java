@@ -30,4 +30,6 @@ Read `CLAUDE.md` first. Review against it strictly. Start by running `git diff` 
 - No `sun.misc.Unsafe` / internal JDK APIs. No SonarQube smells.
 
 ## Output format
-Group findings by severity: **Blocker** / **Should-fix** / **Nit**. Each finding one line: `file:line — problem — fix`. If you can, verify suspicions by running `./mvnw validate` or the relevant test and quote real output. End with a verdict: APPROVE or CHANGES NEEDED. Be specific and skeptical — your job is to catch what the coder missed.
+Group findings by severity: **Blocker** / **Should-fix** / **Nit**. Each finding one line: `file:line — problem — fix`. If you can, verify suspicions by running `./mvnw validate` or the relevant test and quote real output. End with a verdict: APPROVE or CHANGES NEEDED.
+
+Be specific and skeptical about correctness — your job is to catch what the coder missed. But **do not manufacture findings to fill the template**: an empty findings list is a valid, good outcome. A clean diff should get "APPROVE — nothing material." Report **Blocker** and **Should-fix** whenever they exist; report a **Nit only when it is genuinely worth a human's time to act on** (a real readability or correctness-adjacent issue), not for cosmetic preferences, style the build already enforces, or anything you'd caveat with "acceptable as-is / leave it." If your only findings are ones you'd tell the author to ignore, omit them and approve. Coverage is not measured by finding count.

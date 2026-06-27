@@ -210,6 +210,15 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_DCtx_loadDictionary",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG));
 
+    // size_t ZSTD_CCtx_refPrefix(ZSTD_CCtx*, const void* prefix, size_t prefixSize)
+    static final MethodHandle CCTX_REF_PREFIX =
+            NativeLibrary.lookup("ZSTD_CCtx_refPrefix",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG));
+    // size_t ZSTD_DCtx_refPrefix(ZSTD_DCtx*, const void* prefix, size_t prefixSize)
+    static final MethodHandle DCTX_REF_PREFIX =
+            NativeLibrary.lookup("ZSTD_DCtx_refPrefix",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG));
+
     // size_t ZSTD_CStreamInSize(void) / ZSTD_CStreamOutSize(void)
     static final MethodHandle CSTREAM_IN_SIZE =
             NativeLibrary.lookup("ZSTD_CStreamInSize", FunctionDescriptor.of(JAVA_LONG));

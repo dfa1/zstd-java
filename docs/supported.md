@@ -33,7 +33,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Dictionary training (ZDICT) | 8 / 12 | trainFromBuffer, cover/fastCover optimizers, finalizeDictionary, getDictHeaderSize |
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
-| Advanced parameters | 12 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `c/dParam_getBounds`; MT inert on single-thread build |
+| Advanced parameters | 14 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `C/DCtx_refPrefix`, `c/dParam_getBounds`; MT inert on single-thread build |
 | Frame inspection | 10 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
 | Memory sizing | 8 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
@@ -233,7 +233,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_resetDStream` | — ᵈ | — |
 | `ZSTD_sizeof_DStream` | — | — |
 
-### Advanced parameters (12/38)
+### Advanced parameters (14/38)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
@@ -248,7 +248,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_CCtx_loadDictionary_advanced` | — | — |
 | `ZSTD_CCtx_loadDictionary_byReference` | — | — |
 | `ZSTD_CCtx_refCDict` | ✅ | ✅ |
-| `ZSTD_CCtx_refPrefix` | — | — |
+| `ZSTD_CCtx_refPrefix` | ✅ | — |
 | `ZSTD_CCtx_refPrefix_advanced` | — | — |
 | `ZSTD_CCtx_refThreadPool` | — | — |
 | `ZSTD_CCtx_reset` | ✅ | ✅ |
@@ -263,7 +263,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_DCtx_loadDictionary_advanced` | — | — |
 | `ZSTD_DCtx_loadDictionary_byReference` | — | — |
 | `ZSTD_DCtx_refDDict` | ✅ | ✅ |
-| `ZSTD_DCtx_refPrefix` | — | — |
+| `ZSTD_DCtx_refPrefix` | ✅ | — |
 | `ZSTD_DCtx_refPrefix_advanced` | — | — |
 | `ZSTD_DCtx_reset` | ✅ | ✅ |
 | `ZSTD_DCtx_setFormat` | — ᵈ | — |

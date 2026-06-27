@@ -27,6 +27,10 @@ git tags, which trigger publication to Maven Central.
 - `ZstdFrame.headerSize(byte[])` / `ZstdFrame.headerSize(MemorySegment)` — the size
   of a frame's header computed from just its leading bytes (as few as 5), without a
   full parse. Binds `ZSTD_frameHeaderSize`.
+- `ZstdFrame.decompressionMargin(byte[])` / `ZstdFrame.decompressionMargin(MemorySegment)`
+  — the extra room needed to decompress a frame **in place** (output buffer overlaps
+  the compressed input at its tail), sized `decompressedSize + margin`. Binds
+  `ZSTD_decompressionMargin`.
 - `ZstdDictionary.compressDict(int)` / `compressDict()` / `decompressDict()` —
   factories for digested dictionaries, e.g. `dict.compressDict(19)` instead of
   `new ZstdCompressDict(dict, 19)`. They signal that the result is `AutoCloseable`

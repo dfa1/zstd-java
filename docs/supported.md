@@ -35,7 +35,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
 | Advanced parameters | 14 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `C/DCtx_refPrefix`, `c/dParam_getBounds`; MT inert on single-thread build |
 | Frame inspection | 12 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
-| Memory sizing | 8 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size |
+| Memory sizing | 9 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size, in-place decompression margin |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
 | Sequences | 0 / 5 | sequence producer API not bound |
 | Misc / experimental | 0 / 10 | static-buffer init, param helpers, `copy*` not bound |
@@ -294,12 +294,12 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_readSkippableFrame` | ✅ | — |
 | `ZSTD_writeSkippableFrame` | ✅ | — |
 
-### Memory sizing (8/14)
+### Memory sizing (9/14)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
 | `ZSTD_decodingBufferSize_min` | — | — |
-| `ZSTD_decompressionMargin` | — | — |
+| `ZSTD_decompressionMargin` | ✅ | — |
 | `ZSTD_estimateCCtxSize` | ✅ | — |
 | `ZSTD_estimateCCtxSize_usingCParams` | — | — |
 | `ZSTD_estimateCDictSize` | ✅ | — |

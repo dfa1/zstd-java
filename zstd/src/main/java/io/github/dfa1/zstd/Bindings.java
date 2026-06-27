@@ -59,6 +59,11 @@ final class Bindings {
             NativeLibrary.lookup("ZSTD_findDecompressedSize",
                     FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
 
+    // size_t ZSTD_decompressionMargin(const void* src, size_t srcSize)
+    static final MethodHandle DECOMPRESSION_MARGIN =
+            NativeLibrary.lookup("ZSTD_decompressionMargin",
+                    FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
+
     // unsigned ZSTD_getDictID_fromFrame(const void* src, size_t srcSize)
     static final MethodHandle GET_DICT_ID_FROM_FRAME =
             NativeLibrary.lookup("ZSTD_getDictID_fromFrame",

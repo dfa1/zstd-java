@@ -297,6 +297,41 @@ public final class ZstdDictionary {
         return bytes.length;
     }
 
+    /// Digests this dictionary once for compression at `level`, ready to share by
+    /// reference across contexts with [ZstdCompressCtx#refDictionary(ZstdCompressDict)].
+    ///
+    /// The returned dictionary owns native memory — close it when done (it is
+    /// [AutoCloseable]). For a single context, prefer
+    /// [ZstdCompressCtx#loadDictionary(ZstdDictionary)], which the context digests,
+    /// owns, and frees for you.
+    ///
+    /// @param level the compression level to fix for the digested dictionary
+    /// @return a digested compression dictionary the caller must close
+    public ZstdCompressDict compressDict(int level) {
+        return new ZstdCompressDict(this, level);
+    }
+
+    /// Digests this dictionary for compression at the library default level.
+    /// Otherwise identical to [#compressDict(int)].
+    ///
+    /// @return a digested compression dictionary the caller must close
+    public ZstdCompressDict compressDict() {
+        return new ZstdCompressDict(this);
+    }
+
+    /// Digests this dictionary once for decompression, ready to share by reference
+    /// across contexts with [ZstdDecompressCtx#refDictionary(ZstdDecompressDict)].
+    ///
+    /// The returned dictionary owns native memory — close it when done (it is
+    /// [AutoCloseable]). For a single context, prefer
+    /// [ZstdDecompressCtx#loadDictionary(ZstdDictionary)], which the context owns
+    /// and frees for you.
+    ///
+    /// @return a digested decompression dictionary the caller must close
+    public ZstdDecompressDict decompressDict() {
+        return new ZstdDecompressDict(this);
+    }
+
     /// Internal: direct view of the bytes for native calls. Not exposed.
     byte[] raw() {
         return bytes;

@@ -27,6 +27,11 @@ git tags, which trigger publication to Maven Central.
 - `ZstdFrame.headerSize(byte[])` / `ZstdFrame.headerSize(MemorySegment)` — the size
   of a frame's header computed from just its leading bytes (as few as 5), without a
   full parse. Binds `ZSTD_frameHeaderSize`.
+- `ZstdDictionary.compressDict(int)` / `compressDict()` / `decompressDict()` —
+  factories for digested dictionaries, e.g. `dict.compressDict(19)` instead of
+  `new ZstdCompressDict(dict, 19)`. They signal that the result is `AutoCloseable`
+  and are for sharing one digest across contexts via `refDictionary`; a single
+  context should prefer the context-owned `loadDictionary`.
 
 ### Changed
 - Every dictionary-id accessor now returns `ZstdDictionaryId` instead of `int`:

@@ -3,9 +3,20 @@
 zstd-java exposes two shapes of API:
 
 - **`byte[]`** — convenient, for callers whose data is already on the heap.
-- **`MemorySegment`** — zero-copy, for callers whose data is already off-heap.
+- **`MemorySegment`** — zero-copy *at the call boundary*, for callers whose data
+  is already off-heap.
 
-This note explains why the segment shape exists and when it pays off.
+This note explains why the segment shape exists and when it pays off. For the
+recipes — sizing output, letting the codec allocate, `ByteBuffer` interop,
+streaming, and pledging the size — see the [how-to guide](how-to.md).
+
+## What "zero-copy" means here
+
+It means **no copy at the Java↔native boundary** — the same sense as zero-copy
+I/O, where bytes still move but not redundantly between buffers. Compression
+itself always reads all input and writes all output; that is the work, not a
+copy. "Zero-copy" is about the *boundary*, and applies only to the
+`MemorySegment` path — the `byte[]` overloads copy twice (see the honest caveat).
 
 ## The core win: no copy at the call boundary
 
@@ -14,20 +25,20 @@ the GC, so the FFM runtime copies it into native memory for the duration of the
 call — and copies the result back. **Two copies per call.**
 
 A native `MemorySegment` already *is* a native address. You hand
-`ZSTD_compress` / `ZSTD_decompress` the pointer directly. **Zero copies.**
+`ZSTD_compress` / `ZSTD_decompress` the pointer directly. **No boundary copy.**
 
 ```text
 byte[] path:   heap byte[] ──copy──▶ native scratch ──ZSTD──▶ native scratch ──copy──▶ heap byte[]
-segment path:  native src ───────────────────────────ZSTD──▶ native dst        (no copy)
+segment path:  native src ───────────────────────────ZSTD──▶ native dst        (no boundary copy)
 ```
 
 ## When it actually pays off (not always)
 
-Zero-copy only helps if the data is **already native** on both ends. The
-canonical case is a memory-mapped reader (e.g. Vortex):
+This only helps if the data is **already native** on both ends. The canonical
+case is a memory-mapped reader (e.g. Vortex):
 
 - **Compressed input** — the reader `mmap`s the file into one `MemorySegment`;
-  the zstd frame is already a zero-copy slice of it. A `byte[]` API forces
+  the zstd frame is already a slice of it. A `byte[]` API forces
   `frame.toArray()` → `new byte[]` just to make the call. The segment API passes
   the mmap slice straight to `ZSTD_decompress`.
 - **Decompressed output** — allocate the output in your arena
@@ -36,7 +47,7 @@ canonical case is a memory-mapped reader (e.g. Vortex):
   `MemorySegment.copy`.
 
 The decode path collapses from **mmap → byte[] → byte[] → arena** (three copies)
-to **mmap-slice → arena** (zero copies).
+to **mmap-slice → arena** (no boundary copy).
 
 ## Secondary wins
 
@@ -52,155 +63,29 @@ to **mmap-slice → arena** (zero copies).
 
 If the caller hands you a heap `byte[]` (the aircompressor fallback path, or
 external input), wrapping it with `MemorySegment.ofArray(...)` still triggers the
-copy for the downcall — no free lunch. So the API is **segment-first for the
-zero-copy fast path, with a thin `byte[]` overload** for the rare heap caller.
+copy for the downcall — no free lunch. A heap `ByteBuffer` is the same: its
+`MemorySegment.ofBuffer(...)` wrap is a heap segment and still copies. Only data
+that is *already native* avoids the boundary copy. So the API is **segment-first
+for the zero-copy fast path, with a thin `byte[]` overload** for the rare heap
+caller.
 
-## API map
+We deliberately do **not** add a parallel `ByteBuffer` API surface: FFM already
+defines the conversions (`MemorySegment.ofBuffer` in, `segment.asByteBuffer()`
+out), so a direct buffer reaches the same path with one wrapping call — see the
+[how-to](how-to.md).
 
-| Operation              | byte[] (convenience)                            | MemorySegment (zero-copy)                          |
-|------------------------|-------------------------------------------------|----------------------------------------------------|
-| compress               | `ZstdCompressCtx.compress(byte[])`              | `ZstdCompressCtx.compress(dst, src)`               |
-| compress + dict        | `ZstdCompressCtx.compress(byte[], ZstdCompressDict)` | `ZstdCompressCtx.compress(dst, src, ZstdCompressDict)` |
-| decompress             | `ZstdDecompressCtx.decompress(byte[], int)`     | `ZstdDecompressCtx.decompress(dst, src)`           |
-| decompress + dict      | `ZstdDecompressCtx.decompress(byte[], int, ZstdDecompressDict)` | `ZstdDecompressCtx.decompress(dst, src, ZstdDecompressDict)` |
-| size output (no copy)  | frame header via `Zstd.decompress(byte[])`      | `Zstd.decompressedSize(MemorySegment)`             |
+## Why a streamed frame can't be decoded zero-copy
 
-The explicit-`dst` methods return the number of bytes written. Size `dst` with
-`Zstd.compressBound(srcSize)` for compression, or `Zstd.decompressedSize(frame)`
-for decompression.
+The zero-copy decode path reads the frame's **decompressed-size** header field to
+size the output arena in one shot. zstd writes that field only when the encoder
+knows the total up front — trivially true for one-shot `ZSTD_compress`, but a
+*streaming* encoder is fed incrementally and closes the frame without ever being
+told the total. So a plain `ZstdOutputStream` frame omits the size, and a
+consumer is forced back onto the bounded streaming decoder (allocate, decode a
+chunk, grow, repeat) — the very heap-bounce the segment API exists to avoid.
 
-### Let the codec allocate
-
-If you don't want to size the destination yourself, pass an `Arena` and the codec
-sizes, allocates, and writes the output for you — still zero-copy, since the
-output is allocated in *your* arena and zstd writes into it directly. The
-returned segment is owned by that arena.
-
-```java
-MemorySegment frame   = cctx.compress(arena, src);    // bound-sized, trimmed to frame length
-MemorySegment decoded = dctx.decompress(arena, frame); // header-sized, exact length
-```
-
-| Operation   | explicit dst (you size)                       | arena (codec sizes)                        |
-|-------------|-----------------------------------------------|--------------------------------------------|
-| compress    | `compress(dst, src)` → bytes written          | `compress(arena, src)` → frame segment     |
-| decompress  | `decompress(dst, src)` → bytes written        | `decompress(arena, frame)` → output segment |
-
-The arena form of `decompress` requires the frame to store its decompressed size
-(one-shot `compress` always stamps it; a *streamed* frame only does so when you
-pledge the size up front — see [Pledged size](#pledged-size-unlocks-zero-copy-decode)).
-For size-less frames, size `dst` yourself.
-
-## ByteBuffer interop
-
-Much of the Java ecosystem speaks `ByteBuffer`, not `MemorySegment` — NIO
-channels, Netty, and `FileChannel.map`'s `MappedByteBuffer`. We deliberately do
-**not** add a third set of `ByteBuffer` overloads: the segment API already
-bridges both directions of the FFM↔NIO boundary at zero copy, because FFM defines
-the conversions.
-
-- **`ByteBuffer` in** — wrap a *direct* buffer as a segment with
-  `MemorySegment.ofBuffer(buf)` (zero copy; a heap-backed buffer copies, the same
-  caveat as `byte[]`). Hand the segment to `compress` / `decompress`.
-- **`MemorySegment` out to `ByteBuffer`** — `segment.asByteBuffer()` returns a
-  buffer view over the native bytes, no copy. The decompressed arena segment is
-  consumable by an existing `ByteBuffer` pipeline as-is.
-
-```java
-// an mmap'd frame is already a direct ByteBuffer (FileChannel.map)
-MemorySegment frame  = MemorySegment.ofBuffer(mappedByteBuffer);
-MemorySegment out    = dctx.decompress(arena, frame); // zero-copy decode
-ByteBuffer    result = out.asByteBuffer();             // zero-copy hand-off
-```
-
-**Byte order.** `asByteBuffer()` on a *native* segment already returns a **direct**
-buffer aliasing the same off-heap bytes — there is no copy and nothing to convert.
-The one wart is byte order: it comes back `BIG_ENDIAN` regardless of platform, so a
-caller doing multi-byte reads must restore the native order:
-
-```java
-import java.nio.ByteOrder;
-
-ByteBuffer result = dctx.decompress(arena, frame)
-        .asByteBuffer()
-        .order(ByteOrder.nativeOrder()); // direct buffer, native order, zero copy
-```
-
-(For a pure byte payload the order does not matter and even that is unneeded.) The
-remaining caveat is lifetime: the buffer borrows the arena's scope, so it must not
-outlive the `try`-with-resources. A thin `toByteBuffer()` convenience on the
-arena-returning results could fold the `order(nativeOrder())` call in one place, but
-it would be a one-line output adapter, not new capability — the conversion already
-exists. We keep the API segment-first (no parallel `ByteBuffer` surface to maintain).
-
-## Zero-copy streaming
-
-The one-shot segment methods above need the whole input in one segment. When data
-is large or arrives incrementally but both ends are still off-heap, use the
-segment **stream driver** — `ZstdCompressStream` / `ZstdDecompressStream` — which
-drives `ZSTD_compressStream2` / `ZSTD_decompressStream` directly over native
-buffers, in bounded memory, with no heap bounce (unlike `ZstdOutputStream` /
-`ZstdInputStream`, which copy through `byte[]` to fit `java.io`).
-
-Each step compresses/decompresses as much of `src` as fits in `dst` and reports a
-`ZstdStreamResult` (`bytesConsumed`, `bytesProduced`, `remaining`). Advance the
-source by `bytesConsumed`, drain `bytesProduced` from `dst`, and for compression
-finish with `ZstdEndDirective.END` until `isComplete()`:
-
-```java
-try (ZstdCompressStream cs = new ZstdCompressStream(level)) {
-    long off = 0;
-    ZstdStreamResult r;
-    do {
-        r = cs.compress(dst, src.asSlice(off), ZstdEndDirective.END);
-        off += r.bytesConsumed();
-        sink.write(dst.asSlice(0, r.bytesProduced()));
-    } while (!r.isComplete());
-}
-```
-
-Both drivers take an optional `ZstdDictionary`. Decompression mirrors the loop,
-calling `decompress(dst, src)` until a result `isComplete()` (frame fully decoded).
-
-## Pledged size unlocks zero-copy decode
-
-Streaming compression has a hidden cost the one-shot path does not: **a streamed
-frame does not record its decompressed size.** zstd writes the content-size field
-in the frame header only when the encoder knows the total up front — trivially
-true for `ZSTD_compress`, but a streaming encoder is fed incrementally and closes
-the frame without ever being told the total.
-
-That field is exactly what the zero-copy decode path reads to size the output
-arena. So a plain `ZstdOutputStream` frame **cannot be decoded zero-copy**:
-
-```java
-byte[] frame = streamCompress(data);          // no pledged size
-Zstd.decompressedSize(segmentOf(frame));      // throws: "decompressed size not stored in frame"
-dctx.decompress(arena, segmentOf(frame));     // same — it can't size the arena
-```
-
-The consumer is forced back onto the bounded streaming decoder (allocate, decode a
-chunk, grow, repeat) or a guessed `maxSize` — the very heap-bounce the segment API
-exists to avoid.
-
-`ZstdOutputStream.withPledgedSize(out, level, total)` closes the loop. Tell the
-encoder the total before the first byte and it stamps the content size into the
-header, so a downstream reader can size the output arena exactly and decode in one
-shot:
-
-```java
-try (var zout = ZstdOutputStream.withPledgedSize(sink, 6, data.length)) {
-    zout.write(data);                          // pledge must match the bytes written
-}
-byte[] frame = sink.toByteArray();
-
-// downstream, in a memory-mapped reader:
-MemorySegment src = MemorySegment.ofBuffer(mmap);
-MemorySegment out = dctx.decompress(arena, src);  // one allocation, zero copies
-```
-
-This is the case where pledging is not a micro-optimization but a correctness
-gate: it is the difference between a frame that participates in the zero-copy
-decode path and one that does not. Pledge whenever the producer streams but the
-total is known (file length, serialized record count, `Content-Length`). The pledge
-must equal the bytes actually written — a mismatch raises an error on close.
+The fix is to **pledge the size** before the first byte, which stamps the content
+size into the header and lets a downstream reader size the arena exactly. This is
+not a micro-optimization but a correctness gate: it is the difference between a
+frame that participates in the zero-copy decode path and one that does not. The
+recipe is in the [how-to](how-to.md#pledge-the-size-so-a-streamed-frame-decodes-in-one-shot).

@@ -127,27 +127,113 @@ There are matching `compress(dst, src)` / `decompress(dst, src)` overloads (plus
 dictionary variants) returning the number of bytes written. For *why and when*
 this pays off, see the [explanation](zero-copy.md).
 
+The segment-API map:
+
+| Operation              | byte[] (convenience)                            | MemorySegment (boundary zero-copy)                 |
+|------------------------|-------------------------------------------------|----------------------------------------------------|
+| compress               | `ZstdCompressCtx.compress(byte[])`              | `ZstdCompressCtx.compress(dst, src)`               |
+| compress + dict        | `ZstdCompressCtx.compress(byte[], ZstdCompressDict)` | `ZstdCompressCtx.compress(dst, src, ZstdCompressDict)` |
+| decompress             | `ZstdDecompressCtx.decompress(byte[], int)`     | `ZstdDecompressCtx.decompress(dst, src)`           |
+| decompress + dict      | `ZstdDecompressCtx.decompress(byte[], int, ZstdDecompressDict)` | `ZstdDecompressCtx.decompress(dst, src, ZstdDecompressDict)` |
+| size output (no copy)  | frame header via `Zstd.decompress(byte[])`      | `Zstd.decompressedSize(MemorySegment)`             |
+
+Size `dst` with `Zstd.compressBound(srcSize)` for compression, or
+`Zstd.decompressedSize(frame)` for decompression.
+
+## Let the codec size and allocate the output
+
+If you don't want to size `dst` yourself, pass an `Arena`: the codec sizes,
+allocates in *your* arena, and writes the output directly into it (still no
+boundary copy). The returned segment is owned by that arena.
+
+```java
+MemorySegment frame   = cctx.compress(arena, src);     // bound-sized, trimmed to frame length
+MemorySegment decoded = dctx.decompress(arena, frame); // header-sized, exact length
+```
+
+| Operation   | explicit dst (you size)              | arena (codec sizes)                         |
+|-------------|--------------------------------------|---------------------------------------------|
+| compress    | `compress(dst, src)` → bytes written | `compress(arena, src)` → frame segment      |
+| decompress  | `decompress(dst, src)` → bytes written | `decompress(arena, frame)` → output segment |
+
+The arena form of `decompress` needs the frame to store its decompressed size —
+one-shot `compress` always stamps it; a *streamed* frame only does if you pledge
+the size up front (see below). For size-less frames, size `dst` yourself.
+
 ## Compress a `ByteBuffer` (NIO / Netty) without copying
 
 Much of the ecosystem speaks `ByteBuffer`. There is no separate `ByteBuffer` API —
 wrap the buffer as a `MemorySegment` with `MemorySegment.ofBuffer(...)` and use the
-segment overloads above. A **direct** buffer wraps with zero copy; a heap buffer is
-rejected by the native guard (wrap is a heap segment), so copy it to a direct buffer
-or a `byte[]` first.
+segment overloads above. A **direct** buffer wraps with no boundary copy; a heap
+buffer is rejected by the native guard (its wrap is a heap segment), so copy it to a
+direct buffer or a `byte[]` first.
 
 ```java
 try (Arena arena = Arena.ofConfined();
      ZstdCompressCtx cctx = new ZstdCompressCtx()) {
     ByteBuffer src = channel.map(READ_ONLY, 0, size, arena); // direct, off-heap
-    MemorySegment in  = MemorySegment.ofBuffer(src);         // zero-copy view
+    MemorySegment in  = MemorySegment.ofBuffer(src);         // covers [position, limit)
     MemorySegment out = cctx.compress(arena, in);            // arena-owned frame
-    ByteBuffer frame  = out.asByteBuffer();                  // zero-copy hand-off
+    ByteBuffer frame  = out.asByteBuffer();                  // direct view, no copy
 }
 ```
 
-For the mechanics — `[position, limit)` coverage, read-only and lifetime rules,
-and the `asByteBuffer()` byte-order wart on the way back — see
-[zero-copy.md § ByteBuffer interop](zero-copy.md).
+- `ofBuffer` covers the buffer's `[position, limit)`; a read-only buffer yields a
+  read-only segment.
+- The wrapped segment borrows the buffer's lifetime — keep the buffer reachable
+  while compressing.
+- `asByteBuffer()` on a native segment returns a **direct** buffer aliasing the same
+  bytes, but always `BIG_ENDIAN`. For multi-byte reads, restore native order:
+  `out.asByteBuffer().order(ByteOrder.nativeOrder())`. (Irrelevant for a pure byte
+  payload.) That buffer also borrows the arena's scope — don't let it outlive the
+  `try`.
+
+## Stream zero-copy over native buffers
+
+When data is large or arrives incrementally but both ends stay off-heap, use the
+segment stream drivers — `ZstdCompressStream` / `ZstdDecompressStream` — which drive
+`ZSTD_compressStream2` / `ZSTD_decompressStream` directly over native buffers in
+bounded memory, no heap bounce (unlike `ZstdOutputStream` / `ZstdInputStream`, which
+copy through `byte[]` to fit `java.io`).
+
+Each step processes as much of `src` as fits in `dst` and reports a
+`ZstdStreamResult` (`bytesConsumed`, `bytesProduced`, `remaining`). Advance the
+source, drain `dst`, and for compression finish with `ZstdEndDirective.END` until
+`isComplete()`:
+
+```java
+try (ZstdCompressStream cs = new ZstdCompressStream(level)) {
+    long off = 0;
+    ZstdStreamResult r;
+    do {
+        r = cs.compress(dst, src.asSlice(off), ZstdEndDirective.END);
+        off += r.bytesConsumed();
+        sink.write(dst.asSlice(0, r.bytesProduced()));
+    } while (!r.isComplete());
+}
+```
+
+Both drivers take an optional `ZstdDictionary`. Decompression mirrors the loop,
+calling `decompress(dst, src)` until a result `isComplete()`.
+
+## Pledge the size so a streamed frame decodes in one shot
+
+A streamed frame does **not** record its decompressed size, so it cannot be decoded
+zero-copy — `Zstd.decompressedSize(frame)` throws and `decompress(arena, frame)`
+can't size the arena (see [the explanation](zero-copy.md)). Tell the encoder the
+total up front and it stamps the content size into the header:
+
+```java
+try (var zout = ZstdOutputStream.withPledgedSize(sink, 6, data.length)) {
+    zout.write(data);                                 // pledge must equal bytes written
+}
+MemorySegment src = MemorySegment.ofBuffer(mmap);     // downstream, in a mapped reader
+MemorySegment out = dctx.decompress(arena, src);      // one allocation, no boundary copy
+```
+
+Pledge whenever the producer streams but the total is known (file length, record
+count, `Content-Length`). A pledge that doesn't match the bytes written errors on
+close.
 
 ## Run against a self-built libzstd
 

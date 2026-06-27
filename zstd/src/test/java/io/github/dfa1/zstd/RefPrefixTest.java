@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
 import java.util.Random;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
@@ -76,7 +77,7 @@ class RefPrefixTest {
             try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 MemorySegment out = arena.allocate(random.length);
                 long m = dctx.decompress(out, copy(arena, frame));
-                reproduced = java.util.Arrays.equals(bytes(out, (int) m), random);
+                reproduced = Arrays.equals(bytes(out, (int) m), random);
             } catch (ZstdException e) {
                 reproduced = false;
             }
@@ -111,7 +112,39 @@ class RefPrefixTest {
     }
 
     @Test
-    void refPrefixRejectsAHeapSegment() {
+    void prefixIsSingleUseAndDoesNotStickAcrossFrames() {
+        // Given — random data identical to the prefix (see prefixIsAppliedAndRequiredToDecode),
+        // and one context kept open across two compressions with the prefix set once.
+        byte[] random = randomBytes(0xCAFE, 16384);
+        try (Arena arena = Arena.ofConfined();
+             ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
+            MemorySegment prefix = copy(arena, random);
+            MemorySegment src = copy(arena, random);
+            MemorySegment first = arena.allocate(Zstd.compressBound(random.length));
+            MemorySegment second = arena.allocate(Zstd.compressBound(random.length));
+
+            // When — first frame consumes the prefix; second is compressed with no re-set
+            cctx.refPrefix(prefix);
+            long n1 = cctx.compress(first, src);
+            long n2 = cctx.compress(second, src);
+
+            // Then — the prefix shrank only the first frame; the second got no prefix
+            // (incompressible random with no prefix stays ~full size)
+            assertThat(n1).isLessThan(n2 / 10);
+
+            // And — the second frame carries no prefix, so a plain decoder decodes it
+            byte[] restored;
+            try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                MemorySegment out = arena.allocate(random.length);
+                long m = dctx.decompress(out, second.asSlice(0, n2));
+                restored = bytes(out, (int) m);
+            }
+            assertThat(restored).isEqualTo(random);
+        }
+    }
+
+    @Test
+    void compressRefPrefixRejectsAHeapSegment() {
         // Given
         MemorySegment heap = MemorySegment.ofArray("prefix".getBytes());
 
@@ -119,6 +152,24 @@ class RefPrefixTest {
         ThrowingCallable result = () -> {
             try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
                 cctx.refPrefix(heap);
+            }
+        };
+
+        // Then
+        assertThatThrownBy(result)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("prefix");
+    }
+
+    @Test
+    void decompressRefPrefixRejectsAHeapSegment() {
+        // Given
+        MemorySegment heap = MemorySegment.ofArray("prefix".getBytes());
+
+        // When
+        ThrowingCallable result = () -> {
+            try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                dctx.refPrefix(heap);
             }
         };
 

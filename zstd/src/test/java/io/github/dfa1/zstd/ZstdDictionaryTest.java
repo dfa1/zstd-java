@@ -71,6 +71,28 @@ class ZstdDictionaryTest {
                 assertThat(dctx.decompress(frame, record.length, dict)).isEqualTo(record);
             }
         }
+
+        @Test
+        void coverFailsWithoutSamples() {
+            // When COVER-training on no samples
+            ThrowingCallable result = () -> ZstdDictionary.trainCover(List.of(), 4096);
+
+            // Then it fails fast with the empty-samples guard
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("zero samples");
+        }
+
+        @Test
+        void fastCoverFailsWithoutSamples() {
+            // When fast-COVER-training on no samples
+            ThrowingCallable result = () -> ZstdDictionary.trainFastCover(List.of(), 4096);
+
+            // Then it fails fast with the empty-samples guard
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("zero samples");
+        }
     }
 
     @Nested
@@ -100,6 +122,17 @@ class ZstdDictionaryTest {
         void trainedDictionaryHasHeader() {
             assertThat(sut.headerSize()).isPositive();
             assertThat(sut.headerSize()).isLessThanOrEqualTo(sut.size());
+        }
+
+        @Test
+        void finalizeFailsWithoutSamples() {
+            // When finalising raw content with no tuning samples
+            ThrowingCallable result = () -> ZstdDictionary.finalizeFrom(new byte[]{1, 2, 3}, List.of(), 4096, 0);
+
+            // Then it fails fast with the empty-samples guard
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("zero samples");
         }
     }
 
@@ -135,8 +168,24 @@ class ZstdDictionaryTest {
             // When training on no samples
             ThrowingCallable result = () -> ZstdDictionary.train(List.of(), 4096);
 
-            // Then it fails
-            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+            // Then it fails fast with the empty-samples guard, before reaching ZDICT
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("zero samples");
+        }
+
+        @Test
+        void surfacesTheNativeErrorNameWhenTrainingFails() {
+            // Given samples that pass the empty-check but are far too little for ZDICT
+            List<byte[]> tooFew = List.of(new byte[]{1, 2, 3});
+
+            // When training
+            ThrowingCallable result = () -> ZstdDictionary.train(tooFew, 112_640);
+
+            // Then the failure carries the native ZDICT error name, not an empty string
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageMatching("dictionary training failed: .+");
         }
     }
 

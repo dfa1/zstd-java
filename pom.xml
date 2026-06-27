@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>io.github.dfa1.zstd</groupId>
-	<artifactId>zstd-parent</artifactId>
+	<artifactId>zstd-java</artifactId>
 	<version>0.6-SNAPSHOT</version>
 	<packaging>pom</packaging>
 

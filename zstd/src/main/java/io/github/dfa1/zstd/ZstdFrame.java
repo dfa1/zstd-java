@@ -73,6 +73,35 @@ public final class ZstdFrame {
         return decompressedBound(data, data.byteSize());
     }
 
+    /// Exact total decompressed size of all frames in `data`, summed from each
+    /// frame header.
+    ///
+    /// Unlike [#decompressedBound(byte[])], which over-estimates so a buffer never
+    /// overflows, this is the precise combined size — but only when every frame
+    /// records it. Use it to size an exact destination; fall back to the bound when
+    /// a frame was produced by a stream that did not pledge its size.
+    ///
+    /// @param data one or more concatenated zstd frames
+    /// @return the exact combined decompressed size
+    /// @throws ZstdException if the input is not valid zstd data, or any frame does
+    ///                       not record its decompressed size
+    public static long decompressedSize(byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            return decompressedSize(Zstd.copyIn(arena, data), data.length);
+        }
+    }
+
+    /// Exact total decompressed size of all frames in native `data`.
+    /// Otherwise identical to [#decompressedSize(byte[])].
+    ///
+    /// @param data one or more concatenated zstd frames
+    /// @return the exact combined decompressed size
+    /// @throws ZstdException if the input is not valid zstd data, or any frame does
+    ///                       not record its decompressed size
+    public static long decompressedSize(MemorySegment data) {
+        return decompressedSize(data, data.byteSize());
+    }
+
     /// Dictionary id recorded in the first frame's header.
     ///
     /// @param data a zstd frame
@@ -90,6 +119,34 @@ public final class ZstdFrame {
     /// @return the dictionary id, or [ZstdDictionaryId#NONE] if none
     public static ZstdDictionaryId dictId(MemorySegment data) {
         return dictId(data, data.byteSize());
+    }
+
+    /// Size in bytes of the first frame's header, without parsing it.
+    ///
+    /// A lighter probe than [#header(byte[])]: it reads only the few leading bytes
+    /// needed to compute the header length (as few as 5 for a standard frame), so
+    /// you can learn how many bytes to buffer before a full [#header(byte[])] parse.
+    /// For an already-parsed header the same value is [ZstdFrameHeader#headerSize()].
+    ///
+    /// @param data the start of a zstd frame, at least its first few bytes
+    /// @return the header size in bytes
+    /// @throws ZstdException if `data` is too short to determine the header size, or
+    ///                       is not a valid zstd frame
+    public static long headerSize(byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            return headerSize(Zstd.copyIn(arena, data), data.length);
+        }
+    }
+
+    /// Size in bytes of the first frame's header in native `data`.
+    /// Otherwise identical to [#headerSize(byte[])].
+    ///
+    /// @param data the start of a zstd frame, at least its first few bytes
+    /// @return the header size in bytes
+    /// @throws ZstdException if `data` is too short to determine the header size, or
+    ///                       is not a valid zstd frame
+    public static long headerSize(MemorySegment data) {
+        return headerSize(data, data.byteSize());
     }
 
     /// Parses the header of the first frame in `data` without decompressing it.
@@ -210,10 +267,22 @@ public final class ZstdFrame {
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
-        if (bound == Zstd.CONTENTSIZE_ERROR) {
-            throw new ZstdException("not valid zstd data");
+        // ZSTD_decompressBound never returns CONTENTSIZE_UNKNOWN, only a bound or the error sentinel
+        return Zstd.requireStoredContentSize(bound);
+    }
+
+    private static long decompressedSize(MemorySegment data, long size) {
+        long total;
+        try {
+            total = (long) Bindings.FIND_DECOMPRESSED_SIZE.invokeExact(data, size);
+        } catch (Throwable t) {
+            throw NativeCall.rethrow(t);
         }
-        return bound;
+        return Zstd.requireStoredContentSize(total);
+    }
+
+    private static long headerSize(MemorySegment data, long size) {
+        return NativeCall.checkReturnValue(() -> (long) Bindings.FRAME_HEADER_SIZE.invokeExact(data, size));
     }
 
     private static ZstdDictionaryId dictId(MemorySegment data, long size) {

@@ -59,13 +59,7 @@ public final class Zstd {
     ///                       use {@link #decompress(byte[], int)} for the latter
     public static byte[] decompress(byte[] compressed) {
         Objects.requireNonNull(compressed, "compressed");
-        long size = frameContentSize(compressed);
-        if (size == CONTENTSIZE_UNKNOWN) {
-            throw new ZstdException("decompressed size not stored in frame; call decompress(src, maxSize)");
-        }
-        if (size == CONTENTSIZE_ERROR) {
-            throw new ZstdException("not a valid zstd frame");
-        }
+        long size = requireStoredContentSize(frameContentSize(compressed));
         return decompress(compressed, Math.toIntExact(size));
     }
 
@@ -102,6 +96,16 @@ public final class Zstd {
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
+        return requireStoredContentSize(size);
+    }
+
+    /// Maps a raw `ZSTD_getFrameContentSize` / `ZSTD_findDecompressedSize` result to
+    /// a usable length, turning zstd's negative sentinels into exceptions.
+    ///
+    /// @param size a content size, or a `CONTENTSIZE_UNKNOWN` / `CONTENTSIZE_ERROR` sentinel
+    /// @return `size` when it is a real length
+    /// @throws ZstdException if the size is not stored, or the input is not valid zstd data
+    static long requireStoredContentSize(long size) {
         if (size == CONTENTSIZE_UNKNOWN) {
             throw new ZstdException("decompressed size not stored in frame");
         }

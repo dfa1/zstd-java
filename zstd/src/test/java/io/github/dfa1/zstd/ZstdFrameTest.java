@@ -95,6 +95,121 @@ class ZstdFrameTest {
     }
 
     @Nested
+    class DecompressedSize {
+
+        @Test
+        void equalsContentSizeForSingleFrame() {
+            // Given one frame that records its content size
+            byte[] frame = Zstd.compress(PAYLOAD);
+
+            // Then the exact decompressed size is the payload length
+            assertThat(ZstdFrame.decompressedSize(frame)).isEqualTo(PAYLOAD.length);
+        }
+
+        @Test
+        void sumsAcrossConcatenatedFrames() throws Exception {
+            // Given two frames back to back
+            byte[] second = "second payload".getBytes(StandardCharsets.UTF_8);
+            ByteArrayOutputStream both = new ByteArrayOutputStream();
+            both.write(Zstd.compress(PAYLOAD));
+            both.write(Zstd.compress(second));
+
+            // Then the total is the sum of both decompressed sizes
+            assertThat(ZstdFrame.decompressedSize(both.toByteArray()))
+                    .isEqualTo((long) PAYLOAD.length + second.length);
+        }
+
+        @Test
+        void matchesThroughTheSegmentOverload() {
+            // Given a frame in a native segment
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+
+                // Then the segment overload agrees with the byte[] overload
+                assertThat(ZstdFrame.decompressedSize(seg)).isEqualTo(ZstdFrame.decompressedSize(frame));
+            }
+        }
+
+        @Test
+        void failsWhenAFrameDoesNotRecordItsSize() throws Exception {
+            // Given a streamed frame with no pledged size
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = new ZstdOutputStream(sink)) {
+                zout.write(PAYLOAD);
+            }
+            byte[] frame = sink.toByteArray();
+
+            // When the exact total is requested
+            ThrowingCallable result = () -> ZstdFrame.decompressedSize(frame);
+
+            // Then it fails because the size was never recorded
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("not stored");
+        }
+
+        @Test
+        void rejectsGarbage() {
+            // Given bytes that are not valid zstd data
+            byte[] garbage = "xx".getBytes(StandardCharsets.UTF_8);
+
+            // When the exact total is requested
+            ThrowingCallable result = () -> ZstdFrame.decompressedSize(garbage);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+        }
+    }
+
+    @Nested
+    class HeaderSize {
+
+        @Test
+        void matchesTheParsedHeaderSize() {
+            // Given a frame
+            byte[] frame = Zstd.compress(PAYLOAD);
+
+            // Then the light probe agrees with the fully parsed header
+            assertThat(ZstdFrame.headerSize(frame)).isEqualTo(ZstdFrame.header(frame).headerSize());
+        }
+
+        @Test
+        void computedFromJustTheHeaderPrefix() {
+            // Given only the first 5 bytes of a frame (the minimum prefix)
+            byte[] frame = Zstd.compress(PAYLOAD);
+            byte[] prefix = Arrays.copyOf(frame, 5);
+
+            // Then the header size can still be determined, matching the full frame
+            assertThat(ZstdFrame.headerSize(prefix)).isEqualTo(ZstdFrame.headerSize(frame));
+        }
+
+        @Test
+        void matchesThroughTheSegmentOverload() {
+            // Given a frame in a native segment
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+
+                // Then the segment overload agrees with the byte[] overload
+                assertThat(ZstdFrame.headerSize(seg)).isEqualTo(ZstdFrame.headerSize(frame));
+            }
+        }
+
+        @Test
+        void rejectsInputShorterThanThePrefix() {
+            // Given fewer bytes than the header-size prefix
+            byte[] tooShort = Arrays.copyOf(Zstd.compress(PAYLOAD), 2);
+
+            // When the header size is requested
+            ThrowingCallable result = () -> ZstdFrame.headerSize(tooShort);
+
+            // Then it fails instead of guessing
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+        }
+    }
+
+    @Nested
     class Header {
 
         @Test

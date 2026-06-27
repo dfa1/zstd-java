@@ -20,6 +20,13 @@ git tags, which trigger publication to Maven Central.
   Binds `ZSTD_getDictID_fromDict`.
 - `ZstdDictionaryId` value type — a `record` wrapping the 32-bit dictionary id
   with an unsigned `value()`, `isPresent()`, and the `NONE` sentinel for "no id".
+- `ZstdFrame.decompressedSize(byte[])` / `ZstdFrame.decompressedSize(MemorySegment)`
+  — the exact combined decompressed size of all concatenated frames, summed from
+  each frame header (throws if any frame does not record its size). Complements
+  `decompressedBound` (upper bound). Binds `ZSTD_findDecompressedSize`.
+- `ZstdFrame.headerSize(byte[])` / `ZstdFrame.headerSize(MemorySegment)` — the size
+  of a frame's header computed from just its leading bytes (as few as 5), without a
+  full parse. Binds `ZSTD_frameHeaderSize`.
 
 ### Changed
 - Every dictionary-id accessor now returns `ZstdDictionaryId` instead of `int`:

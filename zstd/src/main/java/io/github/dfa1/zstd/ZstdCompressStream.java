@@ -8,7 +8,7 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /// A low-level, zero-copy streaming compressor driven with native
-/// {@link MemorySegment} buffers — no heap `byte[]` bounce.
+/// [MemorySegment] buffers — no heap `byte[]` bounce.
 ///
 /// Use this when both ends are already off-heap and you want full control over
 /// buffering; for ordinary `java.io` pipelines prefer [ZstdOutputStream].

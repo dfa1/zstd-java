@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /// Package-private helpers that adapt raw FFM downcalls to the zstd error
 /// convention: run a native call, decode a zstd `size_t` error code into a
-/// {@link ZstdException}, and guard native-segment arguments. Shared by the
+/// [ZstdException], and guard native-segment arguments. Shared by the
 /// binding classes so the conventions live in one place.
 final class NativeCall {
 
@@ -17,7 +17,7 @@ final class NativeCall {
     }
 
     /// Invokes a size-returning zstd call and converts a zstd error code into a
-    /// {@link ZstdException}.
+    /// [ZstdException].
     static long checkReturnValue(ZstdCall c) {
         long code;
         try {
@@ -38,7 +38,7 @@ final class NativeCall {
     }
 
     /// Runs a zstd `create`-style call and rejects the `NULL` it returns on
-    /// allocation failure, raising a {@link ZstdException} that names the call.
+    /// allocation failure, raising a [ZstdException] that names the call.
     static MemorySegment createOrThrow(String what, NativeFactory factory) {
         MemorySegment p;
         try {
@@ -97,7 +97,7 @@ final class NativeCall {
     }
 
     /// Rethrows any `Throwable` as if unchecked, laundering the checked
-    /// `Throwable` that {@link java.lang.invoke.MethodHandle#invokeExact} declares.
+    /// `Throwable` that [java.lang.invoke.MethodHandle#invokeExact] declares.
     /// The shared sink for every binding class's native-call catch blocks.
     @SuppressWarnings("unchecked")
     static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {

@@ -4,7 +4,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 /// A low-level, zero-copy streaming decompressor driven with native
-/// {@link MemorySegment} buffers — no heap `byte[]` bounce.
+/// [MemorySegment] buffers — no heap `byte[]` bounce.
 ///
 /// Use this when both ends are already off-heap; for ordinary `java.io`
 /// pipelines prefer [ZstdInputStream]. Feed compressed input, drain the

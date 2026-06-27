@@ -7,8 +7,8 @@ import java.util.Objects;
 /// A dictionary digested once for decompression.
 ///
 /// Pre-processes the dictionary so each
-/// {@link ZstdDecompressCtx#decompress(byte[], int, ZstdDecompressDict)} call
-/// skips that cost. The raw {@link ZstdDictionary} bytes are copied into native
+/// [ZstdDecompressCtx#decompress(byte[], int, ZstdDecompressDict)] call
+/// skips that cost. The raw [ZstdDictionary] bytes are copied into native
 /// memory, so the source may be discarded afterwards.
 ///
 /// Immutable once built and safe to share across threads (the digested dictionary is read-only).

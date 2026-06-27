@@ -10,8 +10,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// One-shot, stateless zstd compression and decompression over `byte[]`.
 ///
 /// Every method is thread-safe and allocates its own native scratch buffers.
-/// For repeated calls on a hot path, reuse a {@link ZstdCompressCtx} /
-/// {@link ZstdDecompressCtx} instead to avoid re-allocating per call.
+/// For repeated calls on a hot path, reuse a [ZstdCompressCtx] /
+/// [ZstdDecompressCtx] instead to avoid re-allocating per call.
 ///
 /// {@snippet :
 /// byte[] packed   = Zstd.compress("hello world".getBytes());
@@ -35,7 +35,7 @@ public final class Zstd {
     /// Compresses `src` at the given level.
     ///
     /// @param src   bytes to compress
-    /// @param level compression level in [{@link #minCompressionLevel()}, {@link #maxCompressionLevel()}];
+    /// @param level compression level in [[#minCompressionLevel()], [#maxCompressionLevel()]];
     ///              higher is smaller but slower
     /// @return a self-describing zstd frame
     public static byte[] compress(byte[] src, int level) {
@@ -56,7 +56,7 @@ public final class Zstd {
     /// @param compressed a complete zstd frame
     /// @return the original bytes
     /// @throws ZstdException if the frame is invalid or its content size is not stored;
-    ///                       use {@link #decompress(byte[], int)} for the latter
+    ///                       use [#decompress(byte[], int)] for the latter
     public static byte[] decompress(byte[] compressed) {
         Objects.requireNonNull(compressed, "compressed");
         long size = requireStoredContentSize(frameContentSize(compressed));
@@ -82,8 +82,8 @@ public final class Zstd {
     }
 
     /// Decompressed size recorded in a zstd frame's header, read directly from a
-    /// native {@link MemorySegment} with no copy — use it to size the destination
-    /// for the zero-copy {@link ZstdDecompressCtx#decompress(MemorySegment, MemorySegment)}.
+    /// native [MemorySegment] with no copy — use it to size the destination
+    /// for the zero-copy [ZstdDecompressCtx#decompress(MemorySegment, MemorySegment)].
     ///
     /// @param frame a complete zstd frame
     /// @return the decompressed length in bytes
@@ -196,7 +196,7 @@ public final class Zstd {
         }
     }
 
-    /// The level used by {@link #compress(byte[])}.
+    /// The level used by [#compress(byte[])].
     ///
     /// @return the default compression level
     public static int defaultCompressionLevel() {

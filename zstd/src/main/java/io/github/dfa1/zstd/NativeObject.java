@@ -5,8 +5,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /// Base class for wrappers that own a native zstd pointer.
 ///
-/// The pointer lives in an {@link AtomicReference} that is swapped to
-/// {@link MemorySegment#NULL} on {@link #close()}, so {@link #tryClose} runs
+/// The pointer lives in an [AtomicReference] that is swapped to
+/// [MemorySegment#NULL] on [#close()], so [#tryClose] runs
 /// exactly once even under concurrent or repeated close calls.
 public abstract class NativeObject implements AutoCloseable {
 
@@ -46,6 +46,6 @@ public abstract class NativeObject implements AutoCloseable {
     /// Releases the native resource. Called exactly once with a non-NULL pointer.
     ///
     /// @param ptr the non-NULL native pointer to free
-    /// @throws Throwable if the native free call fails; the exception is swallowed by {@link #close()}
+    /// @throws Throwable if the native free call fails; the exception is swallowed by [#close()]
     protected abstract void tryClose(MemorySegment ptr) throws Throwable;
 }

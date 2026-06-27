@@ -21,7 +21,15 @@
         <property name="format" value="^\s*///.*\{@code\s"/>
         <property name="minimum" value="0"/>
         <property name="maximum" value="0"/>
-        <property name="message" value="Use backtick syntax instead of {@code} in Markdown Javadoc (///). Example: `value` instead of {@code value}."/>
+        <property name="message" value="Use backtick syntax instead of the @code tag in Markdown Javadoc (///). Example: `value`."/>
+    </module>
+
+    <!-- Ban {@link}/{@linkplain} in /// Markdown Javadoc — use Markdown reference links instead. -->
+    <module name="RegexpSingleline">
+        <property name="format" value="^\s*///.*\{@link(plain)?\s"/>
+        <property name="minimum" value="0"/>
+        <property name="maximum" value="0"/>
+        <property name="message" value="Use Markdown reference links instead of the @link / @linkplain tag in Markdown Javadoc (///). Example: [ClassName#method(ParamType)]."/>
     </module>
 
     <!-- Ban HTML block/structure tags in /// Markdown Javadoc.

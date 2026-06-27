@@ -14,7 +14,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
 ///
 /// `size_t` and `unsigned long long` are modelled as
-/// {@link java.lang.foreign.ValueLayout#JAVA_LONG} (LP64); the public API guards
+/// [java.lang.foreign.ValueLayout#JAVA_LONG] (LP64); the public API guards
 /// against negative interpretations where zstd uses sentinel values.
 ///
 /// For the full coverage map — every public zstd symbol, what is bound, and which

@@ -6,8 +6,8 @@ import java.util.Objects;
 
 /// A reusable compression context.
 ///
-/// Reusing one context across many {@link #compress} calls amortises native
-/// state allocation, making it cheaper than the stateless {@link Zstd#compress}
+/// Reusing one context across many [#compress] calls amortises native
+/// state allocation, making it cheaper than the stateless [Zstd#compress]
 /// on hot paths. Not thread-safe: confine an instance to one thread or pool it.
 ///
 /// {@snippet :
@@ -31,7 +31,7 @@ public final class ZstdCompressCtx extends NativeObject {
         return NativeCall.createOrThrow("ZSTD_createCCtx", () -> (MemorySegment) Bindings.CREATE_CCTX.invokeExact());
     }
 
-    /// Sets the compression level for subsequent {@link #compress} calls.
+    /// Sets the compression level for subsequent [#compress] calls.
     ///
     /// @param level the compression level to use
     /// @return `this`, for chaining
@@ -42,7 +42,7 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     /// Sets an advanced compression parameter for subsequent
-    /// {@link #compress(byte[])} / {@link #compress(MemorySegment, MemorySegment)}
+    /// [#compress(byte[])] / [#compress(MemorySegment, MemorySegment)]
     /// calls. The setting is sticky across calls until changed.
     ///
     /// Advanced parameters do not apply to the dictionary `compress` overloads.
@@ -233,8 +233,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// Compresses `src` against `dict` at this context's level.
     ///
     /// The dictionary is re-digested on every call; for repeated compression
-    /// against the same dictionary, digest it once into a {@link ZstdCompressDict}
-    /// and use {@link #compress(byte[], ZstdCompressDict)}.
+    /// against the same dictionary, digest it once into a [ZstdCompressDict]
+    /// and use [#compress(byte[], ZstdCompressDict)].
     ///
     /// @param src  the bytes to compress
     /// @param dict the dictionary to compress against
@@ -255,7 +255,7 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     /// Compresses `src` against a pre-digested `dict` (the level was
-    /// fixed when the {@link ZstdCompressDict} was built).
+    /// fixed when the [ZstdCompressDict] was built).
     ///
     /// @param src  the bytes to compress
     /// @param dict the pre-digested compression dictionary
@@ -275,12 +275,12 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     /// Zero-copy compression: reads `src` and writes the frame straight into
-    /// `dst`, both native {@link MemorySegment}s the caller owns. No heap
+    /// `dst`, both native [MemorySegment]s the caller owns. No heap
     /// `byte[]` bounce — hand zstd the segment addresses directly. This is
     /// the fast path when your bytes are already off-heap (e.g. an mmap slice and
     /// an arena-allocated output); see `docs/zero-copy.md`.
     ///
-    /// Size `dst` with {@link Zstd#compressBound(long)} to guarantee it fits.
+    /// Size `dst` with [Zstd#compressBound(long)] to guarantee it fits.
     ///
     /// @param dst the native destination buffer to write the frame into
     /// @param src the native source bytes to compress
@@ -308,7 +308,7 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     /// Zero-copy compression that allocates the output for you: reserves a
-    /// worst-case buffer ({@link Zstd#compressBound(long)}) in `arena`,
+    /// worst-case buffer ([Zstd#compressBound(long)]) in `arena`,
     /// compresses into it, and returns a slice trimmed to the actual frame length.
     /// The returned segment is owned by `arena`.
     ///

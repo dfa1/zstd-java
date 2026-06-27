@@ -16,7 +16,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Locale;
 
 /// Infrastructure — loads the bundled `libzstd` shared library and binds
-/// native symbols to {@link MethodHandle}s via the Foreign Function & Memory API.
+/// native symbols to [MethodHandle]s via the Foreign Function & Memory API.
 ///
 /// The library is resolved only from the platform-specific native JAR on the
 /// classpath, extracted to a temp file, and loaded once at class-init time.

@@ -9,11 +9,11 @@ import java.util.Objects;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 /// A streaming zstd decompressor that reads a zstd frame from an underlying
-/// {@link InputStream}.
+/// [InputStream].
 ///
 /// Memory use is bounded and independent of the frame size, so this decodes
 /// arbitrarily large or incrementally-arriving compressed data. For a complete
-/// in-memory frame, {@link Zstd#decompress(byte[])} or {@link ZstdDecompressCtx}
+/// in-memory frame, [Zstd#decompress(byte[])] or [ZstdDecompressCtx]
 /// is simpler.
 ///
 /// Closing closes the underlying stream.

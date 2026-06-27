@@ -28,15 +28,7 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     private static MemorySegment create() {
-        try {
-            MemorySegment p = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
-            if (MemorySegment.NULL.equals(p)) {
-                throw new ZstdException("ZSTD_createCCtx returned NULL");
-            }
-            return p;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
-        }
+        return NativeCall.createOrThrow("ZSTD_createCCtx", () -> (MemorySegment) Bindings.CREATE_CCTX.invokeExact());
     }
 
     /// Sets the compression level for subsequent {@link #compress} calls.

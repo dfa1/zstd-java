@@ -38,27 +38,15 @@ public final class ZstdDecompressDict extends NativeObject {
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);
-            MemorySegment p = (MemorySegment) Bindings.CREATE_DDICT.invokeExact(d, (long) raw.length);
-            if (MemorySegment.NULL.equals(p)) {
-                throw new ZstdException("ZSTD_createDDict returned NULL");
-            }
-            return p;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
+            return NativeCall.createOrThrow("ZSTD_createDDict",
+                    () -> (MemorySegment) Bindings.CREATE_DDICT.invokeExact(d, (long) raw.length));
         }
     }
 
     private static MemorySegment create(MemorySegment dict) {
         NativeCall.requireNative(dict, "dict");
-        try {
-            MemorySegment p = (MemorySegment) Bindings.CREATE_DDICT.invokeExact(dict, dict.byteSize());
-            if (MemorySegment.NULL.equals(p)) {
-                throw new ZstdException("ZSTD_createDDict returned NULL");
-            }
-            return p;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
-        }
+        return NativeCall.createOrThrow("ZSTD_createDDict",
+                () -> (MemorySegment) Bindings.CREATE_DDICT.invokeExact(dict, dict.byteSize()));
     }
 
     /// The dictionary id this dictionary decodes frames for.

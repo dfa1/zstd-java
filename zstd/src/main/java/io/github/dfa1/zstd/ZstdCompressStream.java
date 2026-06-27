@@ -70,15 +70,7 @@ public final class ZstdCompressStream extends NativeObject {
     }
 
     private static MemorySegment createCctx() {
-        try {
-            MemorySegment cctx = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
-            if (MemorySegment.NULL.equals(cctx)) {
-                throw new ZstdException("ZSTD_createCCtx returned NULL");
-            }
-            return cctx;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
-        }
+        return NativeCall.createOrThrow("ZSTD_createCCtx", () -> (MemorySegment) Bindings.CREATE_CCTX.invokeExact());
     }
 
     private void loadDictionary(ZstdDictionary dictionary) {

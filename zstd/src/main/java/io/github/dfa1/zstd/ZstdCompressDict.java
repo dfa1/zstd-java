@@ -61,27 +61,15 @@ public final class ZstdCompressDict extends NativeObject {
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);
-            MemorySegment p = (MemorySegment) Bindings.CREATE_CDICT.invokeExact(d, (long) raw.length, level);
-            if (MemorySegment.NULL.equals(p)) {
-                throw new ZstdException("ZSTD_createCDict returned NULL");
-            }
-            return p;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
+            return NativeCall.createOrThrow("ZSTD_createCDict",
+                    () -> (MemorySegment) Bindings.CREATE_CDICT.invokeExact(d, (long) raw.length, level));
         }
     }
 
     private static MemorySegment create(MemorySegment dict, int level) {
         NativeCall.requireNative(dict, "dict");
-        try {
-            MemorySegment p = (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level);
-            if (MemorySegment.NULL.equals(p)) {
-                throw new ZstdException("ZSTD_createCDict returned NULL");
-            }
-            return p;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
-        }
+        return NativeCall.createOrThrow("ZSTD_createCDict",
+                () -> (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level));
     }
 
     /// The level this dictionary was digested at.

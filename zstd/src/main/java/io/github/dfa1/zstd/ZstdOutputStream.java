@@ -102,10 +102,7 @@ public final class ZstdOutputStream extends OutputStream {
         this.single = new byte[1];
         MemorySegment c = null;
         try {
-            c = (MemorySegment) Bindings.CREATE_CCTX.invokeExact();
-            if (MemorySegment.NULL.equals(c)) {
-                throw new ZstdException("ZSTD_createCCtx returned NULL");
-            }
+            c = NativeCall.createOrThrow("ZSTD_createCCtx", () -> (MemorySegment) Bindings.CREATE_CCTX.invokeExact());
             this.cctx = c;
             NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
                     cctx, ZSTD_C_COMPRESSION_LEVEL, level));

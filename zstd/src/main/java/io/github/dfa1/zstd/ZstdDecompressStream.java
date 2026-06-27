@@ -44,15 +44,7 @@ public final class ZstdDecompressStream extends NativeObject {
     }
 
     private static MemorySegment createDctx() {
-        try {
-            MemorySegment dctx = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
-            if (MemorySegment.NULL.equals(dctx)) {
-                throw new ZstdException("ZSTD_createDCtx returned NULL");
-            }
-            return dctx;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
-        }
+        return NativeCall.createOrThrow("ZSTD_createDCtx", () -> (MemorySegment) Bindings.CREATE_DCTX.invokeExact());
     }
 
     private void loadDictionary(ZstdDictionary dictionary) {

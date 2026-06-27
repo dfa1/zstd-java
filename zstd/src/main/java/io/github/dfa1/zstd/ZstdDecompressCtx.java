@@ -18,15 +18,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     }
 
     private static MemorySegment create() {
-        try {
-            MemorySegment p = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
-            if (MemorySegment.NULL.equals(p)) {
-                throw new ZstdException("ZSTD_createDCtx returned NULL");
-            }
-            return p;
-        } catch (Throwable t) {
-            throw NativeCall.rethrow(t);
-        }
+        return NativeCall.createOrThrow("ZSTD_createDCtx", () -> (MemorySegment) Bindings.CREATE_DCTX.invokeExact());
     }
 
     /// Sets an advanced decompression parameter, sticky across subsequent calls.

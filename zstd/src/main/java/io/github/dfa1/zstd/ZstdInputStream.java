@@ -65,10 +65,7 @@ public final class ZstdInputStream extends InputStream {
         this.single = new byte[1];
         MemorySegment d = null;
         try {
-            d = (MemorySegment) Bindings.CREATE_DCTX.invokeExact();
-            if (MemorySegment.NULL.equals(d)) {
-                throw new ZstdException("ZSTD_createDCtx returned NULL");
-            }
+            d = NativeCall.createOrThrow("ZSTD_createDCtx", () -> (MemorySegment) Bindings.CREATE_DCTX.invokeExact());
             this.dctx = d;
             if (dictionary != null) {
                 loadDictionary(dictionary);

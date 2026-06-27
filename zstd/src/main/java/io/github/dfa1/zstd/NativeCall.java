@@ -31,6 +31,27 @@ final class NativeCall {
         return code;
     }
 
+    /// A native factory call returning a freshly allocated object pointer.
+    @FunctionalInterface
+    interface NativeFactory {
+        MemorySegment create() throws Throwable;
+    }
+
+    /// Runs a zstd `create`-style call and rejects the `NULL` it returns on
+    /// allocation failure, raising a {@link ZstdException} that names the call.
+    static MemorySegment createOrThrow(String what, NativeFactory factory) {
+        MemorySegment p;
+        try {
+            p = factory.create();
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+        if (MemorySegment.NULL.equals(p)) {
+            throw new ZstdException(what + " returned NULL");
+        }
+        return p;
+    }
+
     static boolean isError(long code) {
         try {
             return ((int) Bindings.IS_ERROR.invokeExact(code)) != 0;

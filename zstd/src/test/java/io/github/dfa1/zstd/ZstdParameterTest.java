@@ -7,6 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Random;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -310,6 +311,35 @@ class ZstdParameterTest {
                 // Then it is rejected natively
                 assertThatThrownBy(result).isInstanceOf(ZstdException.class);
             }
+        }
+
+        @Test
+        void levelActuallyAppliesToTheNativeCompressionPath() {
+            // Given a level-sensitive payload (enough entropy that the level changes
+            // the ratio, so a no-op level() would betray itself)
+            byte[] data = levelSensitivePayload();
+            byte[] atMin;
+            byte[] atMax;
+
+            // When compressing via level() at the minimum and the maximum level
+            try (ZstdCompressCtx low = new ZstdCompressCtx().level(Zstd.minCompressionLevel());
+                 ZstdCompressCtx high = new ZstdCompressCtx().level(Zstd.maxCompressionLevel())) {
+                atMin = low.compress(data);
+                atMax = high.compress(data);
+            }
+
+            // Then the higher level produces a strictly smaller frame — proving level()
+            // sets the native parameter rather than silently leaving the default
+            assertThat(atMax.length).isLessThan(atMin.length);
+        }
+
+        private static byte[] levelSensitivePayload() {
+            byte[] b = new byte[64 * 1024];
+            Random r = new Random(0xA11CE);
+            for (int i = 0; i < b.length; i++) {
+                b[i] = (byte) ((i % 17 == 0) ? r.nextInt(256) : 'a' + (i % 8));
+            }
+            return b;
         }
     }
 }

@@ -6,6 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.invoke.MethodHandle;
+
+import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -45,6 +49,37 @@ class NativeLibraryTest {
             assertThatThrownBy(result)
                     .isInstanceOf(UnsatisfiedLinkError.class)
                     .hasMessageContaining("sparc");
+        }
+    }
+
+    @Nested
+    class Lookup {
+
+        @Test
+        void bindsAnExistingSymbolToAnInvokableHandle() throws Throwable {
+            // Given the descriptor for unsigned ZSTD_versionNumber(void)
+            FunctionDescriptor fd = FunctionDescriptor.of(JAVA_INT);
+
+            // When the symbol is looked up
+            MethodHandle handle = NativeLibrary.lookup("ZSTD_versionNumber", fd);
+
+            // Then a real, callable handle comes back (not null) and reports a version
+            assertThat(handle).isNotNull();
+            assertThat((int) handle.invokeExact()).isPositive();
+        }
+
+        @Test
+        void rejectsAMissingSymbol() {
+            // Given a symbol the library does not export
+            FunctionDescriptor fd = FunctionDescriptor.of(JAVA_INT);
+
+            // When it is looked up
+            ThrowingCallable result = () -> NativeLibrary.lookup("ZSTD_no_such_symbol_xyz", fd);
+
+            // Then it fails fast naming the missing symbol, rather than returning null
+            assertThatThrownBy(result)
+                    .isInstanceOf(UnsatisfiedLinkError.class)
+                    .hasMessageContaining("Symbol not found");
         }
     }
 

@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
@@ -249,6 +250,247 @@ class ZstdStreamTest {
                 result.get(restored);
             }
             assertThat(restored).isEqualTo(original);
+        }
+    }
+
+    @Nested
+    class OutputStreamLifecycle {
+
+        @Test
+        void flushPushesBufferedBytesThroughToTheSink() throws IOException {
+            // Given a payload written but not yet closed
+            byte[] original = "flushed payload ".repeat(2000).getBytes(StandardCharsets.UTF_8);
+            CountingOutputStream sink = new CountingOutputStream();
+            try (ZstdOutputStream zout = new ZstdOutputStream(sink, 3)) {
+                zout.write(original);
+
+                // When flushed mid-stream
+                zout.flush();
+
+                // Then the flush propagated to the underlying sink and emitted compressed bytes
+                assertThat(sink.flushes).isPositive();
+                assertThat(sink.size()).isPositive();
+
+                // And the frame still completes and round-trips after the flush
+                zout.write(original);
+            }
+            byte[] doubled = new byte[original.length * 2];
+            System.arraycopy(original, 0, doubled, 0, original.length);
+            System.arraycopy(original, 0, doubled, original.length, original.length);
+            assertThat(streamDecompress(sink.toByteArray())).isEqualTo(doubled);
+        }
+
+        @Test
+        void closeFlushesAndClosesTheUnderlyingStreamExactlyOnce() throws IOException {
+            // Given a payload written to a stream that tracks flush/close on its sink
+            byte[] original = "epilogue payload ".repeat(1000).getBytes(StandardCharsets.UTF_8);
+            CountingOutputStream sink = new CountingOutputStream();
+            ZstdOutputStream zout = new ZstdOutputStream(sink, 3);
+            zout.write(original);
+
+            // When closed twice
+            zout.close();
+            zout.close();
+
+            // Then the underlying sink was flushed and closed, the close being idempotent
+            assertThat(sink.flushes).isPositive();
+            assertThat(sink.closes).isEqualTo(1);
+
+            // And the written frame carries the full payload (epilogue was emitted)
+            assertThat(streamDecompress(sink.toByteArray())).isEqualTo(original);
+        }
+
+        @Test
+        void writeAfterCloseThrows() throws IOException {
+            // Given a closed stream
+            ZstdOutputStream zout = new ZstdOutputStream(new ByteArrayOutputStream());
+            zout.close();
+
+            // When written to
+            ThrowingCallable result = () -> zout.write(1);
+
+            // Then it refuses with an IOException rather than touching freed native state
+            assertThatThrownBy(result)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("closed");
+        }
+
+        @Test
+        void flushAfterCloseThrows() throws IOException {
+            // Given a closed stream
+            ZstdOutputStream zout = new ZstdOutputStream(new ByteArrayOutputStream());
+            zout.close();
+
+            // When flushed
+            ThrowingCallable result = zout::flush;
+
+            // Then it refuses with an IOException
+            assertThatThrownBy(result)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("closed");
+        }
+    }
+
+    @Nested
+    class InputStreamLifecycle {
+
+        @Test
+        void singleByteReadReturnsTheUnsignedValue() throws IOException {
+            // Given a frame whose first decoded byte has its high bit set
+            byte[] original = {(byte) 0xFF, (byte) 0x80, 0x01};
+            byte[] frame = streamCompress(original, 3);
+
+            // When read one byte at a time
+            try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(frame))) {
+                // Then each byte comes back as its unsigned 0..255 value, not a sign-extended int
+                assertThat(zin.read()).isEqualTo(0xFF);
+                assertThat(zin.read()).isEqualTo(0x80);
+                assertThat(zin.read()).isEqualTo(0x01);
+                assertThat(zin.read()).isEqualTo(-1);
+            }
+        }
+
+        @Test
+        void readPastEndOfStreamStaysMinusOne() throws IOException {
+            // Given a compressed frame
+            byte[] frame = streamCompress("done".getBytes(StandardCharsets.UTF_8), 3);
+            try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(frame))) {
+                // When the stream is drained to the end, then read again past EOF
+                byte[] all = zin.readAllBytes();
+                int afterByte = zin.read();
+                int afterBlock = zin.read(new byte[8], 0, 8);
+
+                // Then the content matches and both read overloads keep reporting EOF
+                assertThat(all).isEqualTo("done".getBytes(StandardCharsets.UTF_8));
+                assertThat(afterByte).isEqualTo(-1);
+                assertThat(afterBlock).isEqualTo(-1);
+            }
+        }
+
+        @Test
+        void readAfterCloseThrows() throws IOException {
+            // Given a closed input stream
+            byte[] frame = streamCompress("payload".getBytes(StandardCharsets.UTF_8), 3);
+            ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(frame));
+            zin.close();
+
+            // When read
+            ThrowingCallable result = zin::read;
+
+            // Then it refuses with an IOException rather than touching freed native state
+            assertThatThrownBy(result)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("closed");
+        }
+
+        @Test
+        void closeClosesTheUnderlyingStreamExactlyOnce() throws IOException {
+            // Given an input stream over a source that tracks close()
+            byte[] frame = streamCompress("payload".getBytes(StandardCharsets.UTF_8), 3);
+            CountingInputStream source = new CountingInputStream(frame);
+            ZstdInputStream zin = new ZstdInputStream(source);
+
+            // When closed twice
+            zin.close();
+            zin.close();
+
+            // Then the underlying source was closed once, the close being idempotent
+            assertThat(source.closes).isEqualTo(1);
+        }
+
+        @Test
+        void firstSingleByteIsCorrectEvenWhenInputDribblesInOneByteAtATime() throws IOException {
+            // Given a frame whose first decoded byte has its high bit set, fed one
+            // byte per read so the first decode calls produce nothing until the header
+            // is complete — the decoder must keep refilling before returning a byte
+            byte[] original = {(byte) 0xFF, 0x10, 0x20};
+            byte[] frame = streamCompress(original, 3);
+
+            // When the very first byte is read
+            try (ZstdInputStream zin = new ZstdInputStream(new DribbleInputStream(frame))) {
+                // Then it is the real first byte, not a premature zero from an empty slice
+                assertThat(zin.read()).isEqualTo(0xFF);
+            }
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, 1, 100, 64 * 1024})
+        void readsCorrectlyWhenInputArrivesOneByteAtATime(int size) throws IOException {
+            // Given a frame fed through a source that yields a single byte per read,
+            // forcing the decoder across many refill/no-progress iterations
+            byte[] original = randomBytes(size);
+            byte[] frame = streamCompress(original, 3);
+
+            // When drained
+            byte[] restored;
+            try (ZstdInputStream zin = new ZstdInputStream(new DribbleInputStream(frame))) {
+                restored = zin.readAllBytes();
+            }
+
+            // Then every byte survives the slow refill path
+            assertThat(restored).isEqualTo(original);
+        }
+    }
+
+    /// A sink that records flush/close calls while retaining the bytes written to it
+    /// (a [ByteArrayOutputStream] whose close is a no-op, so bytes stay readable).
+    private static final class CountingOutputStream extends ByteArrayOutputStream {
+        private int flushes;
+        private int closes;
+
+        @Override
+        public void flush() throws IOException {
+            flushes++;
+            super.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            closes++;
+            super.close();
+        }
+    }
+
+    /// A source over a fixed byte array that records close() calls.
+    private static final class CountingInputStream extends ByteArrayInputStream {
+        private int closes;
+
+        CountingInputStream(byte[] buf) {
+            super(buf);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closes++;
+            super.close();
+        }
+    }
+
+    /// A source that hands out at most one byte per read, exercising the decoder's
+    /// partial-input refill loop.
+    private static final class DribbleInputStream extends InputStream {
+        private final byte[] data;
+        private int pos;
+
+        DribbleInputStream(byte[] data) {
+            this.data = data;
+        }
+
+        @Override
+        public int read() {
+            return pos < data.length ? (data[pos++] & 0xFF) : -1;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) {
+            if (len == 0) {
+                return 0;
+            }
+            if (pos >= data.length) {
+                return -1;
+            }
+            b[off] = data[pos++];
+            return 1;
         }
     }
 

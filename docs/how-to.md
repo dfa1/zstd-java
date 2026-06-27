@@ -145,10 +145,8 @@ try (Arena arena = Arena.ofConfined();
 }
 ```
 
-`ofBuffer` covers the buffer's `[position, limit)` and a read-only buffer yields a
-read-only segment. The wrapped segment borrows the buffer's lifetime, so keep the
-buffer reachable while compressing. For the round trip back to a `ByteBuffer`
-(including the `BIG_ENDIAN` byte-order wart on `asByteBuffer()`), see
+For the mechanics — `[position, limit)` coverage, read-only and lifetime rules,
+and the `asByteBuffer()` byte-order wart on the way back — see
 [zero-copy.md § ByteBuffer interop](zero-copy.md).
 
 ## Run against a self-built libzstd

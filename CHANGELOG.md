@@ -42,6 +42,10 @@ git tags, which trigger publication to Maven Central.
   `ZstdDictionary.id()`, `ZstdCompressDict.id()`, `ZstdDecompressDict.id()`,
   `ZstdFrame.dictId(...)`, and `ZstdFrameHeader.dictId()`. The `0` sentinel is now
   `ZstdDictionaryId.NONE`, and the id reads as unsigned via `value()`.
+- `Zstd.decompress(byte[])` now throws `ZstdException` (instead of letting a raw
+  `ArithmeticException` escape) when a frame declares a content size larger than a
+  Java array can hold. The size comes from the untrusted frame header; use
+  `decompress(byte[], int)` to bound output for untrusted input.
 
 ## [0.5]
 

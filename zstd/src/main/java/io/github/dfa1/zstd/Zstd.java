@@ -53,18 +53,47 @@ public final class Zstd {
     /// Decompresses a complete zstd frame whose decompressed size is recorded in
     /// its header (the case for frames produced by this library).
     ///
+    /// **Security:** this overload trusts the content size declared in the frame
+    /// header and allocates a buffer of that size. The header is part of the input,
+    /// so a hostile frame can declare a large size (up to the maximum array length)
+    /// and force a correspondingly large allocation — a decompression-bomb denial of
+    /// service. For input you do not control, use [#decompress(byte[], int)] with a
+    /// sane bound instead.
+    ///
     /// @param compressed a complete zstd frame
     /// @return the original bytes
-    /// @throws ZstdException if the frame is invalid or its content size is not stored;
-    ///                       use [#decompress(byte[], int)] for the latter
+    /// @throws ZstdException if the frame is invalid, its content size is not stored
+    ///                       (use [#decompress(byte[], int)] for the latter), or the
+    ///                       declared size exceeds the maximum array length
     public static byte[] decompress(byte[] compressed) {
         Objects.requireNonNull(compressed, "compressed");
         long size = requireStoredContentSize(frameContentSize(compressed));
-        return decompress(compressed, Math.toIntExact(size));
+        return decompress(compressed, toArrayLength(size));
+    }
+
+    /// Narrows a frame-declared content size to a `byte[]` length, rejecting sizes
+    /// that exceed what a Java array can hold. The size comes from the (untrusted)
+    /// frame header, so this fails with a [ZstdException] rather than letting a raw
+    /// `ArithmeticException` escape.
+    ///
+    /// @param size a non-negative content size from a frame header
+    /// @return `size` as an `int`
+    /// @throws ZstdException if `size` exceeds [Integer#MAX_VALUE]
+    private static int toArrayLength(long size) {
+        if (size > Integer.MAX_VALUE) {
+            throw new ZstdException("decompressed size " + size
+                    + " exceeds the maximum array length; use decompress(byte[], int) to bound it");
+        }
+        return (int) size;
     }
 
     /// Decompresses a zstd frame into a buffer of at most `maxSize` bytes.
     /// Use this when the original size is known out-of-band or not stored in the frame.
+    ///
+    /// This is the safe entry point for **untrusted** input: `maxSize` caps the
+    /// allocation and decode, so a hostile frame cannot trigger an oversized
+    /// allocation the way [#decompress(byte[])] can. Pick a bound your caller can
+    /// afford; the frame is rejected if its content exceeds it.
     ///
     /// @param compressed a complete zstd frame
     /// @param maxSize    upper bound on the decompressed length

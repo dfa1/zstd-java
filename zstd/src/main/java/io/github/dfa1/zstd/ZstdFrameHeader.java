@@ -10,8 +10,8 @@ import java.util.OptionalLong;
 /// @param blockSizeMax     the maximum block size used in the frame
 /// @param frameType        whether this is a standard or skippable frame
 /// @param headerSize       the size of the frame header in bytes
-/// @param dictId           the dictionary id, or `0` if none (for a skippable frame,
-///                         the magic variant 0..15)
+/// @param dictId           the dictionary id, or [ZstdDictionaryId#NONE] if none (for a
+///                         skippable frame, [ZstdDictionaryId#raw()] is the magic variant 0..15)
 /// @param hasChecksum      whether a 4-byte content checksum follows the frame
 public record ZstdFrameHeader(
         long frameContentSize,
@@ -19,7 +19,7 @@ public record ZstdFrameHeader(
         long blockSizeMax,
         ZstdFrameType frameType,
         int headerSize,
-        int dictId,
+        ZstdDictionaryId dictId,
         boolean hasChecksum) {
 
     /// The decompressed size, if the frame records it.

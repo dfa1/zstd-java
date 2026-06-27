@@ -76,9 +76,9 @@ public final class ZstdFrame {
     /// Dictionary id recorded in the first frame's header.
     ///
     /// @param data a zstd frame
-    /// @return the dictionary id, or `0` if the frame uses no dictionary or does
-    ///         not record one
-    public static int dictId(byte[] data) {
+    /// @return the dictionary id, or [ZstdDictionaryId#NONE] if the frame uses no dictionary
+    ///         or does not record one
+    public static ZstdDictionaryId dictId(byte[] data) {
         try (Arena arena = Arena.ofConfined()) {
             return dictId(Zstd.copyIn(arena, data), data.length);
         }
@@ -87,8 +87,8 @@ public final class ZstdFrame {
     /// Dictionary id recorded in native frame `data`.
     ///
     /// @param data a zstd frame
-    /// @return the dictionary id, or `0` if none
-    public static int dictId(MemorySegment data) {
+    /// @return the dictionary id, or [ZstdDictionaryId#NONE] if none
+    public static ZstdDictionaryId dictId(MemorySegment data) {
         return dictId(data, data.byteSize());
     }
 
@@ -178,7 +178,7 @@ public final class ZstdFrame {
                     zfh.get(JAVA_INT, 16) & 0xFFFFFFFFL,         // blockSizeMax
                     ZstdFrameType.of(zfh.get(JAVA_INT, 20)),     // frameType
                     zfh.get(JAVA_INT, 24),                       // headerSize
-                    zfh.get(JAVA_INT, 28),                       // dictID
+                    ZstdDictionaryId.of(zfh.get(JAVA_INT, 28)),            // dictID
                     zfh.get(JAVA_INT, 32) != 0);                 // checksumFlag
         }
     }
@@ -216,9 +216,9 @@ public final class ZstdFrame {
         return bound;
     }
 
-    private static int dictId(MemorySegment data, long size) {
+    private static ZstdDictionaryId dictId(MemorySegment data, long size) {
         try {
-            return (int) Bindings.GET_DICT_ID_FROM_FRAME.invokeExact(data, size);
+            return ZstdDictionaryId.of((int) Bindings.GET_DICT_ID_FROM_FRAME.invokeExact(data, size));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

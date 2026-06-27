@@ -29,7 +29,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Version | 2 / 2 | complete |
 | Errors | 4 / 4 | complete: name, typed `ZstdErrorCode`, and `description()` |
 | Reusable contexts | 6 / 8 | CCtx/DCtx create/free/compress/decompress |
-| Dictionary — simple | 10 / 23 | raw + digested (CDict/DDict) + dict-id queries; `_advanced`/`_byReference`/`Begin` variants not bound |
+| Dictionary — simple | 11 / 23 | raw + digested (CDict/DDict) + dict-id queries; `_advanced`/`_byReference`/`Begin` variants not bound |
 | Dictionary training (ZDICT) | 8 / 12 | trainFromBuffer, cover/fastCover optimizers, finalizeDictionary, getDictHeaderSize |
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
@@ -141,7 +141,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_createCCtx_advanced` | — | — |
 | `ZSTD_createDCtx_advanced` | — | — |
 
-### Dictionary — simple (10/23)
+### Dictionary — simple (11/23)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
@@ -166,7 +166,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_decompressBegin_usingDict` | — | — |
 | `ZSTD_getDictID_fromCDict` | ✅ | — |
 | `ZSTD_getDictID_fromDDict` | ✅ | — |
-| `ZSTD_getDictID_fromDict` | — | ✅ |
+| `ZSTD_getDictID_fromDict` | ✅ | ✅ |
 | `ZSTD_getDictID_fromFrame` | ✅ | ✅ |
 
 ### Dictionary training, ZDICT (8/12)

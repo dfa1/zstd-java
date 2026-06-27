@@ -7,6 +7,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -170,6 +172,88 @@ class ZstdTest {
 
             // Then it encodes MAJOR * 10000 + MINOR * 100 + PATCH
             assertThat(number).isEqualTo(expected);
+        }
+    }
+
+    @Nested
+    class DictIdLookup {
+
+        // ZSTD_MAGIC_DICTIONARY (0xEC30A437) little-endian
+        private static final byte[] MAGIC = {0x37, (byte) 0xA4, 0x30, (byte) 0xEC};
+
+        @Test
+        void readsTheIdStampedInDictionaryBytes() {
+            // Given a standard dictionary header carrying a known id
+            byte[] dict = standardDict(0x01020304);
+
+            // When the id is read
+            ZstdDictionaryId id = Zstd.dictId(dict);
+
+            // Then it matches the stamped value
+            assertThat(id).isEqualTo(ZstdDictionaryId.of(0x01020304));
+        }
+
+        @Test
+        void agreesWithTheZstdDictionaryReader() {
+            // Given the same bytes read through both the libzstd and ZDICT readers
+            byte[] dict = standardDict(123_456);
+
+            // When each reports the id
+            // Then they agree
+            assertThat(Zstd.dictId(dict)).isEqualTo(ZstdDictionary.of(dict).id());
+        }
+
+        @Test
+        void returnsNoneForNonDictionaryBytes() {
+            // Given bytes with no dictionary magic
+            byte[] notADict = "not a zstd dictionary".getBytes(StandardCharsets.UTF_8);
+
+            // When the id is read / Then it is absent
+            assertThat(Zstd.dictId(notADict)).isEqualTo(ZstdDictionaryId.NONE);
+        }
+
+        @Test
+        void returnsNoneForTooShortInput() {
+            // Given fewer than 8 bytes
+            // When the id is read / Then it is absent
+            assertThat(Zstd.dictId(new byte[] {1, 2, 3})).isEqualTo(ZstdDictionaryId.NONE);
+        }
+
+        @Test
+        void segmentOverloadMatchesByteArray() {
+            // Given the same dictionary as bytes and as a native segment
+            byte[] dict = standardDict(777);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, dict);
+
+                // When read through the zero-copy overload / Then it agrees
+                assertThat(Zstd.dictId(seg)).isEqualTo(Zstd.dictId(dict));
+            }
+        }
+
+        @Test
+        void segmentOverloadRejectsHeapSegment() {
+            // Given a heap-backed segment
+            MemorySegment heap = MemorySegment.ofArray(standardDict(1));
+
+            // When read through the zero-copy overload
+            ThrowingCallable result = () -> Zstd.dictId(heap);
+
+            // Then it fails fast naming the parameter
+            assertThatThrownBy(result)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("bytes");
+        }
+
+        private static byte[] standardDict(int id) {
+            // magic (LE) + dictID (LE) + filler; getDictID reads only the first 8 bytes
+            byte[] d = new byte[12];
+            System.arraycopy(MAGIC, 0, d, 0, 4);
+            d[4] = (byte) id;
+            d[5] = (byte) (id >>> 8);
+            d[6] = (byte) (id >>> 16);
+            d[7] = (byte) (id >>> 24);
+            return d;
         }
     }
 }

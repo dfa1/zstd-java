@@ -1,6 +1,7 @@
 package io.github.dfa1.zstd.it;
 
 import com.github.luben.zstd.ZstdCompressCtx;
+import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
@@ -219,11 +220,11 @@ class ZstdInteropExtrasTest {
             byte[] frame = com.github.luben.zstd.Zstd.compress(record(7), jniDict);
 
             // When
-            int dictId = ZstdFrame.dictId(frame);
+            ZstdDictionaryId dictId = ZstdFrame.dictId(frame);
 
             // Then
             assertThat(dictId).isEqualTo(dict.id());
-            assertThat(dictId).isNotZero();
+            assertThat(dictId).isNotEqualTo(ZstdDictionaryId.NONE);
         }
 
         private ZstdDictionary trainDict() {

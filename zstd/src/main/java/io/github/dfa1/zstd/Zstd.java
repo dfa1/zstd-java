@@ -111,6 +111,42 @@ public final class Zstd {
         return size;
     }
 
+    /// Dictionary id stamped in raw dictionary `bytes`, read with the core
+    /// `libzstd` reader.
+    ///
+    /// This reads the id a *dictionary* records, not the id a frame references —
+    /// for the latter use [ZstdFrame#dictId(byte[])]. It returns the same value as
+    /// [ZstdDictionary#id()] (which uses the equivalent `ZDICT` reader); prefer this
+    /// when you only hold raw bytes and do not want to wrap them in a
+    /// [ZstdDictionary].
+    ///
+    /// @param bytes raw dictionary content
+    /// @return the dictionary id, or [ZstdDictionaryId#NONE] if `bytes` is not a standard zstd
+    ///         dictionary (for example a raw/content-only dictionary with no header)
+    public static ZstdDictionaryId dictId(byte[] bytes) {
+        try (Arena arena = Arena.ofConfined()) {
+            return dictId(copyIn(arena, bytes), bytes.length);
+        }
+    }
+
+    /// Dictionary id stamped in native dictionary `bytes`, read with no copy.
+    /// Otherwise identical to [#dictId(byte[])].
+    ///
+    /// @param bytes native dictionary content
+    /// @return the dictionary id, or [ZstdDictionaryId#NONE] if `bytes` is not a standard zstd dictionary
+    public static ZstdDictionaryId dictId(MemorySegment bytes) {
+        NativeCall.requireNative(bytes, "bytes");
+        return dictId(bytes, bytes.byteSize());
+    }
+
+    private static ZstdDictionaryId dictId(MemorySegment bytes, long size) {
+        try {
+            return ZstdDictionaryId.of((int) Bindings.GET_DICT_ID_FROM_DICT.invokeExact(bytes, size));
+        } catch (Throwable t) {
+            throw NativeCall.rethrow(t);
+        }
+    }
+
     /// Maximum compressed size for an input of `srcSize` bytes — the buffer
     /// size guaranteed to never overflow during compression.
     ///

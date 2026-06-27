@@ -106,7 +106,7 @@ class ZstdFrameTest {
             assertThat(header.frameType()).isEqualTo(ZstdFrameType.STANDARD);
             assertThat(header.contentSize()).hasValue(PAYLOAD.length);
             assertThat(header.hasChecksum()).isFalse();
-            assertThat(header.dictId()).isZero();
+            assertThat(header.dictId()).isEqualTo(ZstdDictionaryId.NONE);
             assertThat(header.windowSize()).isPositive();
         }
 
@@ -199,11 +199,11 @@ class ZstdFrameTest {
     }
 
     @Nested
-    class DictId {
+    class DictIdLookup {
 
         @Test
-        void isZeroForDictionarylessFrame() {
-            assertThat(ZstdFrame.dictId(Zstd.compress(PAYLOAD))).isZero();
+        void isNoneForDictionarylessFrame() {
+            assertThat(ZstdFrame.dictId(Zstd.compress(PAYLOAD))).isEqualTo(ZstdDictionaryId.NONE);
         }
 
         @Test
@@ -230,8 +230,8 @@ class ZstdFrameTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment seg = Zstd.copyIn(arena, frame);
 
-                // Then the segment overload reports the same non-zero id
-                assertThat(ZstdFrame.dictId(seg)).isNotZero().isEqualTo(dict.id());
+                // Then the segment overload reports the same present id
+                assertThat(ZstdFrame.dictId(seg)).isNotEqualTo(ZstdDictionaryId.NONE).isEqualTo(dict.id());
             }
         }
 

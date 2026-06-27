@@ -62,7 +62,7 @@ by reference — no per-call digesting, no copy. It pairs with `reset` for a
 pooled, recycled context:
 
 ```java
-try (ZstdCompressDict cdict = new ZstdCompressDict(dict, 19)) {
+try (ZstdCompressDict cdict = dict.compressDict(19)) {
     // one cctx per pooled worker, all sharing the one digested dictionary
     try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
         cctx.refDictionary(cdict);          // borrowed; cdict must outlive cctx
@@ -72,6 +72,13 @@ try (ZstdCompressDict cdict = new ZstdCompressDict(dict, 19)) {
     }
 }
 ```
+
+`refDictionary` only borrows: the digested `cdict` is *not* tied to the context's
+lifetime, so it must be closed separately (hence its own try-with-resources). That
+is the price of sharing one digest across many contexts. If you have just **one**
+context, don't build a `ZstdCompressDict` at all — `loadDictionary` above digests
+into the context and frees it for you, and a stray, never-closed
+`ZstdCompressDict` is a native-memory leak.
 
 A loaded or referenced dictionary stays until replaced, cleared with `null`, or
 dropped by a parameter `reset`. `ZstdDecompressCtx` mirrors all of this.
@@ -98,8 +105,8 @@ ZstdDictionary reloaded = ZstdDictionary.of(persisted);
 On a hot path, digest the dictionary once to skip per-call setup:
 
 ```java
-try (ZstdCompressDict cdict = new ZstdCompressDict(dict, 19);
-     ZstdDecompressDict ddict = new ZstdDecompressDict(dict);
+try (ZstdCompressDict cdict = dict.compressDict(19);
+     ZstdDecompressDict ddict = dict.decompressDict();
      ZstdCompressCtx cctx = new ZstdCompressCtx();
      ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
     byte[] packed   = cctx.compress(record, cdict);

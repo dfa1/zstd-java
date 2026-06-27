@@ -267,6 +267,58 @@ class ZstdDictionaryTest {
     }
 
     @Nested
+    class Factories {
+
+        @Test
+        void compressDictFixesTheRequestedLevel() {
+            // When a digested compress dictionary is built via the factory
+            try (ZstdCompressDict cdict = sut.compressDict(19)) {
+                // Then it carries that level and the dictionary's id
+                assertThat(cdict.level()).isEqualTo(19);
+                assertThat(cdict.id()).isEqualTo(sut.id());
+            }
+        }
+
+        @Test
+        void compressDictDefaultsToTheLibraryLevel() {
+            // When built without a level
+            try (ZstdCompressDict cdict = sut.compressDict()) {
+                // Then it uses the library default
+                assertThat(cdict.level()).isEqualTo(Zstd.defaultCompressionLevel());
+            }
+        }
+
+        @Test
+        void decompressDictReportsTheDictionaryId() {
+            // When a digested decompress dictionary is built via the factory
+            try (ZstdDecompressDict ddict = sut.decompressDict()) {
+                // Then it carries the dictionary's id
+                assertThat(ddict.id()).isEqualTo(sut.id());
+            }
+        }
+
+        @Test
+        void factoryDictionariesRoundTrip() {
+            // Given factory-built digested dictionaries
+            byte[] record = samples.get(123);
+
+            byte[] restored;
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx();
+                 ZstdCompressDict cdict = sut.compressDict(19);
+                 ZstdDecompressDict ddict = sut.decompressDict()) {
+
+                // When round-tripped through them
+                byte[] frame = cctx.compress(record, cdict);
+                restored = dctx.decompress(frame, record.length, ddict);
+            }
+
+            // Then the record is recovered
+            assertThat(restored).isEqualTo(record);
+        }
+    }
+
+    @Nested
     class Serialisation {
 
         @Test

@@ -256,4 +256,64 @@ class ZstdTest {
             return d;
         }
     }
+
+    @Nested
+    class UntrustedInput {
+
+        @Test
+        void boundedDecompressRefusesADecompressionBomb() {
+            // Given a tiny frame that expands enormously (8 MiB of zeros -> a few bytes)
+            byte[] bomb = Zstd.compress(new byte[8 * 1024 * 1024]);
+            assertThat(bomb.length).isLessThan(1024); // huge amplification ratio
+
+            // When decompressed with a small bound (the safe path for untrusted input)
+            ThrowingCallable result = () -> Zstd.decompress(bomb, 64 * 1024);
+
+            // Then it is refused instead of allocating the full expansion
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+        }
+
+        @Test
+        void unboundedDecompressTrustsTheDeclaredSize() {
+            // Given the same tiny, highly amplifying frame
+            byte[] bomb = Zstd.compress(new byte[8 * 1024 * 1024]);
+
+            // When decompressed without a bound
+            byte[] out = Zstd.decompress(bomb);
+
+            // Then it expands fully — documenting that this overload trusts the frame
+            // header; untrusted callers must use decompress(byte[], maxSize)
+            assertThat(out).hasSize(8 * 1024 * 1024);
+        }
+
+        @Test
+        void rejectsAFrameDeclaringMoreThanArrayMaxWithoutLeakingArithmeticException() {
+            // Given a frame header that declares a content size above Integer.MAX_VALUE
+            byte[] frame = frameHeaderDeclaringContentSize(3_000_000_000L);
+
+            // When decompressed via the size-trusting overload
+            ThrowingCallable result = () -> Zstd.decompress(frame);
+
+            // Then it fails with a ZstdException, not a raw ArithmeticException
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("exceeds the maximum array length");
+        }
+
+        // A minimal single-segment zstd frame header (magic + descriptor + 8-byte
+        // Frame_Content_Size) declaring `contentSize`; enough for the content-size
+        // read, which happens before any block is decoded.
+        private static byte[] frameHeaderDeclaringContentSize(long contentSize) {
+            byte[] f = new byte[13];
+            f[0] = (byte) 0x28;             // magic 0xFD2FB528, little-endian
+            f[1] = (byte) 0xB5;
+            f[2] = (byte) 0x2F;
+            f[3] = (byte) 0xFD;
+            f[4] = (byte) 0xE0;             // descriptor: FCS_flag=3 (8 bytes) | single-segment
+            for (int i = 0; i < 8; i++) {  // 8-byte little-endian content size
+                f[5 + i] = (byte) (contentSize >>> (8 * i));
+            }
+            return f;
+        }
+    }
 }

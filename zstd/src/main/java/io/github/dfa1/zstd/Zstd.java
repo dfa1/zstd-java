@@ -60,7 +60,23 @@ public final class Zstd {
     public static byte[] decompress(byte[] compressed) {
         Objects.requireNonNull(compressed, "compressed");
         long size = requireStoredContentSize(frameContentSize(compressed));
-        return decompress(compressed, Math.toIntExact(size));
+        return decompress(compressed, toArrayLength(size));
+    }
+
+    /// Narrows a frame-declared content size to a `byte[]` length, rejecting sizes
+    /// that exceed what a Java array can hold. The size comes from the (untrusted)
+    /// frame header, so this fails with a [ZstdException] rather than letting a raw
+    /// `ArithmeticException` escape.
+    ///
+    /// @param size a non-negative content size from a frame header
+    /// @return `size` as an `int`
+    /// @throws ZstdException if `size` exceeds [Integer#MAX_VALUE]
+    private static int toArrayLength(long size) {
+        if (size > Integer.MAX_VALUE) {
+            throw new ZstdException("decompressed size " + size
+                    + " exceeds the maximum array length; use decompress(byte[], int) to bound it");
+        }
+        return (int) size;
     }
 
     /// Decompresses a zstd frame into a buffer of at most `maxSize` bytes.

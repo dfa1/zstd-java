@@ -33,7 +33,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Dictionary training (ZDICT) | 8 / 12 | trainFromBuffer, cover/fastCover optimizers, finalizeDictionary, getDictHeaderSize |
 | Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
 | Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
-| Advanced parameters | 8 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `loadDictionary`, `c/dParam_getBounds`; MT inert on single-thread build |
+| Advanced parameters | 10 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `loadDictionary`, `c/dParam_getBounds`; MT inert on single-thread build |
 | Frame inspection | 10 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
 | Memory sizing | 8 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
@@ -63,6 +63,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressCtx.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (all of `ZstdCompressParameter`) |
 | `ZSTD_DCtx_setParameter` | `ZstdDecompressCtx.parameter` / `windowLogMax` (`ZstdDecompressParameter`) |
 | `ZSTD_CCtx_setPledgedSrcSize` | `ZstdOutputStream.withPledgedSize` |
+| `ZSTD_CCtx_reset`, `ZSTD_DCtx_reset` | `ZstdCompressCtx.reset` / `ZstdDecompressCtx.reset` (`ZstdResetDirective`) |
 | `ZSTD_getDictID_fromCDict`, `ZSTD_getDictID_fromDDict` | `ZstdCompressDict.id()` / `ZstdDecompressDict.id()` |
 | `ZSTD_getErrorString` | `ZstdErrorCode.description()` |
 | `ZSTD_cParam_getBounds`, `ZSTD_dParam_getBounds` | `ZstdCompressParameter.bounds()` / `ZstdDecompressParameter.bounds()` (`ZstdBounds`) |
@@ -90,7 +91,7 @@ zstd-jni's JNI sources (v1.5.7-11, `src/main/native/*.c`). The latter is
 symbol-exact, not functional equivalence: zstd-jni may expose an operation through
 a different symbol than this library — e.g. it routes one-shot compression through
 `ZSTD_compress2`, so `ZSTD_compress` reads `—` for it even though `Zstd.compress`
-works. zstd-jni references 53 of these symbols; this library binds 55. They
+works. zstd-jni references 53 of these symbols; this library binds 57. They
 overlap on the modern context/streaming API and diverge mainly on zstd-jni's
 sequence-producer hooks vs this library's frame-inspection and typed-error surface.
 
@@ -231,7 +232,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_resetDStream` | — ᵈ | — |
 | `ZSTD_sizeof_DStream` | — | — |
 
-### Advanced parameters (8/38)
+### Advanced parameters (10/38)
 
 | Symbol | Bound | zstd-jni |
 |---|:---:|:---:|
@@ -249,7 +250,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_CCtx_refPrefix` | — | — |
 | `ZSTD_CCtx_refPrefix_advanced` | — | — |
 | `ZSTD_CCtx_refThreadPool` | — | — |
-| `ZSTD_CCtx_reset` | — | ✅ |
+| `ZSTD_CCtx_reset` | ✅ | ✅ |
 | `ZSTD_CCtx_setCParams` | — | — |
 | `ZSTD_CCtx_setFParams` | — | — |
 | `ZSTD_CCtx_setParameter` | ✅ | ✅ |
@@ -263,7 +264,7 @@ sequence-producer hooks vs this library's frame-inspection and typed-error surfa
 | `ZSTD_DCtx_refDDict` | — | ✅ |
 | `ZSTD_DCtx_refPrefix` | — | — |
 | `ZSTD_DCtx_refPrefix_advanced` | — | — |
-| `ZSTD_DCtx_reset` | — | ✅ |
+| `ZSTD_DCtx_reset` | ✅ | ✅ |
 | `ZSTD_DCtx_setFormat` | — ᵈ | — |
 | `ZSTD_DCtx_setMaxWindowSize` | — | — |
 | `ZSTD_DCtx_setParameter` | ✅ | ✅ |

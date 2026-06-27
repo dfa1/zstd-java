@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [0.5]
+
+### Added
+- `ZstdCompressCtx.reset(ZstdResetDirective)` / `ZstdDecompressCtx.reset(...)` —
+  recycle a context's native state between frames without freeing and recreating
+  it. `SESSION_ONLY` keeps the level, parameters, and dictionary; `PARAMETERS` /
+  `SESSION_AND_PARAMETERS` restore the defaults. Binds `ZSTD_CCtx_reset` /
+  `ZSTD_DCtx_reset`.
+
+### Changed
+- `NativeLibrary.classifier()` now throws a clear `UnsatisfiedLinkError` naming
+  the unsupported CPU arch instead of silently mapping it to x86_64 (which
+  deferred failure to a cryptic `dlopen` error). Added an explicit `amd64`
+  branch so Linux JVMs (which report `os.arch=amd64`) still resolve x86_64.
+  ([ea1ac84](https://github.com/dfa1/zstd-java/commit/ea1ac84))
+
+### Fixed
+- Native JARs are much smaller. The ELF shared library is now stripped at link
+  time (`-s`), dropping debug info (`libzstd.so` 4.0M -> ~650K), and the
+  multi-MB `.pdb` debug database and `.lib` import library that lld emits next
+  to the Windows `.dll` are no longer bundled (neither is needed at runtime).
+  Net: linux-x86_64 native jar 1.2M -> 285K, windows-x86_64 1.2M -> 372K.
+  ([ea1ac84](https://github.com/dfa1/zstd-java/commit/ea1ac84))
+
 ## [0.4]
 
 ### Added

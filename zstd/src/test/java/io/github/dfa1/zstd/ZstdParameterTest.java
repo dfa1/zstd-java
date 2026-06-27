@@ -144,6 +144,92 @@ class ZstdParameterTest {
     }
 
     @Nested
+    class Reset {
+
+        @Test
+        void sessionOnlyKeepsLevelAndParameters() {
+            // Given a context used once, then reset for the session only
+            byte[] reused;
+            byte[] fresh;
+            try (ZstdCompressCtx sut = new ZstdCompressCtx().level(19)) {
+                sut.compress(PAYLOAD);
+                sut.reset(ZstdResetDirective.SESSION_ONLY);
+                reused = sut.compress(PAYLOAD);
+            }
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx().level(19)) {
+                fresh = ctx.compress(PAYLOAD);
+            }
+
+            // Then the level survives the reset: the next frame matches a fresh level-19 frame
+            assertThat(reused).isEqualTo(fresh);
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = ZstdResetDirective.class, names = {"PARAMETERS", "SESSION_AND_PARAMETERS"})
+        void parameterResetRestoresTheDefaultLevel(ZstdResetDirective directive) {
+            // Given a level-19 context reset with parameters cleared
+            byte[] afterReset;
+            byte[] atDefault;
+            try (ZstdCompressCtx sut = new ZstdCompressCtx().level(19)) {
+                sut.compress(PAYLOAD);
+                sut.reset(directive);
+                afterReset = sut.compress(PAYLOAD);
+            }
+            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+                atDefault = ctx.compress(PAYLOAD);
+            }
+
+            // Then the level falls back to the default, matching a fresh default-level frame
+            assertThat(afterReset).isEqualTo(atDefault);
+        }
+
+        @Test
+        void dictionaryRoundTripsAfterParameterReset() {
+            // Given a context that compressed against a dictionary, then cleared its parameters
+            ZstdDictionary dict =
+                    ZstdDictionary.of("dictionary sample payload ".repeat(64).getBytes(StandardCharsets.UTF_8));
+            byte[] frame;
+            try (ZstdCompressCtx sut = new ZstdCompressCtx().level(19)) {
+                sut.compress(PAYLOAD, dict);
+                sut.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
+
+                // When it compresses against the dictionary again after the reset
+                frame = sut.compress(PAYLOAD, dict);
+            }
+
+            // Then the frame still round-trips through the same dictionary
+            try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                assertThat(dctx.decompress(frame, PAYLOAD.length, dict)).isEqualTo(PAYLOAD);
+            }
+        }
+
+        @Test
+        void decompressContextStillDecodesAfterReset() {
+            // Given a decompression context reset between frames
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (ZstdDecompressCtx sut = new ZstdDecompressCtx()) {
+                sut.decompress(frame, PAYLOAD.length);
+                sut.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
+
+                // Then the next frame still decodes
+                assertThat(sut.decompress(frame, PAYLOAD.length)).isEqualTo(PAYLOAD);
+            }
+        }
+
+        @Test
+        void rejectsNullDirective() {
+            // Given a compression context
+            try (ZstdCompressCtx sut = new ZstdCompressCtx()) {
+                // When reset with a null directive
+                ThrowingCallable result = () -> sut.reset(null);
+
+                // Then it fails fast
+                assertThatThrownBy(result).isInstanceOf(NullPointerException.class);
+            }
+        }
+    }
+
+    @Nested
     class GenericSetter {
 
         @Test

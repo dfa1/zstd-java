@@ -49,6 +49,26 @@ public final class ZstdDecompressCtx extends NativeObject {
         return parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, windowLogMax);
     }
 
+    /// Resets this context so it can be reused for the next frame without the
+    /// cost of freeing and recreating its native state.
+    ///
+    /// - [ZstdResetDirective#SESSION_ONLY] aborts the current frame and drops
+    ///   buffered state, keeping all parameters and any dictionary.
+    /// - [ZstdResetDirective#PARAMETERS] and
+    ///   [ZstdResetDirective#SESSION_AND_PARAMETERS] also restore every
+    ///   parameter to its default and clear the dictionary. A parameter reset is
+    ///   valid only between frames — one-shot [#decompress(byte[], int)] always
+    ///   consumes its frame, so this constraint only bites advanced multi-frame reuse.
+    ///
+    /// @param directive what to clear
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the reset fails natively
+    public ZstdDecompressCtx reset(ZstdResetDirective directive) {
+        Objects.requireNonNull(directive, "directive");
+        NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_RESET.invokeExact(ptr(), directive.value()));
+        return this;
+    }
+
     /// Decompresses a frame into a buffer of at most `maxSize` bytes.
     ///
     /// @param compressed a complete zstd frame

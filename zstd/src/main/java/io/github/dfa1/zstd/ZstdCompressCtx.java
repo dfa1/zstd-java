@@ -90,6 +90,30 @@ public final class ZstdCompressCtx extends NativeObject {
         return parameter(ZstdCompressParameter.WINDOW_LOG, windowLog);
     }
 
+    /// Resets this context so it can be reused for the next frame without the
+    /// cost of freeing and recreating its native state.
+    ///
+    /// - [ZstdResetDirective#SESSION_ONLY] aborts the current frame and drops
+    ///   unflushed data, keeping the level, parameters, and any dictionary.
+    /// - [ZstdResetDirective#PARAMETERS] and
+    ///   [ZstdResetDirective#SESSION_AND_PARAMETERS] also restore every
+    ///   parameter to its default and clear the dictionary; the level returns to
+    ///   [Zstd#defaultCompressionLevel()]. A parameter reset is valid only
+    ///   between frames — one-shot [#compress(byte[])] always finishes its frame,
+    ///   so this constraint only bites advanced multi-frame reuse.
+    ///
+    /// @param directive what to clear
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the reset fails natively
+    public ZstdCompressCtx reset(ZstdResetDirective directive) {
+        Objects.requireNonNull(directive, "directive");
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_RESET.invokeExact(ptr(), directive.value()));
+        if (directive != ZstdResetDirective.SESSION_ONLY) {
+            this.level = Zstd.defaultCompressionLevel();
+        }
+        return this;
+    }
+
     /// Compresses `src` into a new zstd frame using this context and its
     /// advanced parameters.
     ///

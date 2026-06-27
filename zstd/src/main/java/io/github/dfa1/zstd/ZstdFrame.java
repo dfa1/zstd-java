@@ -102,6 +102,34 @@ public final class ZstdFrame {
         return decompressedSize(data, data.byteSize());
     }
 
+    /// Extra room needed for **in-place** decompression of `data`, where the input
+    /// and output buffers overlap.
+    ///
+    /// zstd can decompress into a buffer that also holds the compressed input, with
+    /// no second allocation: make the output buffer at least
+    /// `decompressedSize + margin` bytes and place the compressed frame(s) at its
+    /// **end**, then decompress from that tail slice into the start. This returns
+    /// that `margin`. Supports multi-frame input.
+    ///
+    /// @param data one or more concatenated zstd frames
+    /// @return the in-place decompression margin in bytes
+    /// @throws ZstdException if the input is not valid zstd data
+    public static long decompressionMargin(byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            return decompressionMargin(Zstd.copyIn(arena, data), data.length);
+        }
+    }
+
+    /// Extra room needed for in-place decompression of native `data`.
+    /// Otherwise identical to [#decompressionMargin(byte[])].
+    ///
+    /// @param data one or more concatenated zstd frames
+    /// @return the in-place decompression margin in bytes
+    /// @throws ZstdException if the input is not valid zstd data
+    public static long decompressionMargin(MemorySegment data) {
+        return decompressionMargin(data, data.byteSize());
+    }
+
     /// Dictionary id recorded in the first frame's header.
     ///
     /// @param data a zstd frame
@@ -279,6 +307,10 @@ public final class ZstdFrame {
             throw NativeCall.rethrow(t);
         }
         return Zstd.requireStoredContentSize(total);
+    }
+
+    private static long decompressionMargin(MemorySegment data, long size) {
+        return NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESSION_MARGIN.invokeExact(data, size));
     }
 
     private static long headerSize(MemorySegment data, long size) {

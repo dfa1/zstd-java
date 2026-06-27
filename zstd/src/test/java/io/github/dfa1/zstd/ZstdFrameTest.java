@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -205,6 +206,63 @@ class ZstdFrameTest {
             ThrowingCallable result = () -> ZstdFrame.headerSize(tooShort);
 
             // Then it fails instead of guessing
+            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+        }
+    }
+
+    @Nested
+    class DecompressionMargin {
+
+        @Test
+        void isPositiveForAValidFrame() {
+            // Given a frame
+            byte[] frame = Zstd.compress(PAYLOAD);
+
+            // Then its in-place margin is a real, positive size
+            assertThat(ZstdFrame.decompressionMargin(frame)).isPositive();
+        }
+
+        @Test
+        void matchesThroughTheSegmentOverload() {
+            byte[] frame = Zstd.compress(PAYLOAD);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment seg = Zstd.copyIn(arena, frame);
+                assertThat(ZstdFrame.decompressionMargin(seg)).isEqualTo(ZstdFrame.decompressionMargin(frame));
+            }
+        }
+
+        @Test
+        void enablesInPlaceDecompression() {
+            // Given a frame and a single buffer sized output + margin
+            byte[] frame = Zstd.compress(PAYLOAD);
+            long margin = ZstdFrame.decompressionMargin(frame);
+            try (Arena arena = Arena.ofConfined();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                MemorySegment buf = arena.allocate(PAYLOAD.length + margin);
+
+                // and the compressed frame placed at the very end of that buffer
+                MemorySegment in = buf.asSlice(buf.byteSize() - frame.length, frame.length);
+                MemorySegment.copy(frame, 0, in, ValueLayout.JAVA_BYTE, 0, frame.length);
+
+                // When decompressed in place (output overlaps the input tail)
+                long n = dctx.decompress(buf, in);
+
+                // Then the original is recovered at the start of the same buffer
+                byte[] out = new byte[(int) n];
+                MemorySegment.copy(buf, ValueLayout.JAVA_BYTE, 0, out, 0, (int) n);
+                assertThat(out).isEqualTo(PAYLOAD);
+            }
+        }
+
+        @Test
+        void rejectsGarbage() {
+            // Given bytes that are not valid zstd data
+            byte[] garbage = "xx".getBytes(StandardCharsets.UTF_8);
+
+            // When the margin is requested
+            ThrowingCallable result = () -> ZstdFrame.decompressionMargin(garbage);
+
+            // Then it fails
             assertThatThrownBy(result).isInstanceOf(ZstdException.class);
         }
     }

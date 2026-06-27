@@ -26,6 +26,18 @@ class ZstdErrorTest {
         }
 
         @Test
+        void carriesTheNativeErrorNameAsTheMessage() {
+            // Given a frame decompressed into too small a buffer
+            byte[] frame = Zstd.compress(PAYLOAD);
+
+            // When it fails
+            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(frame, 1));
+
+            // Then the message is the descriptive native error name, not an empty string
+            assertThat(ex).hasMessageContaining("too small");
+        }
+
+        @Test
         void reportsParameterOutOfBound() {
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
                 ZstdException ex = catchThrowableOfType(ZstdException.class,

@@ -179,6 +179,86 @@ class RefPrefixTest {
                 .hasMessageContaining("prefix");
     }
 
+    @Test
+    void compressLoadDictionaryRejectsAHeapSegment() {
+        // Given a heap-backed segment
+        MemorySegment heap = MemorySegment.ofArray("dictionary".getBytes());
+
+        // When loaded as a zero-copy dictionary
+        ThrowingCallable result = () -> {
+            try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+                cctx.loadDictionary(heap);
+            }
+        };
+
+        // Then it is rejected naming the offending argument
+        assertThatThrownBy(result)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("dict");
+    }
+
+    @Test
+    void decompressLoadDictionaryRejectsAHeapSegment() {
+        // Given a heap-backed segment
+        MemorySegment heap = MemorySegment.ofArray("dictionary".getBytes());
+
+        // When loaded as a zero-copy dictionary
+        ThrowingCallable result = () -> {
+            try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                dctx.loadDictionary(heap);
+            }
+        };
+
+        // Then it is rejected naming the offending argument
+        assertThatThrownBy(result)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("dict");
+    }
+
+    @Test
+    void refPrefixReturnsTheSameContextForChaining() {
+        // Given both contexts and a native prefix
+        try (Arena arena = Arena.ofConfined();
+             ZstdCompressCtx cctx = new ZstdCompressCtx();
+             ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+            MemorySegment prefix = copy(arena, "a prior version".getBytes());
+
+            // When setting and then clearing a prefix on both contexts
+            ZstdCompressCtx cSet = cctx.refPrefix(prefix);
+            ZstdCompressCtx cCleared = cctx.refPrefix((MemorySegment) null);
+            ZstdDecompressCtx dSet = dctx.refPrefix(prefix);
+            ZstdDecompressCtx dCleared = dctx.refPrefix((MemorySegment) null);
+
+            // Then every call returns the same instance, for chaining
+            assertThat(cSet).isSameAs(cctx);
+            assertThat(cCleared).isSameAs(cctx);
+            assertThat(dSet).isSameAs(dctx);
+            assertThat(dCleared).isSameAs(dctx);
+        }
+    }
+
+    @Test
+    void loadDictionaryFromSegmentReturnsTheSameContextForChaining() {
+        // Given both contexts and a native dictionary segment
+        try (Arena arena = Arena.ofConfined();
+             ZstdCompressCtx cctx = new ZstdCompressCtx();
+             ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+            MemorySegment dict = copy(arena, "dictionary sample payload ".repeat(64).getBytes());
+
+            // When loading and then clearing a segment dictionary on both contexts
+            ZstdCompressCtx cSet = cctx.loadDictionary(dict);
+            ZstdCompressCtx cCleared = cctx.loadDictionary(MemorySegment.NULL);
+            ZstdDecompressCtx dSet = dctx.loadDictionary(dict);
+            ZstdDecompressCtx dCleared = dctx.loadDictionary(MemorySegment.NULL);
+
+            // Then every call returns the same instance, for chaining
+            assertThat(cSet).isSameAs(cctx);
+            assertThat(cCleared).isSameAs(cctx);
+            assertThat(dSet).isSameAs(dctx);
+            assertThat(dCleared).isSameAs(dctx);
+        }
+    }
+
     private static MemorySegment copy(Arena arena, byte[] src) {
         MemorySegment seg = arena.allocate(src.length);
         MemorySegment.copy(src, 0, seg, JAVA_BYTE, 0, src.length);

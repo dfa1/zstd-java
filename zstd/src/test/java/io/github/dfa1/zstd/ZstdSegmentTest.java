@@ -97,6 +97,31 @@ class ZstdSegmentTest {
                 assertThat(bytesOf(out, written)).isEqualTo(record);
             }
         }
+
+        @Test
+        void arenaAllocatingDecompressSizesOutputFromTheDigestedDictionaryFrame() {
+            // Given a digested-dictionary frame that stores its decompressed size
+            ZstdDictionary dict = trainSmallDictionary();
+            byte[] record = "{\"id\":99,\"user\":\"u\",\"active\":false}".getBytes(StandardCharsets.UTF_8);
+
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressCtx cctx = new ZstdCompressCtx();
+                 ZstdDecompressCtx dctx = new ZstdDecompressCtx();
+                 ZstdCompressDict cdict = new ZstdCompressDict(dict);
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
+
+                MemorySegment src = segmentOf(arena, record);
+                MemorySegment frame = cctx.compress(arena, src, cdict);
+
+                // When decoded through the arena-allocating ddict overload
+                MemorySegment out = dctx.decompress(arena, frame, ddict);
+
+                // Then it allocates the exact size and returns the record (a non-null segment)
+                assertThat(out).isNotNull();
+                assertThat(out.byteSize()).isEqualTo(record.length);
+                assertThat(bytesOf(out, out.byteSize())).isEqualTo(record);
+            }
+        }
     }
 
     @Nested

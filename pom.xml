@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>io.github.dfa1.zstd</groupId>
-	<artifactId>zstd-parent</artifactId>
+	<artifactId>zstd-java</artifactId>
 	<version>0.6-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
-	<name>zstd-parent</name>
+	<name>zstd-java</name>
 	<description>Java FFM (Foreign Function &amp; Memory) bindings for zstd</description>
 	<url>https://github.com/dfa1/zstd-java</url>
 

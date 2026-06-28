@@ -13,7 +13,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 ///
 /// Memory use is bounded and independent of the frame size, so this decodes
 /// arbitrarily large or incrementally-arriving compressed data. For a complete
-/// in-memory frame, [Zstd#decompress(byte[])] or [ZstdDecompressCtx]
+/// in-memory frame, [Zstd#decompress(byte[])] or [ZstdDecompressContext]
 /// is simpler.
 ///
 /// Closing closes the underlying stream.

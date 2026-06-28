@@ -6,12 +6,12 @@
 
 ## Context
 
-`ZstdCompressCtx`/`ZstdDecompressCtx` wrap native CCtx/DCtx — expensive to
+`ZstdCompressContext`/`ZstdDecompressContext` wrap native CCtx/DCtx — expensive to
 create (off-heap malloc + init) and **not thread-safe**. The library targets
 JDK 25, where virtual threads are the default concurrency model: many, cheap,
 short-lived. The question is how to reuse contexts across them.
 
-`ThreadLocal<ZstdCompressCtx>` is the wrong answer under virtual threads: one
+`ThreadLocal<ZstdCompressContext>` is the wrong answer under virtual threads: one
 context per vthread means millions of native contexts (native-memory
 explosion), and short vthread lifetimes mean the cached context is never
 reused. Java's own guidance: **pool the scarce resource, not the thread.**

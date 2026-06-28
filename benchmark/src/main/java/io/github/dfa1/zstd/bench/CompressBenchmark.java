@@ -4,7 +4,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.airlift.compress.v3.zstd.ZstdJavaCompressor;
 import io.github.dfa1.zstd.Zstd;
-import io.github.dfa1.zstd.ZstdCompressCtx;
+import io.github.dfa1.zstd.ZstdCompressContext;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.concurrent.TimeUnit;
@@ -43,7 +43,7 @@ public class CompressBenchmark {
 
     private byte[] src;
 
-    private ZstdCompressCtx ffmCtx;
+    private ZstdCompressContext ffmCtx;
     private byte[] ffmDst;
 
     private Arena arena;
@@ -58,7 +58,7 @@ public class CompressBenchmark {
         src = BenchData.generate(size);
         int bound = (int) Zstd.compressBound(size);
 
-        ffmCtx = new ZstdCompressCtx().level(level);
+        ffmCtx = new ZstdCompressContext().level(level);
         ffmDst = new byte[bound];
 
         arena = Arena.ofConfined();

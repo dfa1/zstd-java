@@ -3,8 +3,8 @@ package io.github.dfa1.zstd.bench;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.github.dfa1.zstd.Zstd;
-import io.github.dfa1.zstd.ZstdCompressCtx;
-import io.github.dfa1.zstd.ZstdDecompressCtx;
+import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdDecompressContext;
 import java.io.UncheckedIOException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -61,8 +61,8 @@ public class GoldenCorpusBenchmark {
 
     private int bound;
 
-    private ZstdCompressCtx cctx;
-    private ZstdDecompressCtx dctx;
+    private ZstdCompressContext cctx;
+    private ZstdDecompressContext dctx;
     private byte[] compressDst;
 
     private Arena arena;
@@ -88,8 +88,8 @@ public class GoldenCorpusBenchmark {
         srcSize = src.length;
         frame = Zstd.compress(src);
 
-        cctx = new ZstdCompressCtx().level(level);
-        dctx = new ZstdDecompressCtx();
+        cctx = new ZstdCompressContext().level(level);
+        dctx = new ZstdDecompressContext();
         bound = (int) Zstd.compressBound(srcSize);
         compressDst = new byte[bound];
 

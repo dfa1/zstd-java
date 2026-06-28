@@ -39,7 +39,7 @@ class ZstdErrorTest {
 
         @Test
         void reportsParameterOutOfBound() {
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
                 ZstdException ex = catchThrowableOfType(ZstdException.class,
                         () -> ctx.parameter(ZstdCompressParameter.WINDOW_LOG, 99));
                 assertThat(ex.code()).isEqualTo(ZstdErrorCode.PARAMETER_OUT_OF_BOUND);

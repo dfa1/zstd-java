@@ -1,10 +1,10 @@
 package io.github.dfa1.zstd;
 
-/// Advanced decompression parameters settable on a [ZstdDecompressCtx], mirroring
+/// Advanced decompression parameters settable on a [ZstdDecompressContext], mirroring
 /// `ZSTD_dParameter` from the
 /// [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
 ///
-/// Set them with [ZstdDecompressCtx#parameter(ZstdDecompressParameter, int)].
+/// Set them with [ZstdDecompressContext#parameter(ZstdDecompressParameter, int)].
 public enum ZstdDecompressParameter {
 
     /// Largest back-reference window the decoder will accept, as a power of two.

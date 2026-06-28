@@ -8,8 +8,8 @@ Task-focused recipes. Each assumes you have the library on the classpath (see th
 Reuse a context to amortise native allocation across many calls:
 
 ```java
-try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19);
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+try (ZstdCompressContext cctx = new ZstdCompressContext().level(19);
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     byte[] packed   = cctx.compress(message);
     byte[] restored = dctx.decompress(packed, message.length);
 }
@@ -26,7 +26,7 @@ or to abort a half-written frame and start clean — without freeing and recreat
 it. Pick what to clear with `ZstdResetDirective`:
 
 ```java
-try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
+try (ZstdCompressContext cctx = new ZstdCompressContext().level(19)) {
     byte[] a = cctx.compress(first);
 
     // Cheap: drop any unflushed frame state, keep the level and parameters.
@@ -39,7 +39,7 @@ try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19)) {
 }
 ```
 
-`ZstdDecompressCtx.reset(...)` works the same way. Reuse alone amortises
+`ZstdDecompressContext.reset(...)` works the same way. Reuse alone amortises
 allocation; reset lets a long-lived or pooled context return to a known state
 without churning native memory.
 
@@ -51,7 +51,7 @@ matching) set on the context. To combine the two, make the dictionary *sticky*
 with `loadDictionary` — then the normal `compress` path honours both:
 
 ```java
-try (ZstdCompressCtx cctx = new ZstdCompressCtx().level(19).checksum(true)) {
+try (ZstdCompressContext cctx = new ZstdCompressContext().level(19).checksum(true)) {
     cctx.loadDictionary(dict);          // ZstdDictionary, or a native MemorySegment
     byte[] frame = cctx.compress(record); // dictionary + checksum, together
 }
@@ -62,9 +62,9 @@ by reference — no per-call digesting, no copy. It pairs with `reset` for a
 pooled, recycled context:
 
 ```java
-try (ZstdCompressDict cdict = dict.compressDict(19)) {
+try (ZstdCompressDictionary cdict = dict.compressDict(19)) {
     // one cctx per pooled worker, all sharing the one digested dictionary
-    try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+    try (ZstdCompressContext cctx = new ZstdCompressContext()) {
         cctx.refDictionary(cdict);          // borrowed; cdict must outlive cctx
         byte[] a = cctx.compress(first);
         cctx.reset(ZstdResetDirective.SESSION_ONLY); // recycle, keep the dictionary
@@ -76,12 +76,12 @@ try (ZstdCompressDict cdict = dict.compressDict(19)) {
 `refDictionary` only borrows: the digested `cdict` is *not* tied to the context's
 lifetime, so it must be closed separately (hence its own try-with-resources). That
 is the price of sharing one digest across many contexts. If you have just **one**
-context, don't build a `ZstdCompressDict` at all — `loadDictionary` above digests
+context, don't build a `ZstdCompressDictionary` at all — `loadDictionary` above digests
 into the context and frees it for you, and a stray, never-closed
-`ZstdCompressDict` is a native-memory leak.
+`ZstdCompressDictionary` is a native-memory leak.
 
 A loaded or referenced dictionary stays until replaced, cleared with `null`, or
-dropped by a parameter `reset`. `ZstdDecompressCtx` mirrors all of this.
+dropped by a parameter `reset`. `ZstdDecompressContext` mirrors all of this.
 
 ## Compress many small payloads with a dictionary
 
@@ -92,8 +92,8 @@ representative samples:
 ```java
 ZstdDictionary dict = ZstdDictionary.train(sampleRecords, 16 * 1024);
 
-try (ZstdCompressCtx cctx = new ZstdCompressCtx();
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+try (ZstdCompressContext cctx = new ZstdCompressContext();
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     byte[] packed   = cctx.compress(record, dict);
     byte[] restored = dctx.decompress(packed, record.length, dict);
 }
@@ -105,10 +105,10 @@ ZstdDictionary reloaded = ZstdDictionary.of(persisted);
 On a hot path, digest the dictionary once to skip per-call setup:
 
 ```java
-try (ZstdCompressDict cdict = dict.compressDict(19);
-     ZstdDecompressDict ddict = dict.decompressDict();
-     ZstdCompressCtx cctx = new ZstdCompressCtx();
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+try (ZstdCompressDictionary cdict = dict.compressDict(19);
+     ZstdDecompressDictionary ddict = dict.decompressDict();
+     ZstdCompressContext cctx = new ZstdCompressContext();
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     byte[] packed   = cctx.compress(record, cdict);
     byte[] restored = dctx.decompress(packed, record.length, ddict);
 }
@@ -122,7 +122,7 @@ hands zstd the segment address directly: no copy in, no copy out, no GC churn.
 
 ```java
 try (Arena arena = Arena.ofConfined();
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     MemorySegment frame = reader.mmapSlice();           // already native
     long n = Zstd.decompressedSize(frame);              // read header, no copy
     MemorySegment out = arena.allocate(n);              // becomes the backing buffer
@@ -138,10 +138,10 @@ The segment-API map:
 
 | Operation              | byte[] (convenience)                            | MemorySegment (boundary zero-copy)                 |
 |------------------------|-------------------------------------------------|----------------------------------------------------|
-| compress               | `ZstdCompressCtx.compress(byte[])`              | `ZstdCompressCtx.compress(dst, src)`               |
-| compress + dict        | `ZstdCompressCtx.compress(byte[], ZstdCompressDict)` | `ZstdCompressCtx.compress(dst, src, ZstdCompressDict)` |
-| decompress             | `ZstdDecompressCtx.decompress(byte[], int)`     | `ZstdDecompressCtx.decompress(dst, src)`           |
-| decompress + dict      | `ZstdDecompressCtx.decompress(byte[], int, ZstdDecompressDict)` | `ZstdDecompressCtx.decompress(dst, src, ZstdDecompressDict)` |
+| compress               | `ZstdCompressContext.compress(byte[])`              | `ZstdCompressContext.compress(dst, src)`               |
+| compress + dict        | `ZstdCompressContext.compress(byte[], ZstdCompressDictionary)` | `ZstdCompressContext.compress(dst, src, ZstdCompressDictionary)` |
+| decompress             | `ZstdDecompressContext.decompress(byte[], int)`     | `ZstdDecompressContext.decompress(dst, src)`           |
+| decompress + dict      | `ZstdDecompressContext.decompress(byte[], int, ZstdDecompressDictionary)` | `ZstdDecompressContext.decompress(dst, src, ZstdDecompressDictionary)` |
 | size output (no copy)  | frame header via `Zstd.decompress(byte[])`      | `Zstd.decompressedSize(MemorySegment)`             |
 
 Size `dst` with `Zstd.compressBound(srcSize)` for compression, or
@@ -177,7 +177,7 @@ direct buffer or a `byte[]` first.
 
 ```java
 try (Arena arena = Arena.ofConfined();
-     ZstdCompressCtx cctx = new ZstdCompressCtx()) {
+     ZstdCompressContext cctx = new ZstdCompressContext()) {
     ByteBuffer src = channel.map(READ_ONLY, 0, size, arena); // direct, off-heap
     MemorySegment in  = MemorySegment.ofBuffer(src);         // covers [position, limit)
     MemorySegment out = cctx.compress(arena, in);            // arena-owned frame

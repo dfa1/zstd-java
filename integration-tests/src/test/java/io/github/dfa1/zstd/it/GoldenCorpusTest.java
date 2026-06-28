@@ -2,8 +2,8 @@ package io.github.dfa1.zstd.it;
 
 import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.Zstd;
-import io.github.dfa1.zstd.ZstdCompressCtx;
-import io.github.dfa1.zstd.ZstdDecompressCtx;
+import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdDecompressContext;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
 import io.github.dfa1.zstd.ZstdFrame;
@@ -209,7 +209,7 @@ class GoldenCorpusTest {
             byte[] data = payload();
             ZstdDictionary dict = ZstdDictionary.of(raw);
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
                 frame = ctx.compress(data, dict);
             }
 
@@ -231,7 +231,7 @@ class GoldenCorpusTest {
 
             // When
             byte[] restored;
-            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
+            try (ZstdDecompressContext ctx = new ZstdDecompressContext()) {
                 restored = ctx.decompress(frame, data.length, ZstdDictionary.of(raw));
             }
 
@@ -246,7 +246,7 @@ class GoldenCorpusTest {
             byte[] raw = read(file);
             ZstdDictionary dict = ZstdDictionary.of(raw);
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
                 frame = ctx.compress(payload(), dict);
             }
 

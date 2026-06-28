@@ -2,8 +2,8 @@ package io.github.dfa1.zstd;
 
 /// Selects what a context reset clears, mirroring `ZSTD_ResetDirective`.
 ///
-/// Use it with [ZstdCompressCtx#reset(ZstdResetDirective)] and
-/// [ZstdDecompressCtx#reset(ZstdResetDirective)] to recycle a context for the
+/// Use it with [ZstdCompressContext#reset(ZstdResetDirective)] and
+/// [ZstdDecompressContext#reset(ZstdResetDirective)] to recycle a context for the
 /// next frame without freeing and recreating its native state.
 public enum ZstdResetDirective {
 

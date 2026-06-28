@@ -5,8 +5,8 @@
 // can pin the released version and the per-arch native jar from the matrix.
 
 import io.github.dfa1.zstd.Zstd;
-import io.github.dfa1.zstd.ZstdCompressCtx;
-import io.github.dfa1.zstd.ZstdDecompressCtx;
+import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdDecompressContext;
 import io.github.dfa1.zstd.ZstdDictionary;
 
 import java.util.ArrayList;
@@ -38,8 +38,8 @@ public class Smoke {
             samples.add(("{\"id\":" + i + ",\"user\":\"user_" + (i % 100) + "\",\"event\":\"click\"}").getBytes());
         }
         ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
-        try (ZstdCompressCtx cctx = new ZstdCompressCtx();
-             ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+        try (ZstdCompressContext cctx = new ZstdCompressContext();
+             ZstdDecompressContext dctx = new ZstdDecompressContext()) {
             byte[] message = samples.get(7);
             byte[] dictCompressed = cctx.compress(message, dict);
             byte[] dictRestored = dctx.decompress(dictCompressed, message.length, dict);

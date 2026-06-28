@@ -3,9 +3,9 @@ package io.github.dfa1.zstd.it;
 import com.github.luben.zstd.ZstdDictCompress;
 import com.github.luben.zstd.ZstdDictDecompress;
 import io.github.dfa1.zstd.Zstd;
-import io.github.dfa1.zstd.ZstdCompressCtx;
-import io.github.dfa1.zstd.ZstdCompressDict;
-import io.github.dfa1.zstd.ZstdDecompressCtx;
+import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdCompressDictionary;
+import io.github.dfa1.zstd.ZstdDecompressContext;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdInputStream;
 import io.github.dfa1.zstd.ZstdOutputStream;
@@ -103,7 +103,7 @@ class ZstdJniInteropTest {
             byte[] sample = sample(11);
 
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
                 frame = ctx.compress(sample, dict);
             }
             ZstdDictDecompress jniDict = new ZstdDictDecompress(dict.toByteArray());
@@ -119,7 +119,7 @@ class ZstdJniInteropTest {
             byte[] frame = com.github.luben.zstd.Zstd.compress(sample, jniDict);
 
             byte[] restored;
-            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
+            try (ZstdDecompressContext ctx = new ZstdDecompressContext()) {
                 restored = ctx.decompress(frame, sample.length, dict);
             }
             assertThat(restored).isEqualTo(sample);
@@ -134,7 +134,7 @@ class ZstdJniInteropTest {
             byte[] sample = sample(33);
 
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx().checksum(true)) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext().checksum(true)) {
                 ctx.loadDictionary(dict);
                 frame = ctx.compress(sample);
             }
@@ -149,8 +149,8 @@ class ZstdJniInteropTest {
             byte[] sample = sample(44);
 
             byte[] frame;
-            try (ZstdCompressDict cdict = new ZstdCompressDict(dict, Zstd.defaultCompressionLevel());
-                 ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressDictionary cdict = new ZstdCompressDictionary(dict, Zstd.defaultCompressionLevel());
+                 ZstdCompressContext ctx = new ZstdCompressContext()) {
                 ctx.refDictionary(cdict);
                 frame = ctx.compress(sample);
             }

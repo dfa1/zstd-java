@@ -16,9 +16,9 @@ native artifact per platform:
 | Type | Role |
 |---|---|
 | `Zstd` | one-shot `compress` / `decompress`, level + version queries, `compressBound`, `decompressedSize` |
-| `ZstdCompressCtx` / `ZstdDecompressCtx` | reusable contexts; `byte[]` and `MemorySegment` overloads, dictionary variants |
+| `ZstdCompressContext` / `ZstdDecompressContext` | reusable contexts; `byte[]` and `MemorySegment` overloads, dictionary variants |
 | `ZstdDictionary` | train (`ZDICT`), load, persist, query dict id |
-| `ZstdCompressDict` / `ZstdDecompressDict` | pre-digested dictionaries for hot paths |
+| `ZstdCompressDictionary` / `ZstdDecompressDictionary` | pre-digested dictionaries for hot paths |
 | `ZstdFrame` | frame inspection: header, sizes, dict id, skippable frames |
 | `ZstdException` / `ZstdErrorCode` | typed errors mapped from zstd's sentinels |
 

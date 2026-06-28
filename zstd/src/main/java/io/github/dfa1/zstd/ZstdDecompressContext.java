@@ -8,12 +8,12 @@ import java.util.Objects;
 ///
 /// Reusing one context across many [#decompress] calls amortises native
 /// state allocation. Not thread-safe: confine an instance to one thread or pool it.
-public final class ZstdDecompressCtx extends NativeObject {
+public final class ZstdDecompressContext extends NativeObject {
 
     private static final String COMPRESSED = "compressed";
 
     /// Creates a new decompression context.
-    public ZstdDecompressCtx() {
+    public ZstdDecompressContext() {
         super(create());
     }
 
@@ -27,7 +27,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param value     the value, validated natively against the parameter's bounds
     /// @return `this`, for chaining
     /// @throws ZstdException if the value is out of range for the parameter
-    public ZstdDecompressCtx parameter(ZstdDecompressParameter parameter, int value) {
+    public ZstdDecompressContext parameter(ZstdDecompressParameter parameter, int value) {
         NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_SET_PARAMETER.invokeExact(ptr(), parameter.value(), value));
         return this;
     }
@@ -37,7 +37,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     ///
     /// @param windowLogMax the base-2 log of the maximum accepted window size
     /// @return `this`, for chaining
-    public ZstdDecompressCtx windowLogMax(int windowLogMax) {
+    public ZstdDecompressContext windowLogMax(int windowLogMax) {
         return parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, windowLogMax);
     }
 
@@ -55,7 +55,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param directive what to clear
     /// @return `this`, for chaining
     /// @throws ZstdException if the reset fails natively
-    public ZstdDecompressCtx reset(ZstdResetDirective directive) {
+    public ZstdDecompressContext reset(ZstdResetDirective directive) {
         Objects.requireNonNull(directive, "directive");
         NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_RESET.invokeExact(ptr(), directive.value()));
         return this;
@@ -70,12 +70,12 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// It stays loaded until replaced, cleared with [#loadDictionary(ZstdDictionary)]
     /// passing `null`, or dropped by a parameter [#reset(ZstdResetDirective)]. For
     /// a dictionary reused across many contexts, digest it once and attach it with
-    /// [#refDictionary(ZstdDecompressDict)] instead.
+    /// [#refDictionary(ZstdDecompressDictionary)] instead.
     ///
     /// @param dict the dictionary to load, or `null` to clear the loaded dictionary
     /// @return `this`, for chaining
     /// @throws ZstdException if the dictionary cannot be loaded
-    public ZstdDecompressCtx loadDictionary(ZstdDictionary dict) {
+    public ZstdDecompressContext loadDictionary(ZstdDictionary dict) {
         if (dict == null) {
             return loadDictionary(MemorySegment.NULL, 0L);
         }
@@ -94,7 +94,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     ///             context), or `null` / [MemorySegment#NULL] to clear the loaded dictionary
     /// @return `this`, for chaining
     /// @throws ZstdException if the dictionary cannot be loaded
-    public ZstdDecompressCtx loadDictionary(MemorySegment dict) {
+    public ZstdDecompressContext loadDictionary(MemorySegment dict) {
         if (NativeCall.isNull(dict)) {
             return loadDictionary(MemorySegment.NULL, 0L);
         }
@@ -102,7 +102,7 @@ public final class ZstdDecompressCtx extends NativeObject {
         return loadDictionary(dict, dict.byteSize());
     }
 
-    private ZstdDecompressCtx loadDictionary(MemorySegment dict, long size) {
+    private ZstdDecompressContext loadDictionary(MemorySegment dict, long size) {
         NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_LOAD_DICTIONARY.invokeExact(ptr(), dict, size));
         return this;
     }
@@ -120,7 +120,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param dict the digested dictionary to reference, or `null` to clear it
     /// @return `this`, for chaining
     /// @throws ZstdException if the dictionary cannot be referenced
-    public ZstdDecompressCtx refDictionary(ZstdDecompressDict dict) {
+    public ZstdDecompressContext refDictionary(ZstdDecompressDictionary dict) {
         MemorySegment ddict = dict == null ? MemorySegment.NULL : dict.ptr();
         NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_REF_DDICT.invokeExact(ptr(), ddict));
         return this;
@@ -128,7 +128,7 @@ public final class ZstdDecompressCtx extends NativeObject {
 
     /// References native `prefix` content as a single-use dictionary for decoding
     /// the **next** frame only — the decompression counterpart of
-    /// [ZstdCompressCtx#refPrefix(MemorySegment)]. It must be the **same** content
+    /// [ZstdCompressContext#refPrefix(MemorySegment)]. It must be the **same** content
     /// the frame was compressed against, or decoding fails.
     ///
     /// The prefix is referenced, not copied (no digest, no heap copy): `prefix`
@@ -143,7 +143,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param prefix native prefix content, or `null` / [MemorySegment#NULL] to clear it
     /// @return `this`, for chaining
     /// @throws ZstdException if the prefix cannot be referenced
-    public ZstdDecompressCtx refPrefix(MemorySegment prefix) {
+    public ZstdDecompressContext refPrefix(MemorySegment prefix) {
         if (NativeCall.isNull(prefix)) {
             return refPrefix(MemorySegment.NULL, 0L);
         }
@@ -151,7 +151,7 @@ public final class ZstdDecompressCtx extends NativeObject {
         return refPrefix(prefix, prefix.byteSize());
     }
 
-    private ZstdDecompressCtx refPrefix(MemorySegment prefix, long size) {
+    private ZstdDecompressContext refPrefix(MemorySegment prefix, long size) {
         NativeCall.checkReturnValue(() -> (long) Bindings.DCTX_REF_PREFIX.invokeExact(ptr(), prefix, size));
         return this;
     }
@@ -175,8 +175,8 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// Decompresses a frame that was compressed against `dict`.
     ///
     /// The dictionary is re-digested on every call; for repeated use digest it
-    /// once into a [ZstdDecompressDict] and use
-    /// [#decompress(byte[], int, ZstdDecompressDict)].
+    /// once into a [ZstdDecompressDictionary] and use
+    /// [#decompress(byte[], int, ZstdDecompressDictionary)].
     ///
     /// @param compressed a complete zstd frame
     /// @param maxSize    upper bound on the decompressed length
@@ -202,7 +202,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param maxSize    upper bound on the decompressed length
     /// @param dict       the pre-digested decompression dictionary
     /// @return the original bytes
-    public byte[] decompress(byte[] compressed, int maxSize, ZstdDecompressDict dict) {
+    public byte[] decompress(byte[] compressed, int maxSize, ZstdDecompressDictionary dict) {
         Objects.requireNonNull(compressed, COMPRESSED);
         Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
@@ -242,7 +242,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param src  the native source frame to decompress
     /// @param dict the pre-digested decompression dictionary
     /// @return the number of bytes written into `dst`
-    public long decompress(MemorySegment dst, MemorySegment src, ZstdDecompressDict dict) {
+    public long decompress(MemorySegment dst, MemorySegment src, ZstdDecompressDictionary dict) {
         NativeCall.requireNative(dst, "dst");
         NativeCall.requireNative(src, "src");
         MemorySegment ddict = dict.ptr();
@@ -277,7 +277,7 @@ public final class ZstdDecompressCtx extends NativeObject {
     /// @param frame a complete zstd frame storing its decompressed size
     /// @param dict  the pre-digested decompression dictionary
     /// @return a segment of exactly the decompressed length, allocated in `arena`
-    public MemorySegment decompress(Arena arena, MemorySegment frame, ZstdDecompressDict dict) {
+    public MemorySegment decompress(Arena arena, MemorySegment frame, ZstdDecompressDictionary dict) {
         long size = Zstd.decompressedSize(frame);
         MemorySegment out = arena.allocate(size);
         decompress(out, frame, dict);

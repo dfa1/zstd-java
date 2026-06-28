@@ -236,7 +236,7 @@ class ZstdFrameTest {
             byte[] frame = Zstd.compress(PAYLOAD);
             long margin = ZstdFrame.decompressionMargin(frame);
             try (Arena arena = Arena.ofConfined();
-                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                 ZstdDecompressContext dctx = new ZstdDecompressContext()) {
                 MemorySegment buf = arena.allocate(PAYLOAD.length + margin);
 
                 // and the compressed frame placed at the very end of that buffer
@@ -285,7 +285,7 @@ class ZstdFrameTest {
         @Test
         void reflectsChecksumFlag() {
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx().checksum(true)) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext().checksum(true)) {
                 frame = ctx.compress(PAYLOAD);
             }
             assertThat(ZstdFrame.header(frame).hasChecksum()).isTrue();
@@ -384,7 +384,7 @@ class ZstdFrameTest {
             // Given a frame compressed with a dictionary
             ZstdDictionary dict = trainDictionary(3000);
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
                 frame = ctx.compress(PAYLOAD, dict);
             }
 
@@ -397,7 +397,7 @@ class ZstdFrameTest {
             // Given a dictionary frame in a native segment
             ZstdDictionary dict = trainDictionary(3000);
             byte[] frame;
-            try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
                 frame = ctx.compress(PAYLOAD, dict);
             }
             try (Arena arena = Arena.ofConfined()) {

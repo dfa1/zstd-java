@@ -24,7 +24,7 @@ class ZstdFrameTest {
     class IsFrame {
 
         @Test
-        void recognisesAZstdFrame() {
+        void recognizesAZstdFrame() {
             assertThat(ZstdFrame.isZstdFrame(Zstd.compress(PAYLOAD))).isTrue();
         }
 
@@ -323,7 +323,7 @@ class ZstdFrameTest {
             byte[] meta = "sidecar metadata".getBytes(StandardCharsets.UTF_8);
             byte[] frame = ZstdFrame.writeSkippableFrame(meta, 7);
 
-            // Then it is recognised as skippable and decodes back with its variant
+            // Then it is recognized as skippable and decodes back with its variant
             assertThat(ZstdFrame.isSkippableFrame(frame)).isTrue();
             assertThat(ZstdFrame.header(frame).frameType()).isEqualTo(ZstdFrameType.SKIPPABLE);
 
@@ -430,7 +430,7 @@ class ZstdFrameTest {
         }
 
         @Test
-        void recognisesASkippableNativeFrame() {
+        void recognizesASkippableNativeFrame() {
             // Given a skippable frame in a native segment
             byte[] frame = ZstdFrame.writeSkippableFrame("meta".getBytes(StandardCharsets.UTF_8), 5);
             try (Arena arena = Arena.ofConfined()) {

@@ -8,7 +8,7 @@
 
 Native contexts and dictionaries (CCtx, DCtx, CDict, DDict) own off-heap memory
 that must be freed via their zstd `ZSTD_free*` calls. Java's GC does not free
-native memory; double-free is undefined behaviour. The lifecycle model must be
+native memory; double-free is undefined behavior. The lifecycle model must be
 deterministic and safe to call twice.
 
 ## Decision

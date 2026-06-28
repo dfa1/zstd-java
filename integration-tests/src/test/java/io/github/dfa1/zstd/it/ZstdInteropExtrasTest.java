@@ -115,7 +115,7 @@ class ZstdInteropExtrasTest {
     }
 
     /// Skippable frames carry application metadata the decoder must pass over. A
-    /// skippable frame written by this library must be recognised and skipped by
+    /// skippable frame written by this library must be recognized and skipped by
     /// the zstd-jni stream decoder, leaving the following real frame intact.
     @Nested
     class Skippable {

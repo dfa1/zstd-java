@@ -1,6 +1,6 @@
 package io.github.dfa1.zstd;
 
-/// Controls how much a [ZstdCompressStream#compress] call finalises, mirroring
+/// Controls how much a [ZstdCompressStream#compress] call finalizes, mirroring
 /// `ZSTD_EndDirective`.
 public enum ZstdEndDirective {
 

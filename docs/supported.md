@@ -82,7 +82,7 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`compressStream2`, `decompressStream`, bounded buffers, dictionary constructors, `pledgedSrcSize` via `withPledgedSize`). Remaining: `MemorySegment`-buffer driver.
 2. ~~**Advanced parameters**~~ — done: every `ZSTD_cParameter`/`ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter` (+ `bounds()`), on both contexts; `pledgedSrcSize`. `nbWorkers` is settable but inert until the native build enables multithreading.
 3. ~~**Frame inspection**~~ — done: `ZstdFrame` (`isFrame`, `header`, `compressedSize`, `decompressedBound`, `decompressedSize`, `dictId`, skippable, `getFrameProgression`); dict-id from raw/CDict/DDict.
-4. ~~**Better dictionaries**~~ — done: COVER / fast-COVER optimisers, `finalizeDictionary`, `getDictHeaderSize`.
+4. ~~**Better dictionaries**~~ — done: COVER / fast-COVER optimizers, `finalizeDictionary`, `getDictHeaderSize`.
 5. ~~**Typed errors**~~ — done: `ZstdException.code()` returns `ZstdErrorCode` (via `getErrorCode`).
 
 ## Full symbol table

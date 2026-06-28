@@ -5,7 +5,7 @@ Task-focused recipes. Each assumes you have the library on the classpath (see th
 
 ## Compress on a hot path
 
-Reuse a context to amortise native allocation across many calls:
+Reuse a context to amortize native allocation across many calls:
 
 ```java
 try (ZstdCompressContext cctx = new ZstdCompressContext().level(19);
@@ -39,7 +39,7 @@ try (ZstdCompressContext cctx = new ZstdCompressContext().level(19)) {
 }
 ```
 
-`ZstdDecompressContext.reset(...)` works the same way. Reuse alone amortises
+`ZstdDecompressContext.reset(...)` works the same way. Reuse alone amortizes
 allocation; reset lets a long-lived or pooled context return to a known state
 without churning native memory.
 

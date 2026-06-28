@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /// A reusable compression context.
 ///
-/// Reusing one context across many [#compress] calls amortises native
+/// Reusing one context across many [#compress] calls amortizes native
 /// state allocation, making it cheaper than the stateless [Zstd#compress]
 /// on hot paths. Not thread-safe: confine an instance to one thread or pool it.
 ///

@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /// A reusable decompression context.
 ///
-/// Reusing one context across many [#decompress] calls amortises native
+/// Reusing one context across many [#decompress] calls amortizes native
 /// state allocation. Not thread-safe: confine an instance to one thread or pool it.
 public final class ZstdDecompressContext extends NativeObject {
 

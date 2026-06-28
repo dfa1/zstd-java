@@ -12,6 +12,11 @@ on:
         description: Version to smoke-test. Leave blank to use the latest release on Maven Central.
         required: false
         default: ""
+  schedule:
+    # Weekly, Mondays 06:00 UTC. No input on scheduled runs, so the resolve job
+    # picks the latest release on Maven Central — catches Central / runner-image
+    # drift against the published release without a manual trigger.
+    - cron: "0 6 * * 1"
 
 permissions:
   contents: read

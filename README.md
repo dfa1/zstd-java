@@ -45,7 +45,7 @@ the build runs on any OS/arch.
 <dependency>
   <groupId>io.github.dfa1.zstd</groupId>
   <artifactId>zstd-platform</artifactId>
-  <version>0.4</version>
+  <version>0.6</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ plus only the `zstd-native-<classifier>` you target.
     <dependency>
       <groupId>io.github.dfa1.zstd</groupId>
       <artifactId>zstd-bom</artifactId>
-      <version>0.4</version>
+      <version>0.6</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>

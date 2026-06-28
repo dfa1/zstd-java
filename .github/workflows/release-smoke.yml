@@ -18,24 +18,24 @@ on:
     # drift against the published release without a manual trigger.
     - cron: "0 6 * * 1"
 
-permissions:
-  contents: read
-
 jobs:
   resolve:
     name: resolve version
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       version: ${{ steps.pick.outputs.version }}
     steps:
       - name: Resolve version (input, else latest on Maven Central)
         id: pick
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          version="${{ inputs.version }}"
+          version="$INPUT_VERSION"
           if [ -z "$version" ]; then
             # <release> in maven-metadata.xml is the latest non-snapshot release.
-            version=$(curl -fsSL https://repo1.maven.org/maven2/io/github/dfa1/zstd/zstd/maven-metadata.xml \
+            version=$(curl -fsSL --proto '=https' --tlsv1.2 https://repo1.maven.org/maven2/io/github/dfa1/zstd/zstd/maven-metadata.xml \
               | grep -oE '<release>[^<]+</release>' | sed -E 's/<\/?release>//g')
           fi
           if [ -z "$version" ]; then
@@ -68,6 +68,8 @@ jobs:
           - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine", experimental: true }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine", experimental: true }
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     steps:
       - name: Checkout (smoke sources only)
         uses: actions/checkout@v4
@@ -81,7 +83,7 @@ jobs:
       # --- native runner path (glibc / macOS / Windows): run via JBang on the host ---
       - name: Set up JBang
         if: ${{ !matrix.container }}
-        uses: jbangdev/setup-jbang@main
+        uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
 
       - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
         if: ${{ !matrix.container }}

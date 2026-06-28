@@ -84,4 +84,7 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
   `<strong>`,`<pre>`,`<table>`, …). Use blank `///` for paragraphs, `- ` lists, ` ```java ``` `,
   `**bold**`. Cross-refs `[ClassName#method(ParamType)]` — verify the target exists (wrong refs are
   **errors**).
+- **American English everywhere** (javadoc, comments, identifiers): `recognize`/`optimize`/
+  `finalize`/`serialize`/`behavior`/`color`, never `-ise`/`-isation`/`-our`. Matches the JDK
+  (`Object.finalize`, `Serializable`) and zstd's C docs.
 - Check: `./mvnw javadoc:javadoc -pl core` must produce zero output.

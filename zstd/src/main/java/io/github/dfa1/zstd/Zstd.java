@@ -40,12 +40,44 @@ public final class Zstd {
     /// @return a self-describing zstd frame
     public static byte[] compress(byte[] src, int level) {
         Objects.requireNonNull(src, "src");
+        return compress(src, 0, src.length, level);
+    }
+
+    /// Compresses the `length`-byte sub-range of `src` starting at `offset`, at the
+    /// library default level. Lets a caller holding a payload inside a larger buffer
+    /// compress it without copying the sub-range out first.
+    ///
+    /// @param src    buffer holding the bytes to compress
+    /// @param offset index of the first byte to compress
+    /// @param length number of bytes to compress
+    /// @return a self-describing zstd frame
+    /// @throws IndexOutOfBoundsException if `offset` and `length` do not denote a
+    ///                                   valid range within `src`
+    public static byte[] compress(byte[] src, int offset, int length) {
+        return compress(src, offset, length, defaultCompressionLevel());
+    }
+
+    /// Compresses the `length`-byte sub-range of `src` starting at `offset`, at the
+    /// given level. Lets a caller holding a payload inside a larger buffer compress
+    /// it without copying the sub-range out first.
+    ///
+    /// @param src    buffer holding the bytes to compress
+    /// @param offset index of the first byte to compress
+    /// @param length number of bytes to compress
+    /// @param level  compression level in [[#minCompressionLevel()], [#maxCompressionLevel()]];
+    ///               higher is smaller but slower
+    /// @return a self-describing zstd frame
+    /// @throws IndexOutOfBoundsException if `offset` and `length` do not denote a
+    ///                                   valid range within `src`
+    public static byte[] compress(byte[] src, int offset, int length, int level) {
+        Objects.requireNonNull(src, "src");
+        Objects.checkFromIndexSize(offset, length, src.length);
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment in = copyIn(arena, src);
-            long bound = compressBound(src.length);
+            MemorySegment in = copyIn(arena, src, offset, length);
+            long bound = compressBound(length);
             MemorySegment out = arena.allocate(bound);
             long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS.invokeExact(
-                    out, bound, in, (long) src.length, level));
+                    out, bound, in, (long) length, level));
             return copyOut(out, written);
         }
     }
@@ -101,11 +133,33 @@ public final class Zstd {
     /// @throws ZstdException if the frame is invalid or larger than `maxSize`
     public static byte[] decompress(byte[] compressed, int maxSize) {
         Objects.requireNonNull(compressed, "compressed");
+        return decompress(compressed, 0, compressed.length, maxSize);
+    }
+
+    /// Decompresses the `length`-byte sub-range of `compressed` starting at `offset`
+    /// into a buffer of at most `maxSize` bytes. Lets a caller decode a frame embedded
+    /// inside a larger buffer without copying the frame out first; otherwise identical
+    /// to [#decompress(byte[], int)].
+    ///
+    /// As with [#decompress(byte[], int)], `maxSize` caps the allocation and decode,
+    /// so this is the safe entry point for **untrusted** input.
+    ///
+    /// @param compressed buffer holding a complete zstd frame
+    /// @param offset     index of the first byte of the frame
+    /// @param length     number of bytes the frame occupies
+    /// @param maxSize    upper bound on the decompressed length
+    /// @return the original bytes (length ≤ `maxSize`)
+    /// @throws IndexOutOfBoundsException if `offset` and `length` do not denote a
+    ///                                   valid range within `compressed`
+    /// @throws ZstdException if the frame is invalid or larger than `maxSize`
+    public static byte[] decompress(byte[] compressed, int offset, int length, int maxSize) {
+        Objects.requireNonNull(compressed, "compressed");
+        Objects.checkFromIndexSize(offset, length, compressed.length);
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment in = copyIn(arena, compressed);
+            MemorySegment in = copyIn(arena, compressed, offset, length);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
             long written = NativeCall.checkReturnValue(() -> (long) Bindings.DECOMPRESS.invokeExact(
-                    out, (long) maxSize, in, (long) compressed.length));
+                    out, (long) maxSize, in, (long) length));
             return copyOut(out, written);
         }
     }
@@ -316,8 +370,12 @@ public final class Zstd {
     // Native-call status checking and segment guards live in NativeCall.
 
     static MemorySegment copyIn(Arena arena, byte[] src) {
-        MemorySegment seg = arena.allocate(Math.max(src.length, 1));
-        MemorySegment.copy(src, 0, seg, JAVA_BYTE, 0, src.length);
+        return copyIn(arena, src, 0, src.length);
+    }
+
+    static MemorySegment copyIn(Arena arena, byte[] src, int offset, int length) {
+        MemorySegment seg = arena.allocate(Math.max(length, 1));
+        MemorySegment.copy(src, offset, seg, JAVA_BYTE, 0, length);
         return seg;
     }
 

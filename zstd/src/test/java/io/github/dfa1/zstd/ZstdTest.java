@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -147,6 +148,152 @@ class ZstdTest {
             assertThatThrownBy(decompressNull)
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("compressed");
+        }
+    }
+
+    @Nested
+    class RangedOverloads {
+
+        @ParameterizedTest
+        @MethodSource("io.github.dfa1.zstd.ZstdTestSupport#bytes")
+        void rangedCompressRoundTripsToTheSubRange(byte[] payload) {
+            // Given a payload embedded in the middle of a larger buffer
+            byte[] buffer = embed(payload, 7, 5);
+
+            // When the sub-range is compressed and decompressed
+            byte[] frame = Zstd.compress(buffer, 7, payload.length);
+            byte[] restored = Zstd.decompress(frame, payload.length);
+
+            // Then the sub-range bytes come back exactly
+            assertThat(restored).isEqualTo(payload);
+        }
+
+        @ParameterizedTest
+        @MethodSource("io.github.dfa1.zstd.ZstdTestSupport#levels")
+        void rangedCompressEqualsCompressingTheExtractedSubRange(int level) {
+            // Given a payload embedded in a larger buffer
+            byte[] payload = ZstdTestSupport.randomBytes(42, 4096);
+            byte[] buffer = embed(payload, 13, 9);
+
+            // When compressing the sub-range and the equivalent extracted copy
+            byte[] ranged = Zstd.compress(buffer, 13, payload.length, level);
+            byte[] extracted = Zstd.compress(Arrays.copyOfRange(buffer, 13, 13 + payload.length), level);
+
+            // Then the frames are identical — the range is honored
+            assertThat(ranged).as("level %d", level).isEqualTo(extracted);
+        }
+
+        @Test
+        void fullRangeEqualsTheWholeArrayOverload() {
+            // Given a payload compressed both ways
+            byte[] payload = ZstdTestSupport.randomBytes(99, 2048);
+
+            // When using offset 0 + full length vs. the whole-array overload
+            byte[] ranged = Zstd.compress(payload, 0, payload.length);
+            byte[] whole = Zstd.compress(payload);
+
+            // Then they produce the same frame
+            assertThat(ranged).isEqualTo(whole);
+        }
+
+        @Test
+        void emptyRangeRoundTrips() {
+            // Given a non-empty buffer but a zero-length range
+            byte[] buffer = "ignored payload".getBytes(StandardCharsets.UTF_8);
+
+            // When the empty range is compressed and decompressed
+            byte[] frame = Zstd.compress(buffer, 4, 0);
+            byte[] restored = Zstd.decompress(frame, 0);
+
+            // Then the result is empty
+            assertThat(restored).isEmpty();
+        }
+
+        @Test
+        void rangedDecompressDecodesAnEmbeddedFrame() {
+            // Given a frame embedded inside a larger buffer at an offset
+            byte[] payload = ZstdTestSupport.randomBytes(7, 3000);
+            byte[] frame = Zstd.compress(payload);
+            byte[] buffer = new byte[frame.length + 20];
+            System.arraycopy(frame, 0, buffer, 11, frame.length);
+
+            // When the embedded sub-range is decompressed
+            byte[] restored = Zstd.decompress(buffer, 11, frame.length, payload.length);
+
+            // Then the original payload comes back
+            assertThat(restored).isEqualTo(payload);
+        }
+
+        @Test
+        void rejectsNegativeOffset() {
+            // Given a buffer
+            byte[] buffer = new byte[16];
+
+            // When compressing with a negative offset
+            ThrowingCallable result = () -> Zstd.compress(buffer, -1, 4);
+
+            // Then it fails before touching native memory
+            assertThatThrownBy(result).isInstanceOf(IndexOutOfBoundsException.class);
+        }
+
+        @Test
+        void rejectsNegativeLength() {
+            // Given a buffer
+            byte[] buffer = new byte[16];
+
+            // When compressing with a negative length
+            ThrowingCallable result = () -> Zstd.compress(buffer, 0, -1);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(IndexOutOfBoundsException.class);
+        }
+
+        @Test
+        void rejectsRangeBeyondTheArray() {
+            // Given a buffer
+            byte[] buffer = new byte[16];
+
+            // When the range runs past the end of the array
+            ThrowingCallable result = () -> Zstd.compress(buffer, 10, 10);
+
+            // Then it fails
+            assertThatThrownBy(result).isInstanceOf(IndexOutOfBoundsException.class);
+        }
+
+        @Test
+        void rejectsNullSource() {
+            // When null is passed to the ranged overloads
+            ThrowingCallable compressNull = () -> Zstd.compress(null, 0, 0);
+            ThrowingCallable decompressNull = () -> Zstd.decompress(null, 0, 0, 0);
+
+            // Then each fails fast naming its parameter
+            assertThatThrownBy(compressNull)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("src");
+            assertThatThrownBy(decompressNull)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("compressed");
+        }
+
+        @Test
+        void rejectsRangedDecompressBeyondTheArray() {
+            // Given a buffer
+            byte[] buffer = new byte[16];
+
+            // When the decompress range runs past the end of the array
+            ThrowingCallable result = () -> Zstd.decompress(buffer, 10, 10, 16);
+
+            // Then it fails before touching native memory
+            assertThatThrownBy(result).isInstanceOf(IndexOutOfBoundsException.class);
+        }
+
+        // Embed `payload` into a larger buffer with `before` filler bytes ahead of it
+        // and `after` filler bytes behind it, so callers exercise a real sub-range.
+        private static byte[] embed(byte[] payload, int before, int after) {
+            byte[] buffer = new byte[before + payload.length + after];
+            Arrays.fill(buffer, (byte) 0x5A);
+            System.arraycopy(payload, 0, buffer, before, payload.length);
+            return buffer;
         }
     }
 

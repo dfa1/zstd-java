@@ -19,6 +19,7 @@ class ZstdFrameTest {
 
     private static final byte[] PAYLOAD =
             "frame inspection payload ".repeat(500).getBytes(StandardCharsets.UTF_8);
+    private static final byte[] GARBAGE = "xx".getBytes(StandardCharsets.UTF_8);
 
     @Nested
     class IsFrame {
@@ -30,7 +31,13 @@ class ZstdFrameTest {
 
         @Test
         void rejectsGarbage() {
-            assertThat(ZstdFrame.isZstdFrame("not a frame".getBytes(StandardCharsets.UTF_8))).isFalse();
+            // Given bytes that are not a zstd frame
+
+            // When checking whether they are a frame
+            boolean result = ZstdFrame.isZstdFrame(ZstdFrameTest.GARBAGE);
+
+            // Then it reports false rather than throwing
+            assertThat(result).isFalse();
         }
     }
 
@@ -62,13 +69,11 @@ class ZstdFrameTest {
         @Test
         void rejectsGarbage() {
             // Given bytes that are not a zstd frame
-            byte[] garbage = "xxxx".getBytes(StandardCharsets.UTF_8);
-
             // When asking for the first frame's compressed size
-            ThrowingCallable result = () -> ZstdFrame.compressedSize(garbage);
+            ThrowingCallable result = () -> ZstdFrame.compressedSize(ZstdFrameTest.GARBAGE);
 
             // Then it fails
-            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+            ZstdFrameTest.rejectsGarbage(result);
         }
     }
 
@@ -84,13 +89,11 @@ class ZstdFrameTest {
         @Test
         void rejectsGarbage() {
             // Given bytes that are not valid zstd data
-            byte[] garbage = "xx".getBytes(StandardCharsets.UTF_8);
-
             // When asking for the decompressed bound
-            ThrowingCallable result = () -> ZstdFrame.decompressedBound(garbage);
+            ThrowingCallable result = () -> ZstdFrame.decompressedBound(ZstdFrameTest.GARBAGE);
 
             // Then it fails
-            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+            ZstdFrameTest.rejectsGarbage(result);
         }
     }
 
@@ -152,13 +155,11 @@ class ZstdFrameTest {
         @Test
         void rejectsGarbage() {
             // Given bytes that are not valid zstd data
-            byte[] garbage = "xx".getBytes(StandardCharsets.UTF_8);
-
             // When the exact total is requested
-            ThrowingCallable result = () -> ZstdFrame.decompressedSize(garbage);
+            ThrowingCallable result = () -> ZstdFrame.decompressedSize(ZstdFrameTest.GARBAGE);
 
             // Then it fails
-            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+            ZstdFrameTest.rejectsGarbage(result);
         }
     }
 
@@ -256,13 +257,11 @@ class ZstdFrameTest {
         @Test
         void rejectsGarbage() {
             // Given bytes that are not valid zstd data
-            byte[] garbage = "xx".getBytes(StandardCharsets.UTF_8);
-
             // When the margin is requested
-            ThrowingCallable result = () -> ZstdFrame.decompressionMargin(garbage);
+            ThrowingCallable result = () -> ZstdFrame.decompressionMargin(ZstdFrameTest.GARBAGE);
 
             // Then it fails
-            assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+            ZstdFrameTest.rejectsGarbage(result);
         }
     }
 
@@ -474,5 +473,9 @@ class ZstdFrameTest {
                 assertThat(ZstdFrame.isSkippableFrame(seg)).isFalse();
             }
         }
+    }
+
+    private static void rejectsGarbage(ThrowingCallable result) {
+        assertThatThrownBy(result).isInstanceOf(ZstdException.class);
     }
 }

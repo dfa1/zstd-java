@@ -1,0 +1,82 @@
+name: Release smoke test
+
+# Verifies a PUBLISHED release on Maven Central actually loads and runs on every
+# supported OS/arch — one runner per native classifier. Pulls the release jars
+# from Central (no source build, no submodule, no zig), so it tests exactly what
+# users consume. Trigger manually and pass the version to check.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to smoke-test. Leave blank to use the latest release on Maven Central.
+        required: false
+        default: ""
+  schedule:
+    # Weekly, Mondays 06:00 UTC. No input on scheduled runs, so the resolve job
+    # picks the latest release on Maven Central — catches Central / runner-image
+    # drift against the published release without a manual trigger.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - name: Resolve version (input, else latest on Maven Central)
+        id: pick
+        shell: bash
+        run: |
+          version="${{ inputs.version }}"
+          if [ -z "$version" ]; then
+            # <release> in maven-metadata.xml is the latest non-snapshot release.
+            version=$(curl -fsSL https://repo1.maven.org/maven2/io/github/dfa1/zstd/zstd/maven-metadata.xml \
+              | grep -oE '<release>[^<]+</release>' | sed -E 's/<\/?release>//g')
+          fi
+          if [ -z "$version" ]; then
+            echo "could not resolve a version from Maven Central" >&2
+            exit 1
+          fi
+          echo "Smoke-testing version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    name: ${{ matrix.classifier }}
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,    classifier: linux-x86_64 }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64 }
+          - { os: macos-13,         classifier: osx-x86_64 }
+          - { os: macos-14,         classifier: osx-aarch64 }
+          - { os: windows-latest,   classifier: windows-x86_64 }
+          - { os: windows-11-arm,   classifier: windows-aarch64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout (smoke sources only)
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up JBang
+        uses: jbangdev/setup-jbang@main
+
+      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          jbang --java 25 \
+            --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
+            .github/smoke/Smoke.java

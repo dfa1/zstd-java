@@ -48,7 +48,7 @@ without churning native memory.
 The per-call `compress(src, dict)` overloads take the legacy dictionary path,
 which ignores the advanced parameters (checksum, window log, long-distance
 matching) set on the context. To combine the two, make the dictionary *sticky*
-with `loadDictionary` — then the normal `compress` path honours both:
+with `loadDictionary` — then the normal `compress` path honors both:
 
 ```java
 try (ZstdCompressContext cctx = new ZstdCompressContext().level(19).checksum(true)) {

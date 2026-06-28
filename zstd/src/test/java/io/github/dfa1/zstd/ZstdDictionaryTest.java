@@ -450,7 +450,7 @@ class ZstdDictionaryTest {
                 plain = ctx.compress(sample);
             }
 
-            // Then the dictionary is honoured (smaller than dictionaryless) and decodes
+            // Then the dictionary is honored (smaller than dictionaryless) and decodes
             assertThat(frame).hasSizeLessThan(plain.length);
             byte[] restored;
             try (ZstdDecompressContext dctx = new ZstdDecompressContext()) {

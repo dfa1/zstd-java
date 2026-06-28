@@ -109,7 +109,7 @@ public final class ZstdCompressContext extends NativeObject {
 
     /// Loads `dict` as the sticky dictionary for this context, so subsequent
     /// [#compress(byte[])] / [#compress(MemorySegment, MemorySegment)] calls
-    /// compress against it **while still honouring the advanced parameters**
+    /// compress against it **while still honoring the advanced parameters**
     /// (checksum, window log, long-distance matching) set on this context — the
     /// combination the per-call `compress(src, dict)` overloads cannot give you,
     /// since they route through the legacy dictionary path.
@@ -160,7 +160,7 @@ public final class ZstdCompressContext extends NativeObject {
     /// Attaches a pre-digested `dict` to this context by reference — no per-call
     /// digesting and no copy. Subsequent [#compress(byte[])] /
     /// [#compress(MemorySegment, MemorySegment)] calls compress against it while
-    /// honouring this context's advanced parameters; the compression level comes
+    /// honoring this context's advanced parameters; the compression level comes
     /// from the [ZstdCompressDictionary]. This is the hot path for a pooled context
     /// recycled with [#reset(ZstdResetDirective)] between frames.
     ///

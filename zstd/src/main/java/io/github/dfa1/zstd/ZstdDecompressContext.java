@@ -63,7 +63,7 @@ public final class ZstdDecompressContext extends NativeObject {
 
     /// Loads `dict` as the sticky dictionary for this context, so subsequent
     /// [#decompress(byte[], int)] / [#decompress(MemorySegment, MemorySegment)]
-    /// calls decode frames compressed against it while still honouring the
+    /// calls decode frames compressed against it while still honoring the
     /// advanced parameters (e.g. window-log max) set on this context.
     ///
     /// The dictionary is copied internally, so `dict` may be discarded afterwards.
@@ -110,7 +110,7 @@ public final class ZstdDecompressContext extends NativeObject {
     /// Attaches a pre-digested `dict` to this context by reference — no per-call
     /// digesting and no copy. Subsequent [#decompress(byte[], int)] /
     /// [#decompress(MemorySegment, MemorySegment)] calls decode against it while
-    /// honouring this context's advanced parameters. This is the hot path for a
+    /// honoring this context's advanced parameters. This is the hot path for a
     /// pooled context recycled with [#reset(ZstdResetDirective)] between frames.
     ///
     /// The reference is borrowed: `dict` must stay open for as long as this

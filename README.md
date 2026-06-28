@@ -10,27 +10,90 @@
 
 **zstd-java** is a Java wrapper for [Zstandard](https://github.com/facebook/zstd)
 built on the **Foreign Function & Memory (FFM) API** — no JNI, no `sun.misc.Unsafe`.
-It targets **JDK 25+** (for stable `java.lang.foreign`) and leads with the
-feature missing from most JVM zstd bindings: **dictionary compression**, trained
-straight from your own data.
+It targets **JDK 25+** (the first LTS with stable `java.lang.foreign`) and leads
+with the two features most JVM zstd bindings lack:
+
+- **Dictionary compression**, trained straight from your own data — the big win on
+  small, repetitive records (logs, market-data ticks, JSON/Avro rows, FIX messages).
+- A **zero-copy `MemorySegment` API** — compress/decompress off-heap buffers (an
+  mmap'd slice in, an arena buffer out) with no heap copy and no per-call allocation.
 
 > **AI-assisted development:** This project uses Claude Code for implementation —
 > C header mapping, test generation, docs. Architecture, API design, and all
 > decisions are human-driven.
 
-## Documentation
+## Quickstart
 
-The docs follow the [Diátaxis](https://diataxis.fr) framework:
+One-shot round-trip with `byte[]` — the convenient path:
 
-| | Purpose | Start here |
-|---|---|---|
-| **[Tutorial](docs/tutorial.md)** | Learning by doing | Clean checkout → first round-trip |
-| **[How-to guides](docs/how-to.md)** | Solving a specific task | Hot paths, dictionaries, zero-copy, self-built lib |
-| **[Reference](docs/reference.md)** | Looking up facts | Platforms, API surface, symbol coverage, build |
-| **[Explanation](docs/explanation.md)** | Understanding the why | Why FFM + Zig, when zero-copy pays, benchmarks |
+```java
+import io.github.dfa1.zstd.Zstd;
 
-Architecture decisions are recorded as [ADRs](adr/ADR.md) (MADR 3.0) — the
-foundational choices and their trade-offs, one file per decision.
+byte[] data = ...;
+byte[] frame = Zstd.compress(data);        // or Zstd.compress(data, level)
+byte[] back  = Zstd.decompress(frame);     // size read from the frame header
+```
+
+**Dictionary** — train on a sample of your records, then compress each one against
+the dictionary (huge ratio gains on small, similar messages):
+
+```java
+import io.github.dfa1.zstd.*;
+import java.util.List;
+
+List<byte[]> samples = ...;                       // representative records
+ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
+
+byte[] message = ...;
+try (ZstdCompressCtx cctx = new ZstdCompressCtx();
+     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+    byte[] frame = cctx.compress(message, dict);
+    byte[] back  = dctx.decompress(frame, message.length, dict);
+}
+```
+
+**Zero-copy** — off-heap in, off-heap out, no `byte[]`, no per-call allocation:
+
+```java
+import io.github.dfa1.zstd.*;
+import java.lang.foreign.*;
+
+try (Arena arena = Arena.ofConfined();
+     ZstdCompressCtx cctx = new ZstdCompressCtx();
+     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+
+    MemorySegment src     = ...;                       // e.g. an mmap'd file slice
+    MemorySegment frame   = cctx.compress(arena, src); // off-heap → off-heap
+    MemorySegment restored = dctx.decompress(arena, frame);
+}
+```
+
+Run with `--enable-native-access=ALL-UNNAMED`. Full walkthrough in the
+[tutorial](docs/tutorial.md); hot-path and dictionary recipes in the
+[how-to guides](docs/how-to.md).
+
+## Performance
+
+Microbenchmarks against the common JVM zstd options (JMH; Apple M5, JDK 25, all
+linking the same zstd 1.5.7). Full methodology and tables in
+[docs/benchmarks.md](docs/benchmarks.md) — including the honest ties.
+
+**Best vs best** — our zero-copy `MemorySegment` path vs **zstd-jni's own**
+zero-copy direct-`ByteBuffer` path (golden-corpus fixtures, publication-grade run):
+
+| operation (payload) | zstd-java `MemorySegment` | zstd-jni `ByteBuffer` | edge |
+|---|---:|---:|---:|
+| compress `http` (1.2 KiB) | **353.6** | 322.1 | +9.8% |
+| decompress `http` | **922.7** | 750.8 | +22.9% |
+| decompress `large-literal` (200 KiB) | 56.1 | 55.6 | tie |
+
+*(throughput, ops/ms, higher is better; allocation is **~0 B/op on both** — both genuinely zero-copy)*
+
+The edge is FFM's lower per-call overhead — **largest on small payloads**,
+converging to a tie when codec/bandwidth dominates. Against the *convenient*
+`byte[]` / JNI APIs (which allocate the output every call), the segment path is
+additionally **allocation-free**: flat ~0 B/op at any size vs MB/op that scales
+with the payload — no GC pressure on the hot path.
 
 ## Install
 
@@ -79,10 +142,25 @@ plus only the `zstd-native-<classifier>` you target.
 ```
 
 Classifiers: `osx-aarch64`, `osx-x86_64`, `linux-x86_64`, `linux-aarch64`,
-`windows-x86_64`, `windows-aarch64`. Gradle and more detail in the
-[tutorial](docs/tutorial.md). Requires JDK 25+ and
+`windows-x86_64`, `windows-aarch64` — each verified on real hardware by the
+[release smoke matrix](.github/workflows/release-smoke.yml). Gradle and more
+detail in the [tutorial](docs/tutorial.md). Requires JDK 25+ and
 `--enable-native-access=ALL-UNNAMED` at runtime. Building from source is for
 contributors — see the [reference](docs/reference.md).
+
+## Documentation
+
+The docs follow the [Diátaxis](https://diataxis.fr) framework:
+
+| | Purpose | Start here |
+|---|---|---|
+| **[Tutorial](docs/tutorial.md)** | Learning by doing | Clean checkout → first round-trip |
+| **[How-to guides](docs/how-to.md)** | Solving a specific task | Hot paths, dictionaries, zero-copy, self-built lib |
+| **[Reference](docs/reference.md)** | Looking up facts | Platforms, API surface, symbol coverage, build |
+| **[Explanation](docs/explanation.md)** | Understanding the why | Why FFM + Zig, when zero-copy pays, benchmarks |
+
+Architecture decisions are recorded as [ADRs](adr/ADR.md) (MADR 3.0) — the
+foundational choices and their trade-offs, one file per decision.
 
 ## License
 

@@ -1,25 +1,39 @@
 package io.github.dfa1.zstd;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.invoke.VarHandle;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 // Backing for ZSTD_inBuffer / ZSTD_outBuffer, which share a layout of a
-// void pointer then two size_t values. On LP64: ptr@0 (8), size@8 (8),
-// pos@16 (8) -> 24 bytes.
+// void pointer then two size_t values: { void* ptr; size_t size; size_t pos; }.
+// The struct shape, its total size and the field offsets are all derived from
+// LAYOUT below rather than hardcoded.
 final class ZstdStreamBuffer {
 
-    static final long BYTES = 24;
-    private static final long OFF_PTR = 0;
-    private static final long OFF_SIZE = 8;
-    private static final long OFF_POS = 16;
+    private static final MemoryLayout.PathElement PTR = MemoryLayout.PathElement.groupElement("ptr");
+    private static final MemoryLayout.PathElement SIZE = MemoryLayout.PathElement.groupElement("size");
+    private static final MemoryLayout.PathElement POS = MemoryLayout.PathElement.groupElement("pos");
+
+    private static final java.lang.foreign.StructLayout LAYOUT = MemoryLayout.structLayout(
+            ADDRESS.withName("ptr"),
+            JAVA_LONG.withName("size"),
+            JAVA_LONG.withName("pos"));
+
+    static final long BYTES = LAYOUT.byteSize();
+
+    // Layout VarHandles have coordinates (MemorySegment, long base); we always pass base 0.
+    private static final VarHandle PTR_HANDLE = LAYOUT.varHandle(PTR);
+    private static final VarHandle SIZE_HANDLE = LAYOUT.varHandle(SIZE);
+    private static final VarHandle POS_HANDLE = LAYOUT.varHandle(POS);
 
     private final MemorySegment struct;
 
     ZstdStreamBuffer(Arena arena) {
-        this.struct = arena.allocate(BYTES);
+        this.struct = arena.allocate(LAYOUT);
     }
 
     MemorySegment segment() {
@@ -28,16 +42,16 @@ final class ZstdStreamBuffer {
 
     /// Points the buffer at `buffer` with the given size and a fresh position of 0.
     void set(MemorySegment buffer, long size) {
-        struct.set(ADDRESS, OFF_PTR, buffer);
-        struct.set(JAVA_LONG, OFF_SIZE, size);
-        struct.set(JAVA_LONG, OFF_POS, 0L);
+        PTR_HANDLE.set(struct, 0L, buffer);
+        SIZE_HANDLE.set(struct, 0L, size);
+        POS_HANDLE.set(struct, 0L, 0L);
     }
 
     long size() {
-        return struct.get(JAVA_LONG, OFF_SIZE);
+        return (long) SIZE_HANDLE.get(struct, 0L);
     }
 
     long pos() {
-        return struct.get(JAVA_LONG, OFF_POS);
+        return (long) POS_HANDLE.get(struct, 0L);
     }
 }

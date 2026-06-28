@@ -32,8 +32,8 @@ Native symbols bind to `MethodHandle`s in `Bindings`; the library targets JDK
   `--enable-native-access`.
 
 ### Risks to manage
-- FFM is young; signatures/restrictions may evolve. Centralised in `Bindings`
-  and `NativeCall` so changes are localised.
+- FFM is young; signatures/restrictions may evolve. Centralized in `Bindings`
+  and `NativeCall` so changes are localized.
 
 ## Alternatives considered
 

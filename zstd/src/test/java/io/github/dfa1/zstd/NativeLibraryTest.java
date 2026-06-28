@@ -26,7 +26,7 @@ class NativeLibraryTest {
             "Windows 11,      amd64,   windows-x86_64",
             "Windows 11,      aarch64, windows-aarch64",
             "Linux,           x86_64,  linux-x86_64",
-            // unknown os falls back to linux; arch aliases normalise
+            // unknown os falls back to linux; arch aliases normalize
             "FreeBSD,         aarch64, linux-aarch64",
             "Linux,           amd64,   linux-x86_64",
             "Linux,           arm64,   linux-aarch64",

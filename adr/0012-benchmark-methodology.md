@@ -18,14 +18,14 @@ Benchmarks live in the `benchmark/` module (JMH), comparing zstd-java
 
 Two payload families:
 
-- **Synthetic, semi-compressible** (`BenchData`, ~3x ratio) parameterised over
+- **Synthetic, semi-compressible** (`BenchData`, ~3x ratio) parameterized over
   *sizes* — exercises the bandwidth regime.
-- **The vendored golden corpus** (`GoldenCorpusBenchmark`) parameterised over
+- **The vendored golden corpus** (`GoldenCorpusBenchmark`) parameterized over
   *real files* — exercises per-call native-boundary overhead, where FFM-vs-JNI
   fixed costs show up.
 
 Published numbers in `docs/benchmarks.md` state the host, JDK, dependency
-versions, and the JMH run parameters. Quick low-iteration runs are labelled
+versions, and the JMH run parameters. Quick low-iteration runs are labeled
 **directional, not publication-grade**; publication numbers use higher fork and
 iteration counts.
 

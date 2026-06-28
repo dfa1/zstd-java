@@ -127,7 +127,7 @@ class ZstdDictionaryTest {
 
         @Test
         void finalizeFailsWithoutSamples() {
-            // When finalising raw content with no tuning samples
+            // When finalizing raw content with no tuning samples
             ThrowingCallable result = () -> ZstdDictionary.finalizeFrom(new byte[]{1, 2, 3}, List.of(), 4096, 0);
 
             // Then it fails fast with the empty-samples guard
@@ -320,11 +320,11 @@ class ZstdDictionaryTest {
     }
 
     @Nested
-    class Serialisation {
+    class Serialization {
 
         @Test
         void reloadedDictionaryKeepsIdentityAndDecodes() {
-            // Given the dictionary serialised and reloaded
+            // Given the dictionary serialized and reloaded
             ZstdDictionary reloaded = ZstdDictionary.of(sut.toByteArray());
 
             // Then it carries the same dictionary id

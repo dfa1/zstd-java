@@ -31,7 +31,7 @@ it is idempotent (skips if the library exists).
 - `zig cc` is a clang wrapper, not the zstd-blessed build path.
 
 ### Risks to manage
-- Zig is pre-1.0; `zig cc` flag behaviour can shift between versions. The Zig
+- Zig is pre-1.0; `zig cc` flag behavior can shift between versions. The Zig
   version is **pinned** (0.16.0) in CI; upgrades require a re-test.
 
 ## Alternatives considered

@@ -123,7 +123,7 @@ public final class ZstdDictionary {
         return trainCover(samples, maxDictBytes, 0);
     }
 
-    /// Trains a COVER dictionary optimised for a specific compression level.
+    /// Trains a COVER dictionary optimized for a specific compression level.
     ///
     /// @param samples          representative payloads to learn from
     /// @param maxDictBytes     upper bound on the produced dictionary size
@@ -135,7 +135,7 @@ public final class ZstdDictionary {
     }
 
     /// Trains a dictionary with the fast COVER algorithm, auto-tuning its
-    /// parameters. The recommended optimiser: nearly the quality of
+    /// parameters. The recommended optimizer: nearly the quality of
     /// [#trainCover] at a fraction of the time.
     ///
     /// @param samples      representative payloads to learn from
@@ -146,7 +146,7 @@ public final class ZstdDictionary {
         return trainFastCover(samples, maxDictBytes, 0);
     }
 
-    /// Trains a fast COVER dictionary optimised for a specific compression level.
+    /// Trains a fast COVER dictionary optimized for a specific compression level.
     ///
     /// @param samples          representative payloads to learn from
     /// @param maxDictBytes     upper bound on the produced dictionary size
@@ -184,19 +184,19 @@ public final class ZstdDictionary {
     /// Turns raw dictionary `content` you supply (e.g. hand-picked common bytes,
     /// or a prefix from elsewhere) into a usable zstd dictionary by adding a
     /// header and entropy tables tuned on `samples`. Use this when you control the
-    /// dictionary content and only want zstd to finalise it.
+    /// dictionary content and only want zstd to finalize it.
     ///
     /// @param content          the raw dictionary content to wrap
     /// @param samples          representative payloads to tune entropy tables on
     /// @param maxDictBytes     upper bound on the produced dictionary size
     /// @param compressionLevel the level the dictionary will be used at (0 = default)
-    /// @return the finalised dictionary
-    /// @throws ZstdException if finalisation fails
+    /// @return the finalized dictionary
+    /// @throws ZstdException if finalization fails
     public static ZstdDictionary finalizeFrom(byte[] content, List<byte[]> samples,
                                               int maxDictBytes, int compressionLevel) {
         Objects.requireNonNull(content, "content");
         Objects.requireNonNull(samples, SAMPLES);
-        requireNonEmpty(samples, "finalise");
+        requireNonEmpty(samples, "finalize");
         try (Arena arena = Arena.ofConfined()) {
             FlatSamples in = flatten(arena, samples);
             MemorySegment contentSeg = Zstd.copyIn(arena, content);
@@ -211,7 +211,7 @@ public final class ZstdDictionary {
             } catch (Throwable t) {
                 throw NativeCall.rethrow(t);
             }
-            return toDictionary(dictBuf, produced, "dictionary finalisation");
+            return toDictionary(dictBuf, produced, "dictionary finalization");
         }
     }
 
@@ -283,7 +283,7 @@ public final class ZstdDictionary {
         }
     }
 
-    /// Serialises this dictionary to a fresh byte array.
+    /// Serializes this dictionary to a fresh byte array.
     ///
     /// @return a copy of the raw dictionary bytes, suitable for persisting
     public byte[] toByteArray() {

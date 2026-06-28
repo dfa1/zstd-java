@@ -52,7 +52,7 @@ class GoldenCorpusTest {
         }
         throw new IllegalStateException(
                 "golden corpus not found: third_party/zstd/tests is missing — "
-                        + "initialise the zstd submodule (git submodule update --init --recursive)");
+                        + "initialize the zstd submodule (git submodule update --init --recursive)");
     }
 
     private static Stream<Arguments> filesIn(String subdir, String suffix) {

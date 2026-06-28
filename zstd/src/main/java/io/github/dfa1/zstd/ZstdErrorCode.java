@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 ///
 /// The numeric values mirror `ZSTD_ErrorCode` in the vendored zstd header. zstd
 /// does not guarantee these values across versions, but this library pins a
-/// specific zstd source, so they are stable for a given release. An unrecognised
+/// specific zstd source, so they are stable for a given release. An unrecognized
 /// code maps to [#UNKNOWN].
 public enum ZstdErrorCode {
 
@@ -19,7 +19,7 @@ public enum ZstdErrorCode {
     NO_ERROR(0),
     /// Unspecified error.
     GENERIC(1),
-    /// Input does not start with a recognised zstd frame prefix.
+    /// Input does not start with a recognized zstd frame prefix.
     PREFIX_UNKNOWN(10),
     /// Frame requires an unsupported zstd version.
     VERSION_UNSUPPORTED(12),
@@ -57,7 +57,7 @@ public enum ZstdErrorCode {
     STABILITY_CONDITION_NOT_RESPECTED(50),
     /// Operation called at the wrong stage of the context lifecycle.
     STAGE_WRONG(60),
-    /// Context was not initialised before use.
+    /// Context was not initialized before use.
     INIT_MISSING(62),
     /// A memory allocation failed.
     MEMORY_ALLOCATION(64),
@@ -116,7 +116,7 @@ public enum ZstdErrorCode {
     /// Maps a native `ZSTD_ErrorCode` integer to its category.
     ///
     /// @param value the native error code
-    /// @return the matching category, or [#UNKNOWN] if unrecognised
+    /// @return the matching category, or [#UNKNOWN] if unrecognized
     static ZstdErrorCode of(int value) {
         for (ZstdErrorCode code : values()) {
             if (code.value == value) {

@@ -32,7 +32,7 @@ class ZstdParameterTest {
             }
 
             // Then the checksum adds exactly its 4-byte trailer, and the frame still decodes
-            assertThat(checksummed.length).isEqualTo(plain.length + 4);
+            assertThat(checksummed).hasSize(plain.length + 4);
             assertThat(Zstd.decompress(checksummed)).isEqualTo(PAYLOAD);
         }
 
@@ -330,7 +330,7 @@ class ZstdParameterTest {
 
             // Then the higher level produces a strictly smaller frame — proving level()
             // sets the native parameter rather than silently leaving the default
-            assertThat(atMax.length).isLessThan(atMin.length);
+            assertThat(atMax).hasSizeLessThan(atMin.length);
         }
 
         private static byte[] levelSensitivePayload() {

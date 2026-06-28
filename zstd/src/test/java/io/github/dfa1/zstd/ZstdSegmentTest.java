@@ -76,9 +76,9 @@ class ZstdSegmentTest {
 
         @Test
         void roundTripsWithDigestedDictionary() {
-            // Given a digested dictionary and a record in a native segment
+            // Given a digested dictionary and a sample in a native segment
             ZstdDictionary dict = trainDictionary(2000);
-            byte[] record = "{\"id\":42,\"user\":\"u\",\"active\":true}".getBytes(StandardCharsets.UTF_8);
+            byte[] sample = "{\"id\":42,\"user\":\"u\",\"active\":true}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx cctx = new ZstdCompressCtx();
@@ -86,15 +86,15 @@ class ZstdSegmentTest {
                  ZstdCompressDict cdict = new ZstdCompressDict(dict);
                  ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
 
-                MemorySegment src = segmentOf(arena, record);
+                MemorySegment src = segmentOf(arena, sample);
 
                 // When round-tripped segment-to-segment against the dictionary
                 MemorySegment frame = cctx.compress(arena, src, cdict);
-                MemorySegment out = arena.allocate(record.length);
+                MemorySegment out = arena.allocate(sample.length);
                 long written = dctx.decompress(out, frame, ddict);
 
-                // Then the record is recovered
-                assertThat(bytesOf(out, written)).isEqualTo(record);
+                // Then the sample is recovered
+                assertThat(bytesOf(out, written)).isEqualTo(sample);
             }
         }
 
@@ -102,7 +102,7 @@ class ZstdSegmentTest {
         void arenaAllocatingDecompressSizesOutputFromTheDigestedDictionaryFrame() {
             // Given a digested-dictionary frame that stores its decompressed size
             ZstdDictionary dict = trainDictionary(2000);
-            byte[] record = "{\"id\":99,\"user\":\"u\",\"active\":false}".getBytes(StandardCharsets.UTF_8);
+            byte[] sample = "{\"id\":99,\"user\":\"u\",\"active\":false}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx cctx = new ZstdCompressCtx();
@@ -110,16 +110,16 @@ class ZstdSegmentTest {
                  ZstdCompressDict cdict = new ZstdCompressDict(dict);
                  ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
 
-                MemorySegment src = segmentOf(arena, record);
+                MemorySegment src = segmentOf(arena, sample);
                 MemorySegment frame = cctx.compress(arena, src, cdict);
 
                 // When decoded through the arena-allocating ddict overload
                 MemorySegment out = dctx.decompress(arena, frame, ddict);
 
-                // Then it allocates the exact size and returns the record (a non-null segment)
+                // Then it allocates the exact size and returns the sample (a non-null segment)
                 assertThat(out).isNotNull();
-                assertThat(out.byteSize()).isEqualTo(record.length);
-                assertThat(bytesOf(out, out.byteSize())).isEqualTo(record);
+                assertThat(out.byteSize()).isEqualTo(sample.length);
+                assertThat(bytesOf(out, out.byteSize())).isEqualTo(sample);
             }
         }
     }

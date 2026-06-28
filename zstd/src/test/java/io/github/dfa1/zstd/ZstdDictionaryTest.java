@@ -29,7 +29,7 @@ class ZstdDictionaryTest {
         // Given many small, structurally-similar records — the case dictionaries win on
         samples = new ArrayList<>();
         for (int i = 0; i < 4000; i++) {
-            samples.add(record(i));
+            samples.add(sample(i));
         }
         sut = ZstdDictionary.train(samples, 16 * 1024);
     }
@@ -44,18 +44,18 @@ class ZstdDictionaryTest {
             assertThat(dict.size()).isGreaterThan(0);
 
             // Then records round-trip and compress smaller than dictionaryless
-            byte[] record = samples.get(321);
+            byte[] sample = samples.get(321);
             byte[] plain;
             byte[] withDict;
             byte[] restored;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                plain = cctx.compress(record);
-                withDict = cctx.compress(record, dict);
-                restored = dctx.decompress(cctx.compress(record, dict), record.length, dict);
+                plain = cctx.compress(sample);
+                withDict = cctx.compress(sample, dict);
+                restored = dctx.decompress(cctx.compress(sample, dict), sample.length, dict);
             }
-            assertThat(withDict.length).isLessThan(plain.length);
-            assertThat(restored).isEqualTo(record);
+            assertThat(withDict).hasSizeLessThan(plain.length);
+            assertThat(restored).isEqualTo(sample);
         }
 
         @Test
@@ -64,11 +64,11 @@ class ZstdDictionaryTest {
             ZstdDictionary dict = ZstdDictionary.trainCover(samples.subList(0, 1000), 8 * 1024);
             assertThat(dict.size()).isGreaterThan(0);
 
-            byte[] record = samples.get(5);
+            byte[] sample = samples.get(5);
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                byte[] frame = cctx.compress(record, dict);
-                assertThat(dctx.decompress(frame, record.length, dict)).isEqualTo(record);
+                byte[] frame = cctx.compress(sample, dict);
+                assertThat(dctx.decompress(frame, sample.length, dict)).isEqualTo(sample);
             }
         }
 
@@ -106,15 +106,15 @@ class ZstdDictionaryTest {
 
             ZstdDictionary dict = ZstdDictionary.finalizeFrom(content, samples, 16 * 1024, 0);
 
-            // Then it carries a header and round-trips a record
+            // Then it carries a header and round-trips a sample
             assertThat(dict.size()).isGreaterThan(0);
             assertThat(dict.headerSize()).isPositive();
 
-            byte[] record = samples.get(3);
+            byte[] sample = samples.get(3);
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                byte[] frame = cctx.compress(record, dict);
-                assertThat(dctx.decompress(frame, record.length, dict)).isEqualTo(record);
+                byte[] frame = cctx.compress(sample, dict);
+                assertThat(dctx.decompress(frame, sample.length, dict)).isEqualTo(sample);
             }
         }
 
@@ -148,19 +148,19 @@ class ZstdDictionaryTest {
 
         @Test
         void beatsDictionarylessOnTinyPayload() {
-            // Given a single small record
-            byte[] record = samples.get(123);
+            // Given a single small sample
+            byte[] sample = samples.get(123);
 
             // When compressed with and without the dictionary
             byte[] plain;
             byte[] withDict;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                plain = ctx.compress(record);
-                withDict = ctx.compress(record, sut);
+                plain = ctx.compress(sample);
+                withDict = ctx.compress(sample, sut);
             }
 
-            // Then the dictionary compresses the tiny record noticeably better
-            assertThat(withDict.length).isLessThan(plain.length);
+            // Then the dictionary compresses the tiny sample noticeably better
+            assertThat(withDict).hasSizeLessThan(plain.length);
         }
 
         @Test
@@ -195,19 +195,19 @@ class ZstdDictionaryTest {
         @ParameterizedTest
         @ValueSource(ints = {0, 7, 123, 2048, 3999})
         void roundTripsRecord(int index) {
-            // Given a record
-            byte[] record = samples.get(index);
+            // Given a sample
+            byte[] sample = samples.get(index);
 
             // When compressed and decompressed against the raw dictionary
             byte[] restored;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                byte[] frame = cctx.compress(record, sut);
-                restored = dctx.decompress(frame, record.length, sut);
+                byte[] frame = cctx.compress(sample, sut);
+                restored = dctx.decompress(frame, sample.length, sut);
             }
 
-            // Then the record is recovered
-            assertThat(restored).isEqualTo(record);
+            // Then the sample is recovered
+            assertThat(restored).isEqualTo(sample);
         }
     }
 
@@ -217,7 +217,7 @@ class ZstdDictionaryTest {
         @Test
         void roundTripsViaCDictAndDDict() {
             // Given digested compress/decompress dictionaries at a fixed level
-            byte[] record = samples.get(999);
+            byte[] sample = samples.get(999);
 
             byte[] restored;
             int level;
@@ -227,13 +227,13 @@ class ZstdDictionaryTest {
                  ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
 
                 // When round-tripped through the digested dictionaries
-                byte[] frame = cctx.compress(record, cdict);
-                restored = dctx.decompress(frame, record.length, ddict);
+                byte[] frame = cctx.compress(sample, cdict);
+                restored = dctx.decompress(frame, sample.length, ddict);
                 level = cdict.level();
             }
 
-            // Then the record is recovered at the requested level
-            assertThat(restored).isEqualTo(record);
+            // Then the sample is recovered at the requested level
+            assertThat(restored).isEqualTo(sample);
             assertThat(level).isEqualTo(19);
         }
 
@@ -248,21 +248,21 @@ class ZstdDictionaryTest {
 
         @Test
         void interoperatesWithRawPath() {
-            // Given a record compressed with the raw dictionary
-            byte[] record = samples.get(2048);
+            // Given a sample compressed with the raw dictionary
+            byte[] sample = samples.get(2048);
 
             byte[] restored;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx();
                  ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
-                byte[] frame = cctx.compress(record, sut);
+                byte[] frame = cctx.compress(sample, sut);
 
                 // When decompressed with the digested dictionary
-                restored = dctx.decompress(frame, record.length, ddict);
+                restored = dctx.decompress(frame, sample.length, ddict);
             }
 
             // Then the two dictionary forms interoperate
-            assertThat(restored).isEqualTo(record);
+            assertThat(restored).isEqualTo(sample);
         }
     }
 
@@ -300,7 +300,7 @@ class ZstdDictionaryTest {
         @Test
         void factoryDictionariesRoundTrip() {
             // Given factory-built digested dictionaries
-            byte[] record = samples.get(123);
+            byte[] sample = samples.get(123);
 
             byte[] restored;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
@@ -309,12 +309,12 @@ class ZstdDictionaryTest {
                  ZstdDecompressDict ddict = sut.decompressDict()) {
 
                 // When round-tripped through them
-                byte[] frame = cctx.compress(record, cdict);
-                restored = dctx.decompress(frame, record.length, ddict);
+                byte[] frame = cctx.compress(sample, cdict);
+                restored = dctx.decompress(frame, sample.length, ddict);
             }
 
-            // Then the record is recovered
-            assertThat(restored).isEqualTo(record);
+            // Then the sample is recovered
+            assertThat(restored).isEqualTo(sample);
         }
     }
 
@@ -330,14 +330,14 @@ class ZstdDictionaryTest {
             assertThat(reloaded.id()).isEqualTo(sut.id());
 
             // And a frame from the reload decodes against the original
-            byte[] record = samples.get(1);
+            byte[] sample = samples.get(1);
             byte[] restored;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                byte[] frame = cctx.compress(record, reloaded);
-                restored = dctx.decompress(frame, record.length, sut);
+                byte[] frame = cctx.compress(sample, reloaded);
+                restored = dctx.decompress(frame, sample.length, sut);
             }
-            assertThat(restored).isEqualTo(record);
+            assertThat(restored).isEqualTo(sample);
         }
     }
 
@@ -348,7 +348,7 @@ class ZstdDictionaryTest {
         void roundTripsViaSegmentBuiltCDictAndDDict() {
             // Given digested dictionaries built straight from native dictionary
             // segments (the zero-copy path — no heap byte[] bounce)
-            byte[] record = samples.get(999);
+            byte[] sample = samples.get(999);
             byte[] raw = sut.toByteArray();
 
             byte[] restored;
@@ -360,13 +360,13 @@ class ZstdDictionaryTest {
                  ZstdDecompressDict ddict = new ZstdDecompressDict(nativeDict(arena, raw))) {
 
                 // When round-tripped through the segment-built dictionaries
-                byte[] frame = cctx.compress(record, cdict);
-                restored = dctx.decompress(frame, record.length, ddict);
+                byte[] frame = cctx.compress(sample, cdict);
+                restored = dctx.decompress(frame, sample.length, ddict);
                 level = cdict.level();
             }
 
-            // Then the record is recovered at the requested level
-            assertThat(restored).isEqualTo(record);
+            // Then the sample is recovered at the requested level
+            assertThat(restored).isEqualTo(sample);
             assertThat(level).isEqualTo(19);
         }
 
@@ -387,7 +387,7 @@ class ZstdDictionaryTest {
         @Test
         void interoperatesWithHeapBuiltDictionaries() {
             // Given a frame compressed with a segment-built CDict
-            byte[] record = samples.get(2048);
+            byte[] sample = samples.get(2048);
             byte[] raw = sut.toByteArray();
 
             byte[] restored;
@@ -396,14 +396,14 @@ class ZstdDictionaryTest {
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx();
                  ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw));
                  ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
-                byte[] frame = cctx.compress(record, cdict);
+                byte[] frame = cctx.compress(sample, cdict);
 
                 // When decompressed with a heap-built DDict
-                restored = dctx.decompress(frame, record.length, ddict);
+                restored = dctx.decompress(frame, sample.length, ddict);
             }
 
             // Then segment- and heap-built dictionaries interoperate
-            assertThat(restored).isEqualTo(record);
+            assertThat(restored).isEqualTo(sample);
         }
 
         @Test
@@ -438,25 +438,25 @@ class ZstdDictionaryTest {
         void loadedDictionaryCombinesWithAdvancedParameters() {
             // Given a context with both a loaded dictionary AND a checksum — the
             // combination the per-call compress(src, dict) overloads cannot give
-            byte[] record = samples.get(123);
+            byte[] sample = samples.get(123);
             byte[] frame;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx().checksum(true)) {
                 cctx.loadDictionary(sut);
-                frame = cctx.compress(record);
+                frame = cctx.compress(sample);
             }
             byte[] plain;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                plain = ctx.compress(record);
+                plain = ctx.compress(sample);
             }
 
             // Then the dictionary is honoured (smaller than dictionaryless) and decodes
-            assertThat(frame.length).isLessThan(plain.length);
+            assertThat(frame).hasSizeLessThan(plain.length);
             byte[] restored;
             try (ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 dctx.loadDictionary(sut);
-                restored = dctx.decompress(frame, record.length);
+                restored = dctx.decompress(frame, sample.length);
             }
-            assertThat(restored).isEqualTo(record);
+            assertThat(restored).isEqualTo(sample);
         }
 
         @Test
@@ -489,17 +489,17 @@ class ZstdDictionaryTest {
         @Test
         void parameterResetClearsTheLoadedDictionary() {
             // Given a context that loaded a dictionary, then cleared its parameters
-            byte[] record = samples.get(7);
+            byte[] sample = samples.get(7);
             byte[] afterReset;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
                 cctx.loadDictionary(sut);
-                cctx.compress(record);
+                cctx.compress(sample);
                 cctx.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
-                afterReset = cctx.compress(record);
+                afterReset = cctx.compress(sample);
             }
             byte[] noDict;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                noDict = ctx.compress(record);
+                noDict = ctx.compress(sample);
             }
 
             // Then the dictionary is gone: the frame matches a fresh dictionaryless one
@@ -509,16 +509,16 @@ class ZstdDictionaryTest {
         @Test
         void nullClearsTheLoadedDictionary() {
             // Given a context whose loaded dictionary is then cleared with null
-            byte[] record = samples.get(7);
+            byte[] sample = samples.get(7);
             byte[] cleared;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
                 cctx.loadDictionary(sut);
                 cctx.loadDictionary((ZstdDictionary) null);
-                cleared = cctx.compress(record);
+                cleared = cctx.compress(sample);
             }
             byte[] noDict;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                noDict = ctx.compress(record);
+                noDict = ctx.compress(sample);
             }
 
             // Then it compresses as if no dictionary was ever loaded
@@ -528,20 +528,20 @@ class ZstdDictionaryTest {
         @Test
         void loadsDictionaryFromNativeSegmentWithoutHeapCopy() {
             // Given a dictionary loaded straight from native segments (zero-copy path)
-            byte[] record = samples.get(2048);
+            byte[] sample = samples.get(2048);
             byte[] raw = sut.toByteArray();
             byte[] restored;
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
                 cctx.loadDictionary(nativeDict(arena, raw));
-                byte[] frame = cctx.compress(record);
+                byte[] frame = cctx.compress(sample);
                 dctx.loadDictionary(nativeDict(arena, raw));
-                restored = dctx.decompress(frame, record.length);
+                restored = dctx.decompress(frame, sample.length);
             }
 
-            // Then the record round-trips through the segment-loaded dictionary
-            assertThat(restored).isEqualTo(record);
+            // Then the sample round-trips through the segment-loaded dictionary
+            assertThat(restored).isEqualTo(sample);
         }
 
         @Test
@@ -561,16 +561,16 @@ class ZstdDictionaryTest {
         @Test
         void nullNativeSegmentClearsTheLoadedDictionary() {
             // Given a context whose dictionary is cleared through the native overload
-            byte[] record = samples.get(7);
+            byte[] sample = samples.get(7);
             byte[] cleared;
             try (ZstdCompressCtx cctx = new ZstdCompressCtx()) {
                 cctx.loadDictionary(sut);
                 cctx.loadDictionary((MemorySegment) null);
-                cleared = cctx.compress(record);
+                cleared = cctx.compress(sample);
             }
             byte[] noDict;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
-                noDict = ctx.compress(record);
+                noDict = ctx.compress(sample);
             }
 
             // Then it compresses as if no dictionary was ever loaded
@@ -610,7 +610,7 @@ class ZstdDictionaryTest {
         }
     }
 
-    private static byte[] record(int i) {
+    private static byte[] sample(int i) {
         return ("{\"id\":" + i
                 + ",\"user\":\"user_" + (i % 50)
                 + "\",\"active\":" + (i % 2 == 0)

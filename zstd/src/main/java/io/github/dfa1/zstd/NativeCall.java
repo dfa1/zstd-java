@@ -12,6 +12,7 @@ final class NativeCall {
 
     /// A native call returning a zstd `size_t` status that may encode an error.
     @FunctionalInterface
+    @SuppressWarnings("java:S112") // wraps MethodHandle.invokeExact, which is declared to throw Throwable
     interface ZstdCall {
         long run() throws Throwable;
     }
@@ -33,6 +34,7 @@ final class NativeCall {
 
     /// A native factory call returning a freshly allocated object pointer.
     @FunctionalInterface
+    @SuppressWarnings("java:S112") // wraps MethodHandle.invokeExact, which is declared to throw Throwable
     interface NativeFactory {
         MemorySegment create() throws Throwable;
     }

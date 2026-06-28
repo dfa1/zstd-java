@@ -47,5 +47,6 @@ public abstract class NativeObject implements AutoCloseable {
     ///
     /// @param ptr the non-NULL native pointer to free
     /// @throws Throwable if the native free call fails; the exception is swallowed by [#close()]
+    @SuppressWarnings("java:S112") // implementations wrap MethodHandle.invokeExact, declared to throw Throwable
     protected abstract void tryClose(MemorySegment ptr) throws Throwable;
 }

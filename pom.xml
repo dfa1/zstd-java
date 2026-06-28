@@ -72,6 +72,15 @@
 		<sonar.exclusions>
 			**/benchmark/**
 		</sonar.exclusions>
+		<!-- S7474 ("Markdown, HTML and Javadoc tags should be consistent") flags our
+		     JEP 467 Markdown reference links ([ClassName#method]) and wants the
+		     {@link}/HTML form instead. That form is forbidden here: the project
+		     mandates `///` Markdown javadoc with [ClassName] reference links and
+		     checkstyle bans {@link}. The rule therefore conflicts with a mandated,
+		     enforced convention rather than catching a real defect — ignore it. -->
+		<sonar.issue.ignore.multicriteria>jep467</sonar.issue.ignore.multicriteria>
+		<sonar.issue.ignore.multicriteria.jep467.ruleKey>java:S7474</sonar.issue.ignore.multicriteria.jep467.ruleKey>
+		<sonar.issue.ignore.multicriteria.jep467.resourceKey>**/*.java</sonar.issue.ignore.multicriteria.jep467.resourceKey>
 		<sonar.coverage.exclusions>
 			**/benchmark/**
 		</sonar.coverage.exclusions>

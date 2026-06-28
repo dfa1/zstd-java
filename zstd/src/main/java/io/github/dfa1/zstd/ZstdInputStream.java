@@ -127,6 +127,10 @@ public final class ZstdInputStream extends InputStream {
     }
 
     /// Decodes the next slice of output into `hold`. Returns false at end of stream.
+    // The branching here (input refill, truncation detection, no-progress guard) is
+    // essential to correct EOF/truncation handling and is covered by tests; splitting
+    // it would obscure the decode loop rather than clarify it.
+    @SuppressWarnings("java:S3776") // cognitive complexity is inherent to the streaming decode/EOF logic
     private boolean produce() throws IOException {
         while (true) {
             if (inBuf.pos() == inBuf.size()) {
@@ -157,15 +161,13 @@ public final class ZstdInputStream extends InputStream {
             }
             // Nothing produced. If the decoder neither advanced its input nor wants
             // more, it cannot make progress on this input — stop to avoid spinning.
-            if (inBuf.pos() == inBuf.size()) {
-                if (inputEof) {
-                    if (lastHint != 0) {
-                        throw new ZstdException("truncated zstd stream: " + lastHint
-                                + " more input byte(s) expected");
-                    }
-                    return false;
+            // (Input drained but not at EOF: fall through and loop to refill from `in`.)
+            if (inBuf.pos() == inBuf.size() && inputEof) {
+                if (lastHint != 0) {
+                    throw new ZstdException("truncated zstd stream: " + lastHint
+                            + " more input byte(s) expected");
                 }
-                // input drained but frame wants more: loop to refill from `in`.
+                return false;
             }
         }
     }

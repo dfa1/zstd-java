@@ -79,7 +79,7 @@ class RefPrefixTest {
                 MemorySegment out = arena.allocate(random.length);
                 long m = dctx.decompress(out, segmentOf(arena, frame));
                 reproduced = Arrays.equals(bytesOf(out, (int) m), random);
-            } catch (ZstdException e) {
+            } catch (ZstdException _) {
                 reproduced = false;
             }
             assertThat(reproduced).isFalse();

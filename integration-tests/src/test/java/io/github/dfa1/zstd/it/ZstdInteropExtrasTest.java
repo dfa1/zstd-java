@@ -217,25 +217,26 @@ class ZstdInteropExtrasTest {
             ZstdDictionary dict = trainDict();
             var jniDict = new com.github.luben.zstd.ZstdDictCompress(
                     dict.toByteArray(), Zstd.defaultCompressionLevel());
-            byte[] frame = com.github.luben.zstd.Zstd.compress(record(7), jniDict);
+            byte[] frame = com.github.luben.zstd.Zstd.compress(sample(7), jniDict);
 
             // When
             ZstdDictionaryId dictId = ZstdFrame.dictId(frame);
 
             // Then
-            assertThat(dictId).isEqualTo(dict.id());
-            assertThat(dictId).isNotEqualTo(ZstdDictionaryId.NONE);
+            assertThat(dictId)
+                    .isEqualTo(dict.id())
+                    .isNotEqualTo(ZstdDictionaryId.NONE);
         }
 
         private ZstdDictionary trainDict() {
             List<byte[]> samples = new ArrayList<>();
             for (int i = 0; i < 3000; i++) {
-                samples.add(record(i));
+                samples.add(sample(i));
             }
             return ZstdDictionary.train(samples, 8 * 1024);
         }
 
-        private byte[] record(int i) {
+        private byte[] sample(int i) {
             return ("{\"id\":" + i + ",\"user\":\"u" + (i % 30) + "\",\"event\":\"click\"}")
                     .getBytes(StandardCharsets.UTF_8);
         }

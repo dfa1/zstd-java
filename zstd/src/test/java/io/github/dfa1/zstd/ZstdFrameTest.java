@@ -382,7 +382,7 @@ class ZstdFrameTest {
         @Test
         void matchesTheDictionaryUsed() {
             // Given a frame compressed with a dictionary
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(3000);
             byte[] frame;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
                 frame = ctx.compress(PAYLOAD, dict);
@@ -395,7 +395,7 @@ class ZstdFrameTest {
         @Test
         void matchesThroughTheSegmentOverload() {
             // Given a dictionary frame in a native segment
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(3000);
             byte[] frame;
             try (ZstdCompressCtx ctx = new ZstdCompressCtx()) {
                 frame = ctx.compress(PAYLOAD, dict);
@@ -408,9 +408,6 @@ class ZstdFrameTest {
             }
         }
 
-        private ZstdDictionary trainDict() {
-            return trainDictionary(3000);
-        }
     }
 
     @Nested

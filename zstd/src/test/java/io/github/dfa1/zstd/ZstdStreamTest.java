@@ -14,8 +14,9 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Random;
 
+import static io.github.dfa1.zstd.ZstdTestSupport.randomBytes;
+import static io.github.dfa1.zstd.ZstdTestSupport.sample;
 import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,7 +30,7 @@ class ZstdStreamTest {
         @ValueSource(ints = {0, 1, 100, 64 * 1024, 5 * 1024 * 1024})
         void preservesPayloadsAcrossBufferBoundaries(int size) throws IOException {
             // Given a payload, some far larger than the stream buffers
-            byte[] original = randomBytes(size);
+            byte[] original = randomBytes(7, size);
 
             // When streamed through compress then decompress
             byte[] restored = streamDecompress(streamCompress(original, 3));
@@ -94,7 +95,7 @@ class ZstdStreamTest {
         @Test
         void roundTripsWithDictionary() throws IOException {
             // Given a dictionary and a small sample
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(3000);
             byte[] sample = sample(42);
 
             // When streamed through compress and decompress with the same dictionary
@@ -113,7 +114,7 @@ class ZstdStreamTest {
 
         @Test
         void dictionaryShrinksStreamedRecord() throws IOException {
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(3000);
             byte[] sample = sample(123);
 
             ByteArrayOutputStream withDict = new ByteArrayOutputStream();
@@ -128,7 +129,7 @@ class ZstdStreamTest {
         @Test
         void streamWithDictionaryDecodesWithOneShot() throws IOException {
             // Given a dictionary frame produced by the streaming compressor
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(3000);
             byte[] sample = sample(7);
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             try (ZstdOutputStream zout = new ZstdOutputStream(sink, dict)) {
@@ -141,14 +142,6 @@ class ZstdStreamTest {
             }
         }
 
-        private ZstdDictionary trainDict() {
-            return trainDictionary(3000);
-        }
-
-        private byte[] sample(int i) {
-            return ("{\"id\":" + i + ",\"user\":\"user_" + (i % 40) + "\",\"event\":\"click\"}")
-                    .getBytes(StandardCharsets.UTF_8);
-        }
     }
 
     @Nested
@@ -159,7 +152,7 @@ class ZstdStreamTest {
         void throwsWhenFinalFrameIsCutShort(int bytesDropped) throws IOException {
             // Given a valid frame with its tail bytes lopped off (random data so the
             // frame stays large enough to drop bytes from)
-            byte[] original = randomBytes(50_000);
+            byte[] original = randomBytes(7, 50_000);
             byte[] frame = streamCompress(original, 6);
             byte[] cut = java.util.Arrays.copyOf(frame, frame.length - bytesDropped);
 
@@ -415,7 +408,7 @@ class ZstdStreamTest {
         void readsCorrectlyWhenInputArrivesOneByteAtATime(int size) throws IOException {
             // Given a frame fed through a source that yields a single byte per read,
             // forcing the decoder across many refill/no-progress iterations
-            byte[] original = randomBytes(size);
+            byte[] original = randomBytes(7, size);
             byte[] frame = streamCompress(original, 3);
 
             // When drained
@@ -503,11 +496,5 @@ class ZstdStreamTest {
         try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(frame))) {
             return zin.readAllBytes();
         }
-    }
-
-    private static byte[] randomBytes(int size) {
-        byte[] b = new byte[size];
-        new Random(7).nextBytes(b);
-        return b;
     }
 }

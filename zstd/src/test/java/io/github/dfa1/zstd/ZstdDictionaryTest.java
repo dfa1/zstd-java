@@ -10,11 +10,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.github.dfa1.zstd.ZstdTestSupport.sample;
+import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -356,8 +357,8 @@ class ZstdDictionaryTest {
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx();
-                 ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw), 19);
-                 ZstdDecompressDict ddict = new ZstdDecompressDict(nativeDict(arena, raw))) {
+                 ZstdCompressDict cdict = new ZstdCompressDict(segmentOf(arena, raw), 19);
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(segmentOf(arena, raw))) {
 
                 // When round-tripped through the segment-built dictionaries
                 byte[] frame = cctx.compress(sample, cdict);
@@ -377,8 +378,8 @@ class ZstdDictionaryTest {
 
             // Then they carry the same id as the heap-built dictionary
             try (Arena arena = Arena.ofConfined();
-                 ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw));
-                 ZstdDecompressDict ddict = new ZstdDecompressDict(nativeDict(arena, raw))) {
+                 ZstdCompressDict cdict = new ZstdCompressDict(segmentOf(arena, raw));
+                 ZstdDecompressDict ddict = new ZstdDecompressDict(segmentOf(arena, raw))) {
                 assertThat(cdict.id()).isEqualTo(sut.id());
                 assertThat(ddict.id()).isEqualTo(sut.id());
             }
@@ -394,7 +395,7 @@ class ZstdDictionaryTest {
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx();
-                 ZstdCompressDict cdict = new ZstdCompressDict(nativeDict(arena, raw));
+                 ZstdCompressDict cdict = new ZstdCompressDict(segmentOf(arena, raw));
                  ZstdDecompressDict ddict = new ZstdDecompressDict(sut)) {
                 byte[] frame = cctx.compress(sample, cdict);
 
@@ -534,9 +535,9 @@ class ZstdDictionaryTest {
             try (Arena arena = Arena.ofConfined();
                  ZstdCompressCtx cctx = new ZstdCompressCtx();
                  ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
-                cctx.loadDictionary(nativeDict(arena, raw));
+                cctx.loadDictionary(segmentOf(arena, raw));
                 byte[] frame = cctx.compress(sample);
-                dctx.loadDictionary(nativeDict(arena, raw));
+                dctx.loadDictionary(segmentOf(arena, raw));
                 restored = dctx.decompress(frame, sample.length);
             }
 
@@ -586,7 +587,7 @@ class ZstdDictionaryTest {
 
                 // Then every sticky-dictionary call returns the same context, for chaining
                 assertThat(cctx.loadDictionary(sut)).isSameAs(cctx);
-                assertThat(cctx.loadDictionary(nativeDict(arena, sut.toByteArray()))).isSameAs(cctx);
+                assertThat(cctx.loadDictionary(segmentOf(arena, sut.toByteArray()))).isSameAs(cctx);
                 assertThat(cctx.loadDictionary((ZstdDictionary) null)).isSameAs(cctx);
                 assertThat(cctx.refDictionary(cdict)).isSameAs(cctx);
                 assertThat(cctx.refDictionary(null)).isSameAs(cctx);
@@ -602,7 +603,7 @@ class ZstdDictionaryTest {
 
                 // Then every sticky-dictionary call returns the same context, for chaining
                 assertThat(dctx.loadDictionary(sut)).isSameAs(dctx);
-                assertThat(dctx.loadDictionary(nativeDict(arena, sut.toByteArray()))).isSameAs(dctx);
+                assertThat(dctx.loadDictionary(segmentOf(arena, sut.toByteArray()))).isSameAs(dctx);
                 assertThat(dctx.loadDictionary((ZstdDictionary) null)).isSameAs(dctx);
                 assertThat(dctx.refDictionary(ddict)).isSameAs(dctx);
                 assertThat(dctx.refDictionary(null)).isSameAs(dctx);
@@ -610,17 +611,4 @@ class ZstdDictionaryTest {
         }
     }
 
-    private static byte[] sample(int i) {
-        return ("{\"id\":" + i
-                + ",\"user\":\"user_" + (i % 50)
-                + "\",\"active\":" + (i % 2 == 0)
-                + ",\"score\":" + (i * 7 % 1000)
-                + ",\"tag\":\"event\"}").getBytes(StandardCharsets.UTF_8);
-    }
-
-    private static MemorySegment nativeDict(Arena arena, byte[] raw) {
-        MemorySegment seg = arena.allocate(raw.length);
-        MemorySegment.copy(raw, 0, seg, ValueLayout.JAVA_BYTE, 0, raw.length);
-        return seg;
-    }
 }

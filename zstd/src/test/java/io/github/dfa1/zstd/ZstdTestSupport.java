@@ -7,11 +7,16 @@ import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /// Shared low-level helpers for the segment-based tests: copy a `byte[]` into a
 /// native segment, read it back out, and train a small dictionary from a common
 /// structured schema. Kept in one place so the helpers cannot drift apart.
 final class ZstdTestSupport {
+
+    private static final long SEED = 0xC0FFEEL;
 
     /// Copy `bytes` into a freshly allocated native segment in `arena`.
     /// Allocates at least one byte so a zero-length payload still yields a valid
@@ -34,15 +39,74 @@ final class ZstdTestSupport {
         return bytesOf(seg, (long) len);
     }
 
-    /// Train a dictionary from `sampleCount` structured sample records using an
-    /// 8 KiB dictionary buffer.
+    /// A small structured record for index `i` — the common schema dictionary
+    /// tests train on and compress against. Deterministic in `i` so the same
+    /// index always yields the same bytes.
+    static byte[] sample(int i) {
+        return ("{\"id\":" + i
+                + ",\"user\":\"user_" + (i % 50)
+                + "\",\"active\":" + (i % 2 == 0)
+                + ",\"score\":" + (i * 7 % 1000)
+                + ",\"tag\":\"event\"}").getBytes(StandardCharsets.UTF_8);
+    }
+
+    /// Train a dictionary from `sampleCount` structured [ZstdTestSupport#sample(int)]
+    /// records using an 8 KiB dictionary buffer.
     static ZstdDictionary trainDictionary(int sampleCount) {
         List<byte[]> samples = new ArrayList<>();
         for (int i = 0; i < sampleCount; i++) {
-            samples.add(("{\"id\":" + i + ",\"user\":\"user_" + (i % 100) + "\",\"event\":\"click\"}")
-                    .getBytes(StandardCharsets.UTF_8));
+            samples.add(sample(i));
         }
         return ZstdDictionary.train(samples, 8 * 1024);
+    }
+
+    /// `n` pseudo-random bytes from a fixed `seed`, so a failure reproduces.
+    static byte[] randomBytes(long seed, int n) {
+        byte[] b = new byte[n];
+        new Random(seed).nextBytes(b);
+        return b;
+    }
+
+    /// A spread of payloads for `@MethodSource`: boundaries (empty, single byte),
+    /// incompressible random data, and highly compressible repeated data, across
+    /// sizes. Counts are kept low (each case crosses the JNI/FFM boundary) and the
+    /// seed is fixed so failures reproduce.
+    static Stream<byte[]> bytes() {
+        Random r = new Random(SEED);
+        return Stream.of(
+                new byte[0],
+                new byte[]{0},
+                new byte[]{(byte) 0xFF},
+                random(r, 16),
+                random(r, 1024),
+                random(r, 64 * 1024),
+                compressible(r, 1),
+                compressible(r, 512),
+                compressible(r, 4096),
+                compressible(r, 64 * 1024),
+                random(r, 1 + r.nextInt(8192)),
+                compressible(r, 1 + r.nextInt(8192)));
+    }
+
+    /// The compression levels worth exercising: both extremes, default, and a low one.
+    static IntStream levels() {
+        return IntStream.of(
+                Zstd.minCompressionLevel(), 1, Zstd.defaultCompressionLevel(), Zstd.maxCompressionLevel());
+    }
+
+    private static byte[] random(Random r, int size) {
+        byte[] b = new byte[size];
+        r.nextBytes(b);
+        return b;
+    }
+
+    /// Repetitive data with a little noise — the realistic "compresses well" case.
+    private static byte[] compressible(Random r, int size) {
+        byte[] b = new byte[size];
+        for (int i = 0; i < size; i++) {
+            b[i] = (byte) ((i % 17 == 0) ? r.nextInt(256) : 'a' + (i % 8));
+        }
+        return b;
     }
 
     private ZstdTestSupport() {

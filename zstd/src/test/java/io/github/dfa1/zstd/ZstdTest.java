@@ -20,7 +20,7 @@ class ZstdTest {
     class RoundTrip {
 
         @ParameterizedTest
-        @MethodSource("io.github.dfa1.zstd.RandomArrays#bytes")
+        @MethodSource("io.github.dfa1.zstd.ZstdTestSupport#bytes")
         void preservesArbitraryBytes(byte[] original) {
             // Given a payload and its compressed frame
             byte[] frame = Zstd.compress(original);
@@ -61,7 +61,7 @@ class ZstdTest {
     class Levels {
 
         @ParameterizedTest
-        @MethodSource("io.github.dfa1.zstd.RandomArrays#levels")
+        @MethodSource("io.github.dfa1.zstd.ZstdTestSupport#levels")
         void roundTripAtEveryLevel(int level) {
             // Given a payload compressed at the given level
             byte[] original = "payload-data-".repeat(500).getBytes(StandardCharsets.UTF_8);

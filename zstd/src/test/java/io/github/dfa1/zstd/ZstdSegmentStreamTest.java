@@ -7,9 +7,9 @@ import java.io.ByteArrayOutputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
-import java.util.Random;
 
 import static io.github.dfa1.zstd.ZstdTestSupport.bytesOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.randomBytes;
 import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
 import static io.github.dfa1.zstd.ZstdTestSupport.trainDictionary;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,8 +53,7 @@ class ZstdSegmentStreamTest {
         @Test
         void roundTripsThroughTinyBuffers() {
             // Given a payload far larger than the streaming buffers
-            byte[] original = new byte[2 * 1024 * 1024];
-            new Random(11).nextBytes(original);
+            byte[] original = randomBytes(11, 2 * 1024 * 1024);
 
             byte[] frame = drive(original, 8 * 1024, true);
             byte[] restored = drive(frame, 8 * 1024, false);
@@ -120,7 +119,7 @@ class ZstdSegmentStreamTest {
 
         @Test
         void roundTripsAgainstDictionary() {
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(3000);
             byte[] sample = "{\"id\":1,\"user\":\"u\",\"event\":\"x\"}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
@@ -137,8 +136,5 @@ class ZstdSegmentStreamTest {
             }
         }
 
-        private ZstdDictionary trainDict() {
-            return trainDictionary(3000);
-        }
     }
 }

@@ -1,6 +1,7 @@
 package io.github.dfa1.zstd;
 
 import static io.github.dfa1.zstd.ZstdTestSupport.bytesOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.randomBytes;
 import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
-import java.util.Random;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 
@@ -260,9 +260,4 @@ class RefPrefixTest {
         }
     }
 
-    private static byte[] randomBytes(long seed, int n) {
-        byte[] b = new byte[n];
-        new Random(seed).nextBytes(b);
-        return b;
-    }
 }

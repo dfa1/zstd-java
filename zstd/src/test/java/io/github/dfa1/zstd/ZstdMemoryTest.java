@@ -57,7 +57,7 @@ class ZstdMemoryTest {
 
         @Test
         void digestedDictionariesHaveSize() {
-            ZstdDictionary dict = trainDict();
+            ZstdDictionary dict = trainDictionary(2000);
             try (ZstdCompressDict cdict = new ZstdCompressDict(dict);
                  ZstdDecompressDict ddict = new ZstdDecompressDict(dict)) {
                 assertThat(cdict.sizeOf()).isPositive();
@@ -74,8 +74,5 @@ class ZstdMemoryTest {
             }
         }
 
-        private ZstdDictionary trainDict() {
-            return trainDictionary(2000);
-        }
     }
 }

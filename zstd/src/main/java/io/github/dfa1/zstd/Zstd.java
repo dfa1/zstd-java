@@ -10,8 +10,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// One-shot, stateless zstd compression and decompression over `byte[]`.
 ///
 /// Every method is thread-safe and allocates its own native scratch buffers.
-/// For repeated calls on a hot path, reuse a [ZstdCompressCtx] /
-/// [ZstdDecompressCtx] instead to avoid re-allocating per call.
+/// For repeated calls on a hot path, reuse a [ZstdCompressContext] /
+/// [ZstdDecompressContext] instead to avoid re-allocating per call.
 ///
 /// {@snippet :
 /// byte[] packed   = Zstd.compress("hello world".getBytes());
@@ -112,7 +112,7 @@ public final class Zstd {
 
     /// Decompressed size recorded in a zstd frame's header, read directly from a
     /// native [MemorySegment] with no copy — use it to size the destination
-    /// for the zero-copy [ZstdDecompressCtx#decompress(MemorySegment, MemorySegment)].
+    /// for the zero-copy [ZstdDecompressContext#decompress(MemorySegment, MemorySegment)].
     ///
     /// @param frame a complete zstd frame
     /// @return the decompressed length in bytes

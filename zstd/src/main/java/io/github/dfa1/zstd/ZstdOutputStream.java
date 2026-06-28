@@ -14,7 +14,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// Memory use is bounded and independent of the total payload size, so this is
 /// the way to compress data that does not fit in memory or arrives incrementally
 /// (files, sockets, serialization). For a whole in-memory payload of known size,
-/// [Zstd#compress(byte[])] or [ZstdCompressCtx] is simpler.
+/// [Zstd#compress(byte[])] or [ZstdCompressContext] is simpler.
 ///
 /// Closing finishes the frame and closes the underlying stream.
 ///

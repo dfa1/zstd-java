@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [Unreleased]
+
+### Changed
+- **Breaking:** renamed public types to spell out abbreviations, matching the
+  `Zstd<Compress|Decompress><Stream|Parameter>` family and zstd's own prose
+  ("compression context", "dictionary"): `ZstdCompressCtx` → `ZstdCompressContext`,
+  `ZstdDecompressCtx` → `ZstdDecompressContext`, `ZstdCompressDict` →
+  `ZstdCompressDictionary`, `ZstdDecompressDict` → `ZstdDecompressDictionary`.
+
 ## [0.6] - 2026-06-27
 
 ### Added

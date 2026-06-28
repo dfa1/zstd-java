@@ -7,17 +7,17 @@ import java.util.Objects;
 /// A dictionary digested once for decompression.
 ///
 /// Pre-processes the dictionary so each
-/// [ZstdDecompressCtx#decompress(byte[], int, ZstdDecompressDict)] call
+/// [ZstdDecompressContext#decompress(byte[], int, ZstdDecompressDictionary)] call
 /// skips that cost. The raw [ZstdDictionary] bytes are copied into native
 /// memory, so the source may be discarded afterwards.
 ///
 /// Immutable once built and safe to share across threads (the digested dictionary is read-only).
-public final class ZstdDecompressDict extends NativeObject {
+public final class ZstdDecompressDictionary extends NativeObject {
 
     /// Digests `dict` for decompression.
     ///
     /// @param dict the dictionary to digest
-    public ZstdDecompressDict(ZstdDictionary dict) {
+    public ZstdDecompressDictionary(ZstdDictionary dict) {
         super(create(dict));
     }
 
@@ -26,10 +26,10 @@ public final class ZstdDecompressDict extends NativeObject {
     /// `dict` must be a native (off-heap) [MemorySegment] — e.g. an mmap slice or
     /// an arena buffer. Its bytes are copied into the digested dictionary, so the
     /// segment may be released once the constructor returns. Heap-backed callers
-    /// should use [ZstdDecompressDict(ZstdDictionary)] instead.
+    /// should use [ZstdDecompressDictionary(ZstdDictionary)] instead.
     ///
     /// @param dict native dictionary content
-    public ZstdDecompressDict(MemorySegment dict) {
+    public ZstdDecompressDictionary(MemorySegment dict) {
         super(create(dict));
     }
 

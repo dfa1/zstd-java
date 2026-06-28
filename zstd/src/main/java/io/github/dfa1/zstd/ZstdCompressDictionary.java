@@ -6,14 +6,14 @@ import java.util.Objects;
 
 /// A dictionary digested once for compression at a fixed level.
 ///
-/// Building a `ZstdCompressDict` pre-processes the dictionary so that each
-/// [ZstdCompressCtx#compress(byte[], ZstdCompressDict)] call skips that
+/// Building a `ZstdCompressDictionary` pre-processes the dictionary so that each
+/// [ZstdCompressContext#compress(byte[], ZstdCompressDictionary)] call skips that
 /// cost — the right choice when compressing many payloads against the same
 /// dictionary. The raw [ZstdDictionary] bytes are copied into native
 /// memory, so the source may be discarded afterwards.
 ///
 /// Immutable once built and safe to share across threads (the digested dictionary is read-only).
-public final class ZstdCompressDict extends NativeObject {
+public final class ZstdCompressDictionary extends NativeObject {
 
     private final int level;
 
@@ -21,7 +21,7 @@ public final class ZstdCompressDict extends NativeObject {
     ///
     /// @param dict  the dictionary to digest
     /// @param level the compression level to fix for this digested dictionary
-    public ZstdCompressDict(ZstdDictionary dict, int level) {
+    public ZstdCompressDictionary(ZstdDictionary dict, int level) {
         super(create(dict, level));
         this.level = level;
     }
@@ -29,7 +29,7 @@ public final class ZstdCompressDict extends NativeObject {
     /// Digests `dict` for compression at the library default level.
     ///
     /// @param dict the dictionary to digest
-    public ZstdCompressDict(ZstdDictionary dict) {
+    public ZstdCompressDictionary(ZstdDictionary dict) {
         this(dict, Zstd.defaultCompressionLevel());
     }
 
@@ -39,11 +39,11 @@ public final class ZstdCompressDict extends NativeObject {
     /// `dict` must be a native (off-heap) [MemorySegment] — e.g. an mmap slice or
     /// an arena buffer. Its bytes are copied into the digested dictionary, so the
     /// segment may be released once the constructor returns. Heap-backed callers
-    /// should use [ZstdCompressDict(ZstdDictionary, int)] instead.
+    /// should use [ZstdCompressDictionary(ZstdDictionary, int)] instead.
     ///
     /// @param dict  native dictionary content
     /// @param level the compression level to fix for this digested dictionary
-    public ZstdCompressDict(MemorySegment dict, int level) {
+    public ZstdCompressDictionary(MemorySegment dict, int level) {
         super(create(dict, level));
         this.level = level;
     }
@@ -52,7 +52,7 @@ public final class ZstdCompressDict extends NativeObject {
     /// level, without a heap copy.
     ///
     /// @param dict native dictionary content
-    public ZstdCompressDict(MemorySegment dict) {
+    public ZstdCompressDictionary(MemorySegment dict) {
         this(dict, Zstd.defaultCompressionLevel());
     }
 

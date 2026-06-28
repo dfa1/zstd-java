@@ -49,26 +49,26 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | `ZSTD_versionNumber`, `ZSTD_versionString` | `Zstd.version` |
 | `ZSTD_isError`, `ZSTD_getErrorName` | internal error mapping in `Zstd` |
 | `ZSTD_getFrameContentSize` | `Zstd.decompress(byte[])`, `Zstd.decompressedSize` |
-| `ZSTD_createCCtx`, `ZSTD_freeCCtx`, `ZSTD_compressCCtx` | `ZstdCompressCtx` |
-| `ZSTD_createDCtx`, `ZSTD_freeDCtx`, `ZSTD_decompressDCtx` | `ZstdDecompressCtx` |
-| `ZSTD_compress_usingDict` | `ZstdCompressCtx.compress(byte[], ZstdDictionary)` |
-| `ZSTD_decompress_usingDict` | `ZstdDecompressCtx.decompress(byte[], int, ZstdDictionary)` |
-| `ZSTD_createCDict`, `ZSTD_freeCDict`, `ZSTD_compress_usingCDict` | `ZstdCompressDict` |
-| `ZSTD_createDDict`, `ZSTD_freeDDict`, `ZSTD_decompress_usingDDict` | `ZstdDecompressDict` |
+| `ZSTD_createCCtx`, `ZSTD_freeCCtx`, `ZSTD_compressCCtx` | `ZstdCompressContext` |
+| `ZSTD_createDCtx`, `ZSTD_freeDCtx`, `ZSTD_decompressDCtx` | `ZstdDecompressContext` |
+| `ZSTD_compress_usingDict` | `ZstdCompressContext.compress(byte[], ZstdDictionary)` |
+| `ZSTD_decompress_usingDict` | `ZstdDecompressContext.decompress(byte[], int, ZstdDictionary)` |
+| `ZSTD_createCDict`, `ZSTD_freeCDict`, `ZSTD_compress_usingCDict` | `ZstdCompressDictionary` |
+| `ZSTD_createDDict`, `ZSTD_freeDDict`, `ZSTD_decompress_usingDDict` | `ZstdDecompressDictionary` |
 | `ZDICT_trainFromBuffer` | `ZstdDictionary.train` |
 | `ZDICT_getDictID` | `ZstdDictionary.id` |
 | `ZDICT_isError`, `ZDICT_getErrorName` | internal error mapping in `ZstdDictionary` |
 | `ZSTD_compressStream2`, `ZSTD_CStreamInSize`, `ZSTD_CStreamOutSize`, `ZSTD_CCtx_setParameter` | `ZstdOutputStream` |
 | `ZSTD_decompressStream`, `ZSTD_DStreamInSize`, `ZSTD_DStreamOutSize` | `ZstdInputStream` |
-| `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressCtx.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (all of `ZstdCompressParameter`) |
-| `ZSTD_DCtx_setParameter` | `ZstdDecompressCtx.parameter` / `windowLogMax` (`ZstdDecompressParameter`) |
+| `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressContext.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (all of `ZstdCompressParameter`) |
+| `ZSTD_DCtx_setParameter` | `ZstdDecompressContext.parameter` / `windowLogMax` (`ZstdDecompressParameter`) |
 | `ZSTD_CCtx_setPledgedSrcSize` | `ZstdOutputStream.withPledgedSize` |
-| `ZSTD_CCtx_reset`, `ZSTD_DCtx_reset` | `ZstdCompressCtx.reset` / `ZstdDecompressCtx.reset` (`ZstdResetDirective`) |
-| `ZSTD_getDictID_fromCDict`, `ZSTD_getDictID_fromDDict` | `ZstdCompressDict.id()` / `ZstdDecompressDict.id()` |
+| `ZSTD_CCtx_reset`, `ZSTD_DCtx_reset` | `ZstdCompressContext.reset` / `ZstdDecompressContext.reset` (`ZstdResetDirective`) |
+| `ZSTD_getDictID_fromCDict`, `ZSTD_getDictID_fromDDict` | `ZstdCompressDictionary.id()` / `ZstdDecompressDictionary.id()` |
 | `ZSTD_getErrorString` | `ZstdErrorCode.description()` |
 | `ZSTD_cParam_getBounds`, `ZSTD_dParam_getBounds` | `ZstdCompressParameter.bounds()` / `ZstdDecompressParameter.bounds()` (`ZstdBounds`) |
-| `ZSTD_CCtx_loadDictionary`, `ZSTD_DCtx_loadDictionary` | `ZstdCompressCtx.loadDictionary` / `ZstdDecompressCtx.loadDictionary`; `ZstdOutputStream` / `ZstdInputStream` dictionary constructors |
-| `ZSTD_CCtx_refCDict`, `ZSTD_DCtx_refDDict` | `ZstdCompressCtx.refDictionary` / `ZstdDecompressCtx.refDictionary` |
+| `ZSTD_CCtx_loadDictionary`, `ZSTD_DCtx_loadDictionary` | `ZstdCompressContext.loadDictionary` / `ZstdDecompressContext.loadDictionary`; `ZstdOutputStream` / `ZstdInputStream` dictionary constructors |
+| `ZSTD_CCtx_refCDict`, `ZSTD_DCtx_refDDict` | `ZstdCompressContext.refDictionary` / `ZstdDecompressContext.refDictionary` |
 | `ZSTD_isFrame`, `ZSTD_findFrameCompressedSize`, `ZSTD_decompressBound`, `ZSTD_getDictID_fromFrame`, `ZSTD_getFrameHeader`, `ZSTD_isSkippableFrame`, `ZSTD_writeSkippableFrame`, `ZSTD_readSkippableFrame` | `ZstdFrame` (+ `ZstdFrameHeader`, `ZstdFrameType`, `ZstdSkippableContent`) |
 | `ZSTD_getErrorCode` | `ZstdException.code()` (+ `ZstdErrorCode`) |
 | `ZSTD_getFrameProgression` | `ZstdCompressStream.progress()` (`ZstdFrameProgression`) |

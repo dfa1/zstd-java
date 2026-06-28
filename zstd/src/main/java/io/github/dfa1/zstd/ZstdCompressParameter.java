@@ -1,15 +1,15 @@
 package io.github.dfa1.zstd;
 
-/// Advanced compression parameters settable on a [ZstdCompressCtx], mirroring
+/// Advanced compression parameters settable on a [ZstdCompressContext], mirroring
 /// `ZSTD_cParameter` from the
 /// [official manual](https://facebook.github.io/zstd/doc/api_manual_latest.html).
 ///
-/// Set them with [ZstdCompressCtx#parameter(ZstdCompressParameter, int)]; the
-/// context applies them on its next [ZstdCompressCtx#compress(byte[])]. Values
+/// Set them with [ZstdCompressContext#parameter(ZstdCompressParameter, int)]; the
+/// context applies them on its next [ZstdCompressContext#compress(byte[])]. Values
 /// are validated natively — an out-of-range value raises a [ZstdException].
 public enum ZstdCompressParameter {
 
-    /// Compression level. Prefer [ZstdCompressCtx#level(int)].
+    /// Compression level. Prefer [ZstdCompressContext#level(int)].
     COMPRESSION_LEVEL(100),
     /// Maximum back-reference distance, as a power of two (larger = better ratio, more memory).
     WINDOW_LOG(101),

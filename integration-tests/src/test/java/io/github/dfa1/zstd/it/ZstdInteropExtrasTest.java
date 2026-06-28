@@ -69,7 +69,7 @@ class ZstdInteropExtrasTest {
         void javaChecksumDecodedByJni() {
             // Given
             byte[] frame;
-            try (io.github.dfa1.zstd.ZstdCompressCtx ctx = new io.github.dfa1.zstd.ZstdCompressCtx()) {
+            try (io.github.dfa1.zstd.ZstdCompressContext ctx = new io.github.dfa1.zstd.ZstdCompressContext()) {
                 frame = ctx.checksum(true).compress(data);
             }
 
@@ -101,7 +101,7 @@ class ZstdInteropExtrasTest {
         void javaRejectsCorruptedChecksum() {
             // Given
             byte[] frame;
-            try (io.github.dfa1.zstd.ZstdCompressCtx ctx = new io.github.dfa1.zstd.ZstdCompressCtx()) {
+            try (io.github.dfa1.zstd.ZstdCompressContext ctx = new io.github.dfa1.zstd.ZstdCompressContext()) {
                 frame = ctx.checksum(true).compress(data);
             }
             frame[frame.length / 2] ^= 0x7F;

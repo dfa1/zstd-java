@@ -95,7 +95,7 @@ the `MemorySegment` overloads hand zstd the segment address directly, so there i
 
 ```java
 try (Arena arena = Arena.ofConfined();
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     MemorySegment frame = reader.mmapSlice();   // already native — never touches the heap
     long n = Zstd.decompressedSize(frame);      // read the header, no copy
     MemorySegment out = arena.allocate(n);      // this segment *is* the output buffer

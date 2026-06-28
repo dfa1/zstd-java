@@ -11,18 +11,18 @@ import java.util.Objects;
 /// on hot paths. Not thread-safe: confine an instance to one thread or pool it.
 ///
 /// {@snippet :
-/// try (ZstdCompressCtx ctx = new ZstdCompressCtx().level(19)) {
+/// try (ZstdCompressContext ctx = new ZstdCompressContext().level(19)) {
 ///     for (byte[] msg : messages) {
 ///         sink.accept(ctx.compress(msg));
 ///     }
 /// }
 /// }
-public final class ZstdCompressCtx extends NativeObject {
+public final class ZstdCompressContext extends NativeObject {
 
     private int level;
 
     /// Creates a new compression context at the default level.
-    public ZstdCompressCtx() {
+    public ZstdCompressContext() {
         super(create());
         this.level = Zstd.defaultCompressionLevel();
     }
@@ -35,7 +35,7 @@ public final class ZstdCompressCtx extends NativeObject {
     ///
     /// @param level the compression level to use
     /// @return `this`, for chaining
-    public ZstdCompressCtx level(int level) {
+    public ZstdCompressContext level(int level) {
         this.level = level;
         setParam(ZstdCompressParameter.COMPRESSION_LEVEL, level);
         return this;
@@ -51,7 +51,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param value     the value, validated natively against the parameter's bounds
     /// @return `this`, for chaining
     /// @throws ZstdException if the value is out of range for the parameter
-    public ZstdCompressCtx parameter(ZstdCompressParameter parameter, int value) {
+    public ZstdCompressContext parameter(ZstdCompressParameter parameter, int value) {
         setParam(parameter, value);
         return this;
     }
@@ -61,7 +61,7 @@ public final class ZstdCompressCtx extends NativeObject {
     ///
     /// @param enabled whether to write a checksum
     /// @return `this`, for chaining
-    public ZstdCompressCtx checksum(boolean enabled) {
+    public ZstdCompressContext checksum(boolean enabled) {
         return parameter(ZstdCompressParameter.CHECKSUM_FLAG, enabled ? 1 : 0);
     }
 
@@ -69,7 +69,7 @@ public final class ZstdCompressCtx extends NativeObject {
     ///
     /// @param enabled whether to enable long-distance matching
     /// @return `this`, for chaining
-    public ZstdCompressCtx longDistanceMatching(boolean enabled) {
+    public ZstdCompressContext longDistanceMatching(boolean enabled) {
         return parameter(ZstdCompressParameter.ENABLE_LONG_DISTANCE_MATCHING, enabled ? 1 : 0);
     }
 
@@ -79,7 +79,7 @@ public final class ZstdCompressCtx extends NativeObject {
     ///
     /// @param windowLog the base-2 log of the window size
     /// @return `this`, for chaining
-    public ZstdCompressCtx windowLog(int windowLog) {
+    public ZstdCompressContext windowLog(int windowLog) {
         return parameter(ZstdCompressParameter.WINDOW_LOG, windowLog);
     }
 
@@ -98,7 +98,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param directive what to clear
     /// @return `this`, for chaining
     /// @throws ZstdException if the reset fails natively
-    public ZstdCompressCtx reset(ZstdResetDirective directive) {
+    public ZstdCompressContext reset(ZstdResetDirective directive) {
         Objects.requireNonNull(directive, "directive");
         NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_RESET.invokeExact(ptr(), directive.value()));
         if (directive != ZstdResetDirective.SESSION_ONLY) {
@@ -120,12 +120,12 @@ public final class ZstdCompressCtx extends NativeObject {
     /// It stays loaded until replaced, cleared with [#loadDictionary(ZstdDictionary)]
     /// passing `null`, or dropped by a parameter [#reset(ZstdResetDirective)]. For
     /// a dictionary reused across many contexts, digest it once and attach it with
-    /// [#refDictionary(ZstdCompressDict)] instead.
+    /// [#refDictionary(ZstdCompressDictionary)] instead.
     ///
     /// @param dict the dictionary to load, or `null` to clear the loaded dictionary
     /// @return `this`, for chaining
     /// @throws ZstdException if the dictionary cannot be loaded
-    public ZstdCompressCtx loadDictionary(ZstdDictionary dict) {
+    public ZstdCompressContext loadDictionary(ZstdDictionary dict) {
         if (dict == null) {
             return loadDictionary(MemorySegment.NULL, 0L);
         }
@@ -144,7 +144,7 @@ public final class ZstdCompressCtx extends NativeObject {
     ///             context), or `null` / [MemorySegment#NULL] to clear the loaded dictionary
     /// @return `this`, for chaining
     /// @throws ZstdException if the dictionary cannot be loaded
-    public ZstdCompressCtx loadDictionary(MemorySegment dict) {
+    public ZstdCompressContext loadDictionary(MemorySegment dict) {
         if (NativeCall.isNull(dict)) {
             return loadDictionary(MemorySegment.NULL, 0L);
         }
@@ -152,7 +152,7 @@ public final class ZstdCompressCtx extends NativeObject {
         return loadDictionary(dict, dict.byteSize());
     }
 
-    private ZstdCompressCtx loadDictionary(MemorySegment dict, long size) {
+    private ZstdCompressContext loadDictionary(MemorySegment dict, long size) {
         NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(ptr(), dict, size));
         return this;
     }
@@ -161,7 +161,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// digesting and no copy. Subsequent [#compress(byte[])] /
     /// [#compress(MemorySegment, MemorySegment)] calls compress against it while
     /// honouring this context's advanced parameters; the compression level comes
-    /// from the [ZstdCompressDict]. This is the hot path for a pooled context
+    /// from the [ZstdCompressDictionary]. This is the hot path for a pooled context
     /// recycled with [#reset(ZstdResetDirective)] between frames.
     ///
     /// The reference is borrowed: `dict` must stay open for as long as this
@@ -171,7 +171,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param dict the digested dictionary to reference, or `null` to clear it
     /// @return `this`, for chaining
     /// @throws ZstdException if the dictionary cannot be referenced
-    public ZstdCompressCtx refDictionary(ZstdCompressDict dict) {
+    public ZstdCompressContext refDictionary(ZstdCompressDictionary dict) {
         MemorySegment cdict = dict == null ? MemorySegment.NULL : dict.ptr();
         NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_REF_CDICT.invokeExact(ptr(), cdict));
         return this;
@@ -187,7 +187,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// consumed by the next [#compress(MemorySegment, MemorySegment)] /
     /// [#compress(byte[])] — it does not stick across frames. The decompressor
     /// must reference the **same** prefix with
-    /// [ZstdDecompressCtx#refPrefix(MemorySegment)] to decode the frame.
+    /// [ZstdDecompressContext#refPrefix(MemorySegment)] to decode the frame.
     ///
     /// Because the prefix is referenced, `prefix` must stay valid until the next
     /// compression completes. Heap callers that cannot manage native lifetime
@@ -196,7 +196,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param prefix native prefix content, or `null` / [MemorySegment#NULL] to clear it
     /// @return `this`, for chaining
     /// @throws ZstdException if the prefix cannot be referenced
-    public ZstdCompressCtx refPrefix(MemorySegment prefix) {
+    public ZstdCompressContext refPrefix(MemorySegment prefix) {
         if (NativeCall.isNull(prefix)) {
             return refPrefix(MemorySegment.NULL, 0L);
         }
@@ -204,7 +204,7 @@ public final class ZstdCompressCtx extends NativeObject {
         return refPrefix(prefix, prefix.byteSize());
     }
 
-    private ZstdCompressCtx refPrefix(MemorySegment prefix, long size) {
+    private ZstdCompressContext refPrefix(MemorySegment prefix, long size) {
         NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_REF_PREFIX.invokeExact(ptr(), prefix, size));
         return this;
     }
@@ -233,8 +233,8 @@ public final class ZstdCompressCtx extends NativeObject {
     /// Compresses `src` against `dict` at this context's level.
     ///
     /// The dictionary is re-digested on every call; for repeated compression
-    /// against the same dictionary, digest it once into a [ZstdCompressDict]
-    /// and use [#compress(byte[], ZstdCompressDict)].
+    /// against the same dictionary, digest it once into a [ZstdCompressDictionary]
+    /// and use [#compress(byte[], ZstdCompressDictionary)].
     ///
     /// @param src  the bytes to compress
     /// @param dict the dictionary to compress against
@@ -255,12 +255,12 @@ public final class ZstdCompressCtx extends NativeObject {
     }
 
     /// Compresses `src` against a pre-digested `dict` (the level was
-    /// fixed when the [ZstdCompressDict] was built).
+    /// fixed when the [ZstdCompressDictionary] was built).
     ///
     /// @param src  the bytes to compress
     /// @param dict the pre-digested compression dictionary
     /// @return a self-describing zstd frame
-    public byte[] compress(byte[] src, ZstdCompressDict dict) {
+    public byte[] compress(byte[] src, ZstdCompressDictionary dict) {
         Objects.requireNonNull(src, "src");
         Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
@@ -299,7 +299,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param src  the native source bytes to compress
     /// @param dict the pre-digested compression dictionary
     /// @return the number of bytes written into `dst`
-    public long compress(MemorySegment dst, MemorySegment src, ZstdCompressDict dict) {
+    public long compress(MemorySegment dst, MemorySegment src, ZstdCompressDictionary dict) {
         NativeCall.requireNative(dst, "dst");
         NativeCall.requireNative(src, "src");
         MemorySegment cdict = dict.ptr();
@@ -328,7 +328,7 @@ public final class ZstdCompressCtx extends NativeObject {
     /// @param src   the native source bytes to compress
     /// @param dict  the pre-digested compression dictionary
     /// @return the zstd frame, a slice of an `arena`-owned segment
-    public MemorySegment compress(Arena arena, MemorySegment src, ZstdCompressDict dict) {
+    public MemorySegment compress(Arena arena, MemorySegment src, ZstdCompressDictionary dict) {
         MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
         long written = compress(dst, src, dict);
         return dst.asSlice(0, written);

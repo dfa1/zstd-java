@@ -137,7 +137,7 @@ class ZstdStreamTest {
             }
 
             // Then the one-shot context decodes it with the same dictionary
-            try (ZstdDecompressCtx ctx = new ZstdDecompressCtx()) {
+            try (ZstdDecompressContext ctx = new ZstdDecompressContext()) {
                 assertThat(ctx.decompress(sink.toByteArray(), sample.length, dict)).isEqualTo(sample);
             }
         }
@@ -229,7 +229,7 @@ class ZstdStreamTest {
             // When it decodes straight into its arena and hands the result back as a ByteBuffer
             byte[] restored;
             try (Arena arena = Arena.ofConfined();
-                 ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+                 ZstdDecompressContext dctx = new ZstdDecompressContext()) {
                 MemorySegment src = MemorySegment.ofBuffer(mmap);   // zero-copy input view
                 MemorySegment out = dctx.decompress(arena, src);    // one allocation, zero copies
                 ByteBuffer result = out.asByteBuffer();             // zero-copy hand-off out

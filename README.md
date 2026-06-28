@@ -44,8 +44,8 @@ List<byte[]> samples = ...;                       // representative records
 ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
 
 byte[] message = ...;
-try (ZstdCompressCtx cctx = new ZstdCompressCtx();
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+try (ZstdCompressContext cctx = new ZstdCompressContext();
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     byte[] frame = cctx.compress(message, dict);
     byte[] back  = dctx.decompress(frame, message.length, dict);
 }
@@ -58,8 +58,8 @@ import io.github.dfa1.zstd.*;
 import java.lang.foreign.*;
 
 try (Arena arena = Arena.ofConfined();
-     ZstdCompressCtx cctx = new ZstdCompressCtx();
-     ZstdDecompressCtx dctx = new ZstdDecompressCtx()) {
+     ZstdCompressContext cctx = new ZstdCompressContext();
+     ZstdDecompressContext dctx = new ZstdDecompressContext()) {
 
     MemorySegment src     = ...;                       // e.g. an mmap'd file slice
     MemorySegment frame   = cctx.compress(arena, src); // off-heap → off-heap

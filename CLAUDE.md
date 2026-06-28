@@ -40,6 +40,10 @@ Built `.dylib/.so/.dll` are git-ignored; they are regenerated from the submodule
 - Native pointers wrap in `NativeObject` (`AutoCloseable`, idempotent close).
 - All native handles live in `Bindings`; `size_t`/`unsigned long long` map to
   `JAVA_LONG`. Public methods guard zstd's negative sentinels.
+- Native structs: model the layout as a named `StructLayout` and access fields
+  through `static final VarHandle`s from it (`LAYOUT.varHandle(groupElement("…"))`),
+  deriving size from `LAYOUT.byteSize()`. No hardcoded offsets/sizes — see
+  `ZstdStreamBuffer`.
 - API is **segment-first for the zero-copy fast path, with thin `byte[]`
   overloads** for heap callers. Never allocate a `byte[]` for decode output on a
   hot path — see [docs/zero-copy.md](docs/zero-copy.md).

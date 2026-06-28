@@ -83,3 +83,52 @@ jobs:
           jbang --java 25 \
             --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
             .github/smoke/Smoke.java
+
+  # PROBE: do the glibc-built linux natives load on musl (Alpine)? The native is
+  # compiled for the *-linux-gnu ABI, so this is expected to fail until musl
+  # natives ship — it documents the gap rather than gating the workflow
+  # (continue-on-error). The action steps run on the glibc host; only the final
+  # `java` runs inside an Alpine/musl JDK container (so node-based actions, which
+  # need glibc, are never run in the container).
+  musl-probe:
+    name: musl ${{ matrix.classifier }} (probe)
+    needs: resolve
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,    classifier: linux-x86_64 }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout (smoke sources only)
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (host — for javac and Maven)
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '25'
+
+      - name: Fetch released jars (glibc native) and compile the smoke
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
+            -Dartifact="io.github.dfa1.zstd:zstd:${VERSION}" \
+            -DoutputDirectory=libs -Dmdep.stripVersion=true
+          mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
+            -Dartifact="io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
+            -DoutputDirectory=libs -Dmdep.stripVersion=true
+          mkdir -p out
+          javac -cp libs/zstd.jar -d out .github/smoke/Smoke.java
+
+      - name: Run the glibc native on musl/Alpine (probe — may fail until musl natives ship)
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w amazoncorretto:25-alpine \
+            java --enable-native-access=ALL-UNNAMED \
+            -cp "libs/zstd.jar:libs/zstd-native-${{ matrix.classifier }}.jar:out" \
+            Smoke

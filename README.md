@@ -103,9 +103,9 @@ with the payload — no GC pressure on the hot path.
 The `zstd` jar is pure Java and ships no `libzstd` — you always pair it with a
 native artifact. Two ways:
 
-**1. Everything, any platform** — one dependency on `zstd-platform`, an empty jar
-that transitively pulls the bindings plus all six natives (~3.8 MB). Zero choices;
-the build runs on any OS/arch.
+**1. Everything, all supported platforms** — one dependency on `zstd-platform`, an
+empty jar that transitively pulls the bindings plus all six natives (~3.8 MB). Zero
+choices; the build runs on any supported OS/arch.
 
 ```xml
 <dependency>

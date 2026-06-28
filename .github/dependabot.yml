@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Maven dependencies across the multi-module reactor (root scans all modules).
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      maven-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used by the CI / publish / smoke workflows.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      actions-all:
+        patterns:
+          - "*"

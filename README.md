@@ -8,10 +8,13 @@
 ![Java](https://img.shields.io/badge/Java-25%2B-orange.svg)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
 
-**zstd-java** is a Java wrapper for [Zstandard](https://github.com/facebook/zstd)
-built on the **Foreign Function & Memory (FFM) API** — no JNI, no `sun.misc.Unsafe`.
-It targets **JDK 25+** (the first LTS with stable `java.lang.foreign`) and leads
-with the two features most JVM zstd bindings lack:
+**zstd-java** is an **FFM-based alternative to the excellent
+[zstd-jni](https://github.com/luben/zstd-jni)** for early adopters on **JDK 25+**.
+It wraps [Zstandard](https://github.com/facebook/zstd) through the **Foreign
+Function & Memory (FFM) API** — no JNI, no `sun.misc.Unsafe`, no hand-written C
+(JDK 25 is the first LTS with stable `java.lang.foreign`).
+
+It leans into two things FFM makes natural:
 
 - **Dictionary compression**, trained straight from your own data — the big win on
   small, repetitive records (logs, market-data ticks, JSON/Avro rows, FIX messages).

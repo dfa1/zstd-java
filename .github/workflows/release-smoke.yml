@@ -46,14 +46,18 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   smoke:
-    name: ${{ matrix.classifier }}
+    name: ${{ matrix.classifier }}${{ matrix.container && ' (musl)' || '' }}
     needs: resolve
+    # musl legs are a probe (glibc natives on Alpine, expected to fail until musl
+    # natives ship), so they don't gate the workflow; the six native legs do.
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
         # distribution is per-leg for clarity and easy override. Zulu ships JDK 25
-        # for all six targets (incl. Windows/ARM64, which Temurin does not yet) and
-        # matches publish.yml; change a single leg here if a target needs another.
+        # for all targets (incl. Windows/ARM64, which Temurin does not yet) and
+        # matches publish.yml. Legs with `container` run the linux native inside an
+        # Alpine/musl JDK to probe musl support.
         include:
           - { os: ubuntu-latest,    classifier: linux-x86_64,    distribution: zulu }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64,   distribution: zulu }
@@ -61,21 +65,26 @@ jobs:
           - { os: macos-14,         classifier: osx-aarch64,     distribution: zulu }
           - { os: windows-latest,   classifier: windows-x86_64,  distribution: zulu }
           - { os: windows-11-arm,   classifier: windows-aarch64, distribution: zulu }
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine", experimental: true }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine", experimental: true }
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout (smoke sources only)
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up JDK 25 (host)
         uses: actions/setup-java@v4
         with:
           distribution: ${{ matrix.distribution }}
           java-version: '25'
 
+      # --- native runner path (glibc / macOS / Windows): run via JBang on the host ---
       - name: Set up JBang
+        if: ${{ !matrix.container }}
         uses: jbangdev/setup-jbang@main
 
       - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
+        if: ${{ !matrix.container }}
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
@@ -84,34 +93,10 @@ jobs:
             --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
             .github/smoke/Smoke.java
 
-  # PROBE: do the glibc-built linux natives load on musl (Alpine)? The native is
-  # compiled for the *-linux-gnu ABI, so this is expected to fail until musl
-  # natives ship — it documents the gap rather than gating the workflow
-  # (continue-on-error). The action steps run on the glibc host; only the final
-  # `java` runs inside an Alpine/musl JDK container (so node-based actions, which
-  # need glibc, are never run in the container).
-  musl-probe:
-    name: musl ${{ matrix.classifier }} (probe)
-    needs: resolve
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu-latest,    classifier: linux-x86_64 }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64 }
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout (smoke sources only)
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 25 (host — for javac and Maven)
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: '25'
-
-      - name: Fetch released jars (glibc native) and compile the smoke
+      # --- musl probe: fetch + compile on the glibc host, run inside an Alpine/musl
+      #     JDK container, so node-based actions never run under musl ---
+      - name: Fetch released jars and compile the smoke (musl)
+        if: ${{ matrix.container }}
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
@@ -125,10 +110,11 @@ jobs:
           mkdir -p out
           javac -cp libs/zstd.jar -d out .github/smoke/Smoke.java
 
-      - name: Run the glibc native on musl/Alpine (probe — may fail until musl natives ship)
+      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (musl/Alpine)
+        if: ${{ matrix.container }}
         shell: bash
         run: |
-          docker run --rm -v "$PWD:/w" -w /w amazoncorretto:25-alpine \
+          docker run --rm -v "$PWD:/w" -w /w "${{ matrix.container }}" \
             java --enable-native-access=ALL-UNNAMED \
             -cp "libs/zstd.jar:libs/zstd-native-${{ matrix.classifier }}.jar:out" \
             Smoke

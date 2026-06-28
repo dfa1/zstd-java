@@ -50,7 +50,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.release>25</maven.compiler.release>
+		<maven.compiler.release>22</maven.compiler.release>
 		<central-publishing-plugin.version>0.11.0</central-publishing-plugin.version>
 		<maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
 		<maven-source-plugin.version>3.4.0</maven-source-plugin.version>
@@ -164,7 +164,7 @@
 					<artifactId>maven-compiler-plugin</artifactId>
 					<version>3.15.0</version>
 					<configuration>
-						<release>25</release>
+						<release>22</release>
 						<failOnWarning>true</failOnWarning>
 						<compilerArgs>
 							<arg>-Xlint:all</arg>
@@ -176,7 +176,7 @@
 					<artifactId>maven-javadoc-plugin</artifactId>
 					<version>3.12.0</version>
 					<configuration>
-						<release>25</release>
+						<release>22</release>
 						<failOnError>true</failOnError>
 						<failOnWarnings>true</failOnWarnings>
 						<quiet>true</quiet>

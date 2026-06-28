@@ -21,10 +21,6 @@ It leans into two things FFM makes natural:
 - A **zero-copy `MemorySegment` API** — compress/decompress off-heap buffers (an
   mmap'd slice in, an arena buffer out) with no heap copy and no per-call allocation.
 
-> **AI-assisted development:** This project uses Claude Code for implementation —
-> C header mapping, test generation, docs. Architecture, API design, and all
-> decisions are human-driven.
-
 ## Quickstart
 
 One-shot round-trip with `byte[]` — the convenient path:
@@ -169,3 +165,9 @@ foundational choices and their trade-offs, one file per decision.
 
 [BSD 3-Clause](LICENSE) — the same primary license as zstd, which is bundled
 under its BSD terms (zstd is dual BSD / GPLv2, © Meta Platforms, Inc.).
+
+---
+
+> **AI-assisted development:** This project uses Claude Code for implementation —
+> C header mapping, test generation, docs. Architecture, API design, and all
+> decisions are human-driven.

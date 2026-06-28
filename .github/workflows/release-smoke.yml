@@ -9,16 +9,40 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Released version to smoke-test (as published to Maven Central)
-        required: true
-        default: "0.6"
+        description: Version to smoke-test. Leave blank to use the latest release on Maven Central.
+        required: false
+        default: ""
 
 permissions:
   contents: read
 
 jobs:
+  resolve:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - name: Resolve version (input, else latest on Maven Central)
+        id: pick
+        shell: bash
+        run: |
+          version="${{ inputs.version }}"
+          if [ -z "$version" ]; then
+            # <release> in maven-metadata.xml is the latest non-snapshot release.
+            version=$(curl -fsSL https://repo1.maven.org/maven2/io/github/dfa1/zstd/zstd/maven-metadata.xml \
+              | grep -oE '<release>[^<]+</release>' | sed -E 's/<\/?release>//g')
+          fi
+          if [ -z "$version" ]; then
+            echo "could not resolve a version from Maven Central" >&2
+            exit 1
+          fi
+          echo "Smoke-testing version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   smoke:
     name: ${{ matrix.classifier }}
+    needs: resolve
     strategy:
       fail-fast: false
       matrix:
@@ -43,9 +67,11 @@ jobs:
       - name: Set up JBang
         uses: jbangdev/setup-jbang@main
 
-      - name: Smoke-test ${{ inputs.version }} on ${{ matrix.classifier }}
+      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
         shell: bash
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           jbang --java 25 \
-            --deps "io.github.dfa1.zstd:zstd:${{ inputs.version }},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${{ inputs.version }}" \
+            --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
             .github/smoke/Smoke.java

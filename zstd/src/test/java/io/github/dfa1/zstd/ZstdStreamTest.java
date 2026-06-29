@@ -4,6 +4,8 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.ByteArrayInputStream;
@@ -14,6 +16,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 
 import static io.github.dfa1.zstd.ZstdTestSupport.randomBytes;
 import static io.github.dfa1.zstd.ZstdTestSupport.sample;
@@ -290,31 +293,16 @@ class ZstdStreamTest {
             assertThat(streamDecompress(sink.toByteArray())).isEqualTo(original);
         }
 
-        @Test
-        void writeAfterCloseThrows() throws IOException {
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("io.github.dfa1.zstd.ZstdStreamTest#closedStreamOperations")
+        void operationAfterCloseThrows(String name, ClosedStreamOperation operation) throws IOException {
             // Given a closed stream
-            ZstdOutputStream zout = new ZstdOutputStream(new ByteArrayOutputStream());
-            zout.close();
+            ThrowingCallable closedStreamOperation = operation.closeThenOperate();
 
-            // When written to
-            ThrowingCallable result = () -> zout.write(1);
+            // When operating on it
+            ThrowingCallable result = closedStreamOperation;
 
             // Then it refuses with an IOException rather than touching freed native state
-            assertThatThrownBy(result)
-                    .isInstanceOf(IOException.class)
-                    .hasMessageContaining("closed");
-        }
-
-        @Test
-        void flushAfterCloseThrows() throws IOException {
-            // Given a closed stream
-            ZstdOutputStream zout = new ZstdOutputStream(new ByteArrayOutputStream());
-            zout.close();
-
-            // When flushed
-            ThrowingCallable result = zout::flush;
-
-            // Then it refuses with an IOException
             assertThatThrownBy(result)
                     .isInstanceOf(IOException.class)
                     .hasMessageContaining("closed");
@@ -355,22 +343,6 @@ class ZstdStreamTest {
                 assertThat(afterByte).isEqualTo(-1);
                 assertThat(afterBlock).isEqualTo(-1);
             }
-        }
-
-        @Test
-        void readAfterCloseThrows() throws IOException {
-            // Given a closed input stream
-            byte[] frame = streamCompress("payload".getBytes(StandardCharsets.UTF_8), 3);
-            ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(frame));
-            zin.close();
-
-            // When read
-            ThrowingCallable result = zin::read;
-
-            // Then it refuses with an IOException rather than touching freed native state
-            assertThatThrownBy(result)
-                    .isInstanceOf(IOException.class)
-                    .hasMessageContaining("closed");
         }
 
         @Test
@@ -420,6 +392,32 @@ class ZstdStreamTest {
             // Then every byte survives the slow refill path
             assertThat(restored).isEqualTo(original);
         }
+    }
+
+    private static Stream<Arguments> closedStreamOperations() {
+        return Stream.of(
+                Arguments.of("write after close", (ClosedStreamOperation) () -> {
+                    ZstdOutputStream stream = new ZstdOutputStream(new ByteArrayOutputStream());
+                    stream.close();
+                    return () -> stream.write(1);
+                }),
+                Arguments.of("flush after close", (ClosedStreamOperation) () -> {
+                    ZstdOutputStream stream = new ZstdOutputStream(new ByteArrayOutputStream());
+                    stream.close();
+                    return stream::flush;
+                }),
+                Arguments.of("read after close", (ClosedStreamOperation) () -> {
+                    byte[] frame = streamCompress("payload".getBytes(StandardCharsets.UTF_8), 3);
+                    ZstdInputStream stream = new ZstdInputStream(new ByteArrayInputStream(frame));
+                    stream.close();
+                    return stream::read;
+                })
+        );
+    }
+
+    @FunctionalInterface
+    private interface ClosedStreamOperation {
+        ThrowingCallable closeThenOperate() throws IOException;
     }
 
     /// A sink that records flush/close calls while retaining the bytes written to it

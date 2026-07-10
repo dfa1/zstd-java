@@ -46,26 +46,33 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   smoke:
-    name: ${{ matrix.classifier }}${{ matrix.container && ' (musl)' || '' }}
+    name: ${{ matrix.classifier }}${{ matrix.label && format(' ({0})', matrix.label) || '' }}
     needs: resolve
-    # musl legs are a probe (glibc natives on Alpine, expected to fail until musl
-    # natives ship), so they don't gate the workflow; the six native legs do.
+    # Container legs are probes (different glibc distros, musl/Alpine); they don't
+    # gate the workflow. The five native runner legs do.
     continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
         # distribution is per-leg for clarity and easy override. Zulu ships JDK 25
         # for all targets (incl. Windows/ARM64, which Temurin does not yet) and
-        # matches publish.yml. Legs with `container` run the linux native inside an
-        # Alpine/musl JDK to probe musl support.
+        # matches publish.yml. Legs with `container` run the linux native inside a
+        # container to probe compatibility on different distributions and libcs.
         include:
           - { os: ubuntu-latest,    classifier: linux-x86_64,    distribution: zulu }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64,   distribution: zulu }
           - { os: macos-14,         classifier: osx-aarch64,     distribution: zulu }
           - { os: windows-latest,   classifier: windows-x86_64,  distribution: zulu }
           - { os: windows-11-arm,   classifier: windows-aarch64, distribution: zulu }
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine", experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine", experimental: true }
+          # musl (Alpine) — glibc natives on a musl libc; expected to fail until musl natives ship
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl,    experimental: true }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl,    experimental: true }
+          # Debian 12 (Bookworm) — glibc 2.36
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-bookworm", label: debian, experimental: true }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-bookworm", label: debian, experimental: true }
+          # Amazon Linux 2023 (RHEL-like) — glibc 2.34
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -94,9 +101,9 @@ jobs:
             --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
             .github/smoke/Smoke.java
 
-      # --- musl probe: fetch + compile on the glibc host, run inside an Alpine/musl
-      #     JDK container, so node-based actions never run under musl ---
-      - name: Fetch released jars and compile the smoke (musl)
+      # --- container probe: fetch + compile on the glibc host, run inside the target
+      #     container, so node-based actions never run under the foreign libc/distro ---
+      - name: Fetch released jars and compile the smoke (container)
         if: ${{ matrix.container }}
         shell: bash
         env:
@@ -111,7 +118,7 @@ jobs:
           mkdir -p out
           javac -cp libs/zstd.jar -d out .github/smoke/Smoke.java
 
-      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (musl/Alpine)
+      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (${{ matrix.label }})
         if: ${{ matrix.container }}
         shell: bash
         run: |

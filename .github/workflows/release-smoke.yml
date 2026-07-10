@@ -67,9 +67,12 @@ jobs:
           # musl (Alpine) — glibc natives on a musl libc; expected to fail until musl natives ship
           - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl,    experimental: true }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl,    experimental: true }
-          # Debian 12 (Bookworm) — glibc 2.36
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-bookworm", label: debian, experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-bookworm", label: debian, experimental: true }
+          # Ubuntu 22.04 (Jammy) — glibc 2.35; eclipse-temurin has no bookworm tag for JDK 25
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-jammy",       label: jammy,  experimental: true }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-jammy",       label: jammy,  experimental: true }
+          # Red Hat UBI 10 minimal — glibc 2.34 (RHEL-like)
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi,   experimental: true }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi,   experimental: true }
           # Amazon Linux 2023 (RHEL-like) — glibc 2.34
           - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }

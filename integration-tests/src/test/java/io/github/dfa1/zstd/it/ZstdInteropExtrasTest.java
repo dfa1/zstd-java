@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import static io.github.dfa1.zstd.it.ItTestSupport.random;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -293,12 +294,6 @@ class ZstdInteropExtrasTest {
                 out.write(data, off, Math.min(CHUNK, data.length - off));
                 out.flush();
             }
-        }
-
-        private static byte[] random(Random r, int size) {
-            byte[] b = new byte[size];
-            r.nextBytes(b);
-            return b;
         }
     }
 }

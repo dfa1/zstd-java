@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import static io.github.dfa1.zstd.it.ItTestSupport.LEVELS;
+import static io.github.dfa1.zstd.it.ItTestSupport.compressible;
+import static io.github.dfa1.zstd.it.ItTestSupport.random;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Format-compatibility tests: frames produced by the reference zstd-jni binding
@@ -35,10 +38,9 @@ class ZstdJniInteropTest {
         Random r = new Random(0xABCD);
         List<Arguments> cases = new ArrayList<>();
         int[] sizes = {0, 1, 1024, 64 * 1024, 1024 * 1024};
-        int[] levels = {Zstd.minCompressionLevel(), 1, Zstd.defaultCompressionLevel(), Zstd.maxCompressionLevel()};
         for (int size : sizes) {
             byte[] data = size % 2 == 0 ? compressible(r, size) : random(r, size);
-            for (int level : levels) {
+            for (int level : LEVELS) {
                 cases.add(Arguments.of(level, data));
             }
         }
@@ -170,19 +172,5 @@ class ZstdJniInteropTest {
             return ("{\"id\":" + i + ",\"user\":\"u" + (i % 30) + "\",\"event\":\"click\"}")
                     .getBytes(StandardCharsets.UTF_8);
         }
-    }
-
-    private static byte[] random(Random r, int size) {
-        byte[] b = new byte[size];
-        r.nextBytes(b);
-        return b;
-    }
-
-    private static byte[] compressible(Random r, int size) {
-        byte[] b = new byte[size];
-        for (int i = 0; i < size; i++) {
-            b[i] = (byte) ((i % 13 == 0) ? r.nextInt(256) : 'a' + (i % 8));
-        }
-        return b;
     }
 }

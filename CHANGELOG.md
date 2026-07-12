@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
-## [0.8]
+## [0.8] - 2026-07-12
 
 ### Added
 - `module-info.java`: `zstd` now ships as a named JPMS module

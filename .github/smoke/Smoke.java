@@ -5,7 +5,6 @@
 // can pin the released version and the per-arch native jar from the matrix.
 
 import io.github.dfa1.zstd.Zstd;
-import io.github.dfa1.zstd.ZstdBounds;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressDictionary;
 import io.github.dfa1.zstd.ZstdCompressParameter;
@@ -15,7 +14,6 @@ import io.github.dfa1.zstd.ZstdDecompressDictionary;
 import io.github.dfa1.zstd.ZstdDecompressParameter;
 import io.github.dfa1.zstd.ZstdDecompressStream;
 import io.github.dfa1.zstd.ZstdDictionary;
-import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.ZstdEndDirective;
 import io.github.dfa1.zstd.ZstdErrorCode;
 import io.github.dfa1.zstd.ZstdException;
@@ -42,8 +40,19 @@ import java.util.List;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 /// Smoke test for a published zstd-java release: proves the bundled native
-/// library loads on the host OS/arch and every public entry point works.
+/// library loads and links correctly on the host OS/arch/libc, and that
+/// off-heap `MemorySegment` interop and native struct layouts (streaming
+/// buffers, frame progression) work there.
 /// Run against a release from Maven Central, one arch per CI matrix leg.
+///
+/// This deliberately does *not* re-derive full API correctness — that's the
+/// job of the module's JUnit suite, which runs once per PR and fails with a
+/// precise, single-platform stack trace. A check only belongs here if a local
+/// build passing it would NOT prove the released native artifact behaves the
+/// same way on this specific platform (link failure, ABI/struct-layout
+/// mismatch, native error-code marshaling). Pure-Java logic identical on every
+/// platform (enum bounds sweeps, dictionary-training algorithm variants,
+/// record equals/hashCode) belongs in the unit suite, not here.
 ///
 /// Deliberately excludes multithreaded compression (`NB_WORKERS` > 0): the
 /// bundled native library is single-threaded, so exercising it would only
@@ -63,20 +72,16 @@ public class Smoke {
         compressContextAdvancedParameters();
         decompressContextAdvanced();
         prefixCompression();
-        parameterBounds();
-        errorCodeDescriptions();
 
         List<byte[]> samples = jsonSamples();
         ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
         byte[] message = samples.get(7);
 
-        dictionaryIdApi(dict);
-        dictionaryTrainingVariants(samples);
         contextDictionaryPaths(dict, message);
         digestedDictionaries(dict, message);
-        zeroCopyContextCompression(dict, message);
-        streamingZeroCopy(dict, message);
-        streamingIo(dict, message);
+        zeroCopyContextCompression();
+        streamingZeroCopy();
+        streamingIo();
 
         System.out.println("OK " + PLATFORM + " | zstd " + Zstd.version() + " | all smoke checks passed");
     }
@@ -102,10 +107,10 @@ public class Smoke {
         byte[] original = sampleText();
 
         byte[] compressedDefault = Zstd.compress(original);
-        check(Arrays.equals(original, Zstd.decompress(compressedDefault)), "compress(byte[]) round-trip mismatch");
+        checkArrayEquals(original, Zstd.decompress(compressedDefault), "compress(byte[]) round-trip mismatch");
 
         byte[] compressed = Zstd.compress(original, Zstd.maxCompressionLevel());
-        check(Arrays.equals(original, Zstd.decompress(compressed)), "compress(byte[], level) round-trip mismatch");
+        checkArrayEquals(original, Zstd.decompress(compressed), "compress(byte[], level) round-trip mismatch");
         check(compressed.length < original.length, "expected compression to shrink the input");
     }
 
@@ -114,7 +119,7 @@ public class Smoke {
         byte[] compressed = Zstd.compress(original);
 
         byte[] restored = Zstd.decompress(compressed, original.length);
-        check(Arrays.equals(original, restored), "decompress(byte[], maxSize) mismatch");
+        checkArrayEquals(original, restored, "decompress(byte[], maxSize) mismatch");
 
         try {
             Zstd.decompress(compressed, 1);
@@ -185,19 +190,6 @@ public class Smoke {
         check(header.frameType() == ZstdFrameType.STANDARD, "header(byte[]).frameType() expected STANDARD");
         check(header.headerSize() == headerSize, "header(byte[]).headerSize() disagreed with headerSize(byte[])");
         check(!header.hasChecksum(), "header(byte[]).hasChecksum() expected false (checksum not enabled)");
-
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment seg = toNative(arena, compressed);
-            check(ZstdFrame.isZstdFrame(seg), "isZstdFrame(MemorySegment) false for a real frame");
-            check(ZstdFrame.compressedSize(seg) == compressed.length, "compressedSize(MemorySegment) mismatch");
-            check(ZstdFrame.decompressedSize(seg) == original.length, "decompressedSize(MemorySegment) mismatch");
-            check(ZstdFrame.decompressedBound(seg) >= original.length, "decompressedBound(MemorySegment) too small");
-            check(ZstdFrame.decompressionMargin(seg) >= 0, "decompressionMargin(MemorySegment) negative");
-            check(!ZstdFrame.dictId(seg).isPresent(), "dictId(MemorySegment) expected NONE");
-            check(ZstdFrame.headerSize(seg) == headerSize, "headerSize(MemorySegment) disagreed with byte[] form");
-            check(ZstdFrame.header(seg).equals(header), "header(MemorySegment) disagreed with byte[] form");
-            check(!ZstdFrame.isSkippableFrame(seg), "isSkippableFrame(MemorySegment) true for a standard frame");
-        }
     }
 
     private static void skippableFrames() {
@@ -208,11 +200,8 @@ public class Smoke {
         check(ZstdFrame.isZstdFrame(frame), "isZstdFrame(byte[]) should be true for a skippable frame too");
 
         ZstdSkippableContent read = ZstdFrame.readSkippableFrame(frame);
-        check(Arrays.equals(read.content(), payload), "readSkippableFrame() content mismatch");
+        checkArrayEquals(read.content(), payload, "readSkippableFrame() content mismatch");
         check(read.magicVariant() == 3, "readSkippableFrame() magicVariant mismatch");
-        ZstdSkippableContent same = new ZstdSkippableContent(payload, 3);
-        check(read.equals(same), "ZstdSkippableContent.equals() mismatch");
-        check(read.hashCode() == same.hashCode(), "ZstdSkippableContent.hashCode() mismatch");
     }
 
     private static void compressContextAdvancedParameters() {
@@ -225,18 +214,13 @@ public class Smoke {
                     .parameter(ZstdCompressParameter.STRATEGY, 3);
 
             byte[] compressed = cctx.compress(original);
-            check(Arrays.equals(original, Zstd.decompress(compressed, original.length)),
+            checkArrayEquals(original, Zstd.decompress(compressed, original.length),
                     "advanced-parameter round-trip mismatch");
             check(cctx.sizeOf() > 0, "cctx.sizeOf() not positive");
 
-            cctx.reset(ZstdResetDirective.SESSION_ONLY);
-            byte[] afterSessionReset = cctx.compress(original);
-            check(Arrays.equals(original, Zstd.decompress(afterSessionReset, original.length)),
-                    "compress after SESSION_ONLY reset mismatch");
-
             cctx.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
-            byte[] afterFullReset = cctx.level(3).compress(original);
-            check(Arrays.equals(original, Zstd.decompress(afterFullReset, original.length)),
+            byte[] afterReset = cctx.level(3).compress(original);
+            checkArrayEquals(original, Zstd.decompress(afterReset, original.length),
                     "compress after SESSION_AND_PARAMETERS reset mismatch");
         }
     }
@@ -247,19 +231,13 @@ public class Smoke {
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
             dctx.windowLogMax(24);
             byte[] restored = dctx.decompress(cctx.compress(original), original.length);
-            check(Arrays.equals(original, restored), "windowLogMax() decompress round-trip mismatch");
+            checkArrayEquals(original, restored, "windowLogMax() decompress round-trip mismatch");
             check(dctx.sizeOf() > 0, "dctx.sizeOf() not positive");
-
-            dctx.reset(ZstdResetDirective.SESSION_ONLY);
-            byte[] restoredAfterSessionReset = dctx.decompress(cctx.compress(original), original.length);
-            check(Arrays.equals(original, restoredAfterSessionReset),
-                    "decompress after SESSION_ONLY reset mismatch");
 
             dctx.reset(ZstdResetDirective.PARAMETERS);
             dctx.parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, 24);
-            byte[] restoredAfterParamReset = dctx.decompress(cctx.compress(original), original.length);
-            check(Arrays.equals(original, restoredAfterParamReset),
-                    "decompress after PARAMETERS reset + parameter() mismatch");
+            byte[] restoredAfterReset = dctx.decompress(cctx.compress(original), original.length);
+            checkArrayEquals(original, restoredAfterReset, "decompress after PARAMETERS reset + parameter() mismatch");
         }
     }
 
@@ -279,74 +257,8 @@ public class Smoke {
 
             dctx.refPrefix(prefix);
             byte[] restored = dctx.decompress(delta, newVersion.length);
-            check(Arrays.equals(newVersion, restored), "prefix compression round-trip mismatch");
-
-            // A prefix is single-use and already consumed by the calls above;
-            // clear it explicitly to exercise the null-clearing path too.
-            cctx.refPrefix(MemorySegment.NULL);
-            dctx.refPrefix(null);
+            checkArrayEquals(newVersion, restored, "prefix compression round-trip mismatch");
         }
-    }
-
-    private static void parameterBounds() {
-        for (ZstdCompressParameter parameter : ZstdCompressParameter.values()) {
-            ZstdBounds bounds = parameter.bounds();
-            check(bounds.lowerBound() <= bounds.upperBound(),
-                    "ZstdCompressParameter." + parameter + ".bounds() has lower > upper");
-        }
-        for (ZstdDecompressParameter parameter : ZstdDecompressParameter.values()) {
-            ZstdBounds bounds = parameter.bounds();
-            check(bounds.lowerBound() <= bounds.upperBound(),
-                    "ZstdDecompressParameter." + parameter + ".bounds() has lower > upper");
-        }
-    }
-
-    private static void errorCodeDescriptions() {
-        for (ZstdErrorCode code : ZstdErrorCode.values()) {
-            String description = code.description();
-            check(description != null && !description.isBlank(),
-                    "ZstdErrorCode." + code + ".description() was blank");
-        }
-    }
-
-    private static void dictionaryIdApi(ZstdDictionary dict) {
-        check(!ZstdDictionaryId.NONE.isPresent(), "NONE.isPresent() should be false");
-        check(ZstdDictionaryId.of(0).equals(ZstdDictionaryId.NONE), "of(0) should equal NONE");
-        ZstdDictionaryId id = ZstdDictionaryId.of(42);
-        check(id.isPresent(), "of(42).isPresent() should be true");
-        check(id.value() == 42L, "of(42).value() mismatch");
-
-        byte[] raw = dict.toByteArray();
-        ZstdDictionaryId fromBytes = Zstd.dictId(raw);
-        check(fromBytes.isPresent(), "Zstd.dictId(byte[]) expected a present id for a trained dictionary");
-        check(fromBytes.equals(dict.id()), "Zstd.dictId(byte[]) disagreed with ZstdDictionary.id()");
-
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment seg = toNative(arena, raw);
-            check(Zstd.dictId(seg).equals(fromBytes), "Zstd.dictId(MemorySegment) disagreed with Zstd.dictId(byte[])");
-        }
-    }
-
-    private static void dictionaryTrainingVariants(List<byte[]> samples) {
-        ZstdDictionary trained = ZstdDictionary.train(samples, 8 * 1024);
-        check(trained.size() > 0, "train() produced an empty dictionary");
-        check(trained.headerSize() > 0, "headerSize() not positive");
-        check(trained.id().isPresent(), "train().id() expected a present dictionary id");
-
-        check(ZstdDictionary.trainCover(samples, 8 * 1024).size() > 0, "trainCover() produced an empty dictionary");
-        check(ZstdDictionary.trainCover(samples, 8 * 1024, 5).size() > 0,
-                "trainCover(level) produced an empty dictionary");
-        check(ZstdDictionary.trainFastCover(samples, 8 * 1024).size() > 0,
-                "trainFastCover() produced an empty dictionary");
-        check(ZstdDictionary.trainFastCover(samples, 8 * 1024, 5).size() > 0,
-                "trainFastCover(level) produced an empty dictionary");
-
-        byte[] content = samples.get(0);
-        ZstdDictionary finalized = ZstdDictionary.finalizeFrom(content, samples, 8 * 1024, 5);
-        check(finalized.size() > 0, "finalizeFrom() produced an empty dictionary");
-
-        ZstdDictionary wrapped = ZstdDictionary.of(trained.toByteArray());
-        check(Arrays.equals(wrapped.toByteArray(), trained.toByteArray()), "of(byte[]) did not preserve the bytes");
     }
 
     private static void contextDictionaryPaths(ZstdDictionary dict, byte[] message) {
@@ -354,118 +266,40 @@ public class Smoke {
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
             byte[] compressed = cctx.compress(message, dict);
             byte[] restored = dctx.decompress(compressed, message.length, dict);
-            check(Arrays.equals(message, restored), "per-call dictionary round-trip mismatch");
-
-            cctx.loadDictionary(dict);
-            dctx.loadDictionary(dict);
-            byte[] compressedSticky = cctx.compress(message);
-            byte[] restoredSticky = dctx.decompress(compressedSticky, message.length);
-            check(Arrays.equals(message, restoredSticky), "sticky-dictionary round-trip mismatch");
-
-            cctx.loadDictionary((ZstdDictionary) null);
-            dctx.loadDictionary((ZstdDictionary) null);
-        }
-
-        try (Arena arena = Arena.ofConfined();
-             ZstdCompressContext cctx = new ZstdCompressContext();
-             ZstdDecompressContext dctx = new ZstdDecompressContext()) {
-            MemorySegment dictSeg = toNative(arena, dict.toByteArray());
-            cctx.loadDictionary(dictSeg);
-            dctx.loadDictionary(dictSeg);
-            byte[] compressed = cctx.compress(message);
-            byte[] restored = dctx.decompress(compressed, message.length);
-            check(Arrays.equals(message, restored), "MemorySegment sticky-dictionary round-trip mismatch");
-
-            cctx.loadDictionary(MemorySegment.NULL);
-            dctx.loadDictionary(MemorySegment.NULL);
+            checkArrayEquals(message, restored, "per-call dictionary round-trip mismatch");
         }
     }
 
     private static void digestedDictionaries(ZstdDictionary dict, byte[] message) {
-        try (ZstdCompressDictionary cdict = dict.compressDict(9);
-             ZstdDecompressDictionary ddict = dict.decompressDict()) {
-            check(cdict.level() == 9, "compressDict(level).level() mismatch");
-            check(cdict.id().equals(dict.id()), "compressDict().id() disagreed with ZstdDictionary.id()");
+        try (ZstdCompressDictionary cdict = dict.compressDict();
+             ZstdDecompressDictionary ddict = dict.decompressDict();
+             ZstdCompressContext cctx = new ZstdCompressContext();
+             ZstdDecompressContext dctx = new ZstdDecompressContext()) {
+            byte[] compressed = cctx.compress(message, cdict);
+            byte[] restored = dctx.decompress(compressed, message.length, ddict);
+            checkArrayEquals(message, restored, "digested-dictionary round-trip mismatch");
             check(cdict.sizeOf() > 0, "ZstdCompressDictionary.sizeOf() not positive");
-            check(ddict.id().equals(dict.id()), "decompressDict().id() disagreed with ZstdDictionary.id()");
             check(ddict.sizeOf() > 0, "ZstdDecompressDictionary.sizeOf() not positive");
-
-            try (ZstdCompressContext cctx = new ZstdCompressContext();
-                 ZstdDecompressContext dctx = new ZstdDecompressContext()) {
-                byte[] compressed = cctx.compress(message, cdict);
-                byte[] restored = dctx.decompress(compressed, message.length, ddict);
-                check(Arrays.equals(message, restored), "digested-dictionary round-trip mismatch");
-
-                cctx.refDictionary(cdict);
-                dctx.refDictionary(ddict);
-                byte[] viaRef = cctx.compress(message);
-                byte[] restoredViaRef = dctx.decompress(viaRef, message.length);
-                check(Arrays.equals(message, restoredViaRef), "refDictionary round-trip mismatch");
-            }
-        }
-
-        try (ZstdCompressDictionary cdict = dict.compressDict()) {
-            check(cdict.level() == Zstd.defaultCompressionLevel(), "compressDict().level() expected the default");
-        }
-
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment dictSeg = toNative(arena, dict.toByteArray());
-            try (ZstdCompressDictionary cdict = new ZstdCompressDictionary(dictSeg, 5);
-                 ZstdDecompressDictionary ddict = new ZstdDecompressDictionary(dictSeg)) {
-                check(cdict.level() == 5, "ZstdCompressDictionary(MemorySegment, level).level() mismatch");
-                check(cdict.id().equals(dict.id()), "ZstdCompressDictionary(MemorySegment).id() mismatch");
-                check(ddict.id().equals(dict.id()), "ZstdDecompressDictionary(MemorySegment).id() mismatch");
-            }
-            try (ZstdCompressDictionary cdict = new ZstdCompressDictionary(dictSeg)) {
-                check(cdict.level() == Zstd.defaultCompressionLevel(),
-                        "ZstdCompressDictionary(MemorySegment).level() expected the default");
-            }
         }
     }
 
-    private static void zeroCopyContextCompression(ZstdDictionary dict, byte[] message) {
-        byte[] original = sampleText();
+    private static void zeroCopyContextCompression() {
         try (Arena arena = Arena.ofConfined();
              ZstdCompressContext cctx = new ZstdCompressContext();
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
+            byte[] original = sampleText();
             MemorySegment src = toNative(arena, original);
 
             MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
             long written = cctx.compress(dst, src);
             MemorySegment restored = arena.allocate(original.length);
             long read = dctx.decompress(restored, dst.asSlice(0, written));
-            check(read == original.length, "compress/decompress(MemorySegment, MemorySegment) length mismatch");
-            check(Arrays.equals(original, toByteArray(restored, read)),
+            checkArrayEquals(original, toByteArray(restored, read),
                     "compress/decompress(MemorySegment, MemorySegment) content mismatch");
-
-            MemorySegment frame = cctx.compress(arena, src);
-            MemorySegment out = dctx.decompress(arena, frame);
-            check(Arrays.equals(original, toByteArray(out, out.byteSize())),
-                    "compress/decompress(Arena, MemorySegment) content mismatch");
-        }
-
-        try (Arena arena = Arena.ofConfined();
-             ZstdCompressDictionary cdict = dict.compressDict();
-             ZstdDecompressDictionary ddict = dict.decompressDict();
-             ZstdCompressContext cctx = new ZstdCompressContext();
-             ZstdDecompressContext dctx = new ZstdDecompressContext()) {
-            MemorySegment src = toNative(arena, message);
-
-            MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
-            long written = cctx.compress(dst, src, cdict);
-            MemorySegment restored = arena.allocate(message.length);
-            long read = dctx.decompress(restored, dst.asSlice(0, written), ddict);
-            check(Arrays.equals(message, toByteArray(restored, read)),
-                    "compress/decompress(MemorySegment, MemorySegment, dict) content mismatch");
-
-            MemorySegment frame = cctx.compress(arena, src, cdict);
-            MemorySegment out = dctx.decompress(arena, frame, ddict);
-            check(Arrays.equals(message, toByteArray(out, out.byteSize())),
-                    "compress/decompress(Arena, MemorySegment, dict) content mismatch");
         }
     }
 
-    private static void streamingZeroCopy(ZstdDictionary dict, byte[] message) {
+    private static void streamingZeroCopy() {
         try (ZstdCompressStream cs = new ZstdCompressStream()) {
             check(cs.sizeOf() > 0, "no-arg ZstdCompressStream.sizeOf() not positive");
         }
@@ -480,6 +314,9 @@ public class Smoke {
             check(result.bytesConsumed() == original.length, "ZstdCompressStream consumed byte count mismatch");
             check(cs.sizeOf() > 0, "ZstdCompressStream.sizeOf() not positive");
 
+            // Reads a native struct (ZSTD_frameProgression) through fixed field
+            // offsets — worth checking per platform since padding/alignment is
+            // ABI-sensitive, unlike the rest of this method's plain size_t returns.
             ZstdFrameProgression progression = cs.progress();
             check(progression.produced() >= result.bytesProduced(),
                     "ZstdFrameProgression.produced() smaller than bytes actually produced");
@@ -490,32 +327,14 @@ public class Smoke {
                 MemorySegment out = arena.allocate(original.length);
                 ZstdStreamResult decodeResult = ds.decompress(out, frameSeg);
                 check(decodeResult.isComplete(), "ZstdDecompressStream.decompress() did not complete");
-                check(Arrays.equals(original, toByteArray(out, decodeResult.bytesProduced())),
+                checkArrayEquals(original, toByteArray(out, decodeResult.bytesProduced()),
                         "zero-copy streaming round-trip mismatch");
                 check(ds.sizeOf() > 0, "ZstdDecompressStream.sizeOf() not positive");
             }
         }
-
-        try (Arena arena = Arena.ofConfined();
-             ZstdCompressStream cs = new ZstdCompressStream(Zstd.defaultCompressionLevel(), dict)) {
-            MemorySegment src = toNative(arena, message);
-            MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
-            ZstdStreamResult result = cs.compress(dst, src, ZstdEndDirective.END);
-            check(result.isComplete(), "dictionary ZstdCompressStream did not complete");
-            byte[] compressed = toByteArray(dst, result.bytesProduced());
-
-            try (ZstdDecompressStream ds = new ZstdDecompressStream(dict)) {
-                MemorySegment frameSeg = toNative(arena, compressed);
-                MemorySegment out = arena.allocate(message.length);
-                ZstdStreamResult decodeResult = ds.decompress(out, frameSeg);
-                check(decodeResult.isComplete(), "dictionary ZstdDecompressStream did not complete");
-                check(Arrays.equals(message, toByteArray(out, decodeResult.bytesProduced())),
-                        "dictionary zero-copy streaming round-trip mismatch");
-            }
-        }
     }
 
-    private static void streamingIo(ZstdDictionary dict, byte[] message) throws IOException {
+    private static void streamingIo() throws IOException {
         byte[] original = sampleText();
 
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
@@ -523,44 +342,7 @@ public class Smoke {
             zout.write(original);
         }
         try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(sink.toByteArray()))) {
-            check(Arrays.equals(original, zin.readAllBytes()),
-                    "ZstdOutputStream/ZstdInputStream default round-trip mismatch");
-        }
-
-        ByteArrayOutputStream sinkLeveled = new ByteArrayOutputStream();
-        try (ZstdOutputStream zout = new ZstdOutputStream(sinkLeveled, 15)) {
-            for (byte b : original) {
-                zout.write(b);
-            }
-            zout.flush();
-        }
-        try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(sinkLeveled.toByteArray()))) {
-            int first = zin.read();
-            check(first == (original[0] & 0xFF), "ZstdInputStream.read() first byte mismatch");
-            byte[] rest = zin.readAllBytes();
-            byte[] restored = new byte[rest.length + 1];
-            restored[0] = (byte) first;
-            System.arraycopy(rest, 0, restored, 1, rest.length);
-            check(Arrays.equals(original, restored),
-                    "byte-at-a-time ZstdOutputStream/ZstdInputStream round-trip mismatch");
-        }
-
-        ByteArrayOutputStream sinkDict = new ByteArrayOutputStream();
-        try (ZstdOutputStream zout = new ZstdOutputStream(sinkDict, dict)) {
-            zout.write(message);
-        }
-        try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(sinkDict.toByteArray()), dict)) {
-            check(Arrays.equals(message, zin.readAllBytes()),
-                    "dictionary ZstdOutputStream/ZstdInputStream round-trip mismatch");
-        }
-
-        ByteArrayOutputStream sinkDictLevel = new ByteArrayOutputStream();
-        try (ZstdOutputStream zout = new ZstdOutputStream(sinkDictLevel, 5, dict)) {
-            zout.write(message);
-        }
-        try (ZstdInputStream zin = new ZstdInputStream(new ByteArrayInputStream(sinkDictLevel.toByteArray()), dict)) {
-            check(Arrays.equals(message, zin.readAllBytes()),
-                    "level+dictionary ZstdOutputStream/ZstdInputStream round-trip mismatch");
+            checkArrayEquals(original, zin.readAllBytes(), "ZstdOutputStream/ZstdInputStream round-trip mismatch");
         }
 
         ByteArrayOutputStream sinkPledged = new ByteArrayOutputStream();
@@ -570,7 +352,7 @@ public class Smoke {
         byte[] pledgedFrame = sinkPledged.toByteArray();
         check(ZstdFrame.header(pledgedFrame).contentSize().orElseThrow() == original.length,
                 "withPledgedSize() did not stamp the declared content size into the frame header");
-        check(Arrays.equals(original, Zstd.decompress(pledgedFrame)), "withPledgedSize() round-trip mismatch");
+        checkArrayEquals(original, Zstd.decompress(pledgedFrame), "withPledgedSize() round-trip mismatch");
     }
 
     private static byte[] sampleText() {
@@ -602,5 +384,9 @@ public class Smoke {
         if (!condition) {
             throw new AssertionError(what + " on " + PLATFORM);
         }
+    }
+
+    private static void checkArrayEquals(byte[] expected, byte[] actual, String what) {
+        check(Arrays.equals(expected, actual), what);
     }
 }

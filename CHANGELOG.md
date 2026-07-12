@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [0.8]
+
+### Added
+- `module-info.java`: `zstd` now ships as a named JPMS module
+  (`module io.github.dfa1.zstd`), exporting the single public API package.
+  Module-path consumers grant `--enable-native-access=io.github.dfa1.zstd`
+  instead of `ALL-UNNAMED`; classpath consumers are unaffected. See
+  [ADR 0011](adr/0011-jpms-module-descriptor.md).
+
 ## [0.7] - 2026-06-28
 
 ### Changed

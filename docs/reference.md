@@ -30,8 +30,18 @@ with a per-area breakdown and a comparison against zstd-jni:
 
 ## Runtime requirement
 
-Native access requires `--enable-native-access=ALL-UNNAMED` (or your module name)
-on the JVM command line.
+Native access requires a flag on the JVM command line: `--enable-native-access=ALL-UNNAMED`
+on the classpath, or `--enable-native-access=io.github.dfa1.zstd` on the module path.
+
+## Module path
+
+`zstd` ships a `module-info.java` declaring `module io.github.dfa1.zstd`, which
+exports only the public API package (`io.github.dfa1.zstd`). The native library
+still comes from the separate `zstd-native-<classifier>` artifact, loaded at
+runtime — it is not itself a JPMS module. Putting the jar on the classpath
+instead of the module path works unchanged (it becomes part of the unnamed
+module and the descriptor is ignored). See
+[ADR 0011](../adr/0011-jpms-module-descriptor.md) for the design rationale.
 
 ## Build from source
 

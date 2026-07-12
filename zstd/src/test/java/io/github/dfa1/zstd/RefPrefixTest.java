@@ -98,7 +98,7 @@ class RefPrefixTest {
 
             // When — set then clear the prefix before compressing
             cctx.refPrefix(prefix);
-            cctx.refPrefix((MemorySegment) null);
+            cctx.refPrefix(null);
             long n = cctx.compress(frame, src);
 
             // Then — a plain decoder with no prefix decodes it
@@ -226,9 +226,9 @@ class RefPrefixTest {
 
             // When setting and then clearing a prefix on both contexts
             ZstdCompressContext cSet = cctx.refPrefix(prefix);
-            ZstdCompressContext cCleared = cctx.refPrefix((MemorySegment) null);
+            ZstdCompressContext cCleared = cctx.refPrefix(null);
             ZstdDecompressContext dSet = dctx.refPrefix(prefix);
-            ZstdDecompressContext dCleared = dctx.refPrefix((MemorySegment) null);
+            ZstdDecompressContext dCleared = dctx.refPrefix(null);
 
             // Then every call returns the same instance, for chaining
             assertThat(cSet).isSameAs(cctx);

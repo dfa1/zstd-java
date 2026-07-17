@@ -89,6 +89,10 @@ LINK_EXTRA=""
 STRIP_FLAG="-s"
 case "$CLASSIFIER" in
     windows-*) VIS_FLAG=""; LINK_EXTRA="-Wl,--export-all-symbols"; STRIP_FLAG="" ;;
+    # Full RELRO + immediate binding: GOT is remapped read-only after startup
+    # relocation, closing off the classic GOT-overwrite exploit primitive.
+    # ELF-only (-z is a GNU ld/lld ELF flag; Mach-O/PE have no equivalent).
+    linux-*) LINK_EXTRA="-Wl,-z,relro,-z,now" ;;
 esac
 
 # Modern ARM baseline: ARMv8-A + CRC (zig's -mcpu syntax; clang's GCC-style

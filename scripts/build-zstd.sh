@@ -110,11 +110,25 @@ case "$CLASSIFIER" in
     *-aarch64) ARCH_FLAG="-mcpu=generic+crc" ;;
 esac
 
+# LTO: zig's Mach-O backend is a self-hosted linker with no LTO support
+# ("error: LTO requires using LLD"), so this is ELF-only for now. zig 0.16
+# still links ELF through its bundled real lld by default (the self-hosted
+# ELF linker is early-stage/opt-in), so -flto works there — confirmed by
+# cross-compiling this classifier to a .o and a linked .so locally. What
+# can't be confirmed off a Linux host: that the LTO-linked library is
+# actually correct at runtime, hence gating this on CI (which natively
+# builds and test-runs linux-x86_64/linux-aarch64) rather than shipping it
+# straight to every platform like the ASM/arch/hardening flags in #70.
+LTO_FLAG=""
+case "$CLASSIFIER" in
+    linux-*) LTO_FLAG="-flto" ;;
+esac
+
 # Decode (not encode) formats back to zstd v0.4, matching what zstd-jni
 # ships by default. v0.1-v0.3 stay off (ZSTD_LEGACY_SUPPORT>=4 skips their
 # zstd_v0{1,2,3}.c decoders per legacy/zstd_legacy.h) — those predate zstd's
 # 1.0 stabilization and are vanishingly unlikely to show up in the wild.
-CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DZSTD_LEGACY_SUPPORT=4 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
+CFLAGS="-O3 $ARCH_FLAG $LTO_FLAG -DNDEBUG -DZSTD_LEGACY_SUPPORT=4 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
         -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
 
 i=0
@@ -131,7 +145,7 @@ wait
 SONAME_FLAG=""
 [ "$LIB_NAME" = "libzstd.so" ] && SONAME_FLAG="-Wl,-soname,libzstd.so.1"
 
-zig cc -target "$ZIG_TARGET" -shared $STRIP_FLAG $SONAME_FLAG $LINK_EXTRA -o "$DEST_DIR/$LIB_NAME" "$WORK"/*.o
+zig cc -target "$ZIG_TARGET" -shared $LTO_FLAG $STRIP_FLAG $SONAME_FLAG $LINK_EXTRA -o "$DEST_DIR/$LIB_NAME" "$WORK"/*.o
 
 # lld emits a .pdb (debug database, multiple MB) and a .lib (import library) next
 # to a Windows .dll; neither is needed at runtime and both would be bundled into

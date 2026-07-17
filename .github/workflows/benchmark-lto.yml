@@ -77,10 +77,14 @@ jobs:
       - name: Summarize
         shell: bash
         run: |
+          # tee, not just >>, so the table also lands in the plain job log -
+          # $GITHUB_STEP_SUMMARY is a web-UI-only feature (client-side render,
+          # not exposed via the REST API), so a redirect-only version isn't
+          # fetchable by tooling, only by a human clicking into the run.
           {
             echo "### ${{ matrix.classifier }}"
             echo
             python3 baseline/.github/scripts/compare-benchmarks.py \
               baseline-results.json lto-results.json
             echo
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"

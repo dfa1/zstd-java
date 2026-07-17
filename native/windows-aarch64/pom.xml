@@ -35,8 +35,13 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<executable>${maven.multiModuleProjectDirectory}/scripts/build-zstd.sh</executable>
+							<!-- Invoke via bash explicitly: Windows can't execute a .sh via
+							     its shebang the way macOS/Linux can (CreateProcess error=193,
+							     "%1 is not a valid Win32 application"). GitHub's Windows
+							     runners ship Git Bash on PATH; macOS/Linux always have bash. -->
+							<executable>bash</executable>
 							<arguments>
+								<argument>${maven.multiModuleProjectDirectory}/scripts/build-zstd.sh</argument>
 								<argument>${project.basedir}/src/main/resources</argument>
 								<argument>windows-aarch64</argument>
 							</arguments>

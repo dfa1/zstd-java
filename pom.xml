@@ -58,7 +58,7 @@
 		<maven-release-plugin.version>3.3.1</maven-release-plugin.version>
 		<maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
 		<jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
-		<pitest-maven.version>1.25.5</pitest-maven.version>
+		<pitest-maven.version>1.25.7</pitest-maven.version>
 		<pitest-junit5-plugin.version>1.2.3</pitest-junit5-plugin.version>
 
 		<!-- SonarCloud analysis (.github/workflows/sonar.yml). -->
@@ -146,7 +146,7 @@
 			<dependency>
 				<groupId>org.junit.jupiter</groupId>
 				<artifactId>junit-jupiter</artifactId>
-				<version>6.1.1</version>
+				<version>6.1.2</version>
 			</dependency>
 			<dependency>
 				<groupId>org.assertj</groupId>
@@ -232,7 +232,7 @@
 						<dependency>
 							<groupId>com.puppycrawl.tools</groupId>
 							<artifactId>checkstyle</artifactId>
-							<version>13.7.0</version>
+							<version>13.8.0</version>
 						</dependency>
 					</dependencies>
 				</plugin>

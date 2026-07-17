@@ -90,7 +90,16 @@ STRIP_FLAG="-s"
 case "$CLASSIFIER" in
     windows-*) VIS_FLAG=""; LINK_EXTRA="-Wl,--export-all-symbols"; STRIP_FLAG="" ;;
 esac
-CFLAGS="-O3 -DNDEBUG -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
+
+# Modern ARM baseline: ARMv8-A + CRC (zig's -mcpu syntax; clang's GCC-style
+# -march=armv8-a+crc isn't accepted by zig's driver). "generic" keeps every
+# aarch64 CPU supported, unlike pinning to e.g. apple_m1.
+ARCH_FLAG=""
+case "$CLASSIFIER" in
+    *-aarch64) ARCH_FLAG="-mcpu=generic+crc" ;;
+esac
+
+CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
         -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
 
 i=0

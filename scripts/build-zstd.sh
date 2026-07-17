@@ -50,8 +50,22 @@ if [ -f "$DEST_DIR/$LIB_NAME" ]; then
 fi
 
 HOST_OS=$(uname -s); HOST_ARCH=$(uname -m)
-case "$HOST_OS" in Darwin) HOST_OS_NAME="osx" ;; Linux) HOST_OS_NAME="linux" ;; esac
-case "$HOST_ARCH" in arm64|aarch64) HOST_ARCH_NAME="aarch64" ;; x86_64) HOST_ARCH_NAME="x86_64" ;; esac
+# Git Bash's uname -s reports MINGW64_NT-.../MSYS_NT-... (never "Windows"), and
+# an unmatched case leaves HOST_OS_NAME unset - a hard failure under set -u.
+# HOST_CLASSIFIER is cosmetic (the "(cross from ...)" log hint only; the build
+# itself is driven entirely by $ZIG_TARGET/$CLASSIFIER from argv), but it still
+# needs a value on every host, including ones we don't specifically recognize.
+case "$HOST_OS" in
+    Darwin) HOST_OS_NAME="osx" ;;
+    Linux) HOST_OS_NAME="linux" ;;
+    MINGW*|MSYS*|CYGWIN*) HOST_OS_NAME="windows" ;;
+    *) HOST_OS_NAME="unknown" ;;
+esac
+case "$HOST_ARCH" in
+    arm64|aarch64) HOST_ARCH_NAME="aarch64" ;;
+    x86_64) HOST_ARCH_NAME="x86_64" ;;
+    *) HOST_ARCH_NAME="unknown" ;;
+esac
 HOST_CLASSIFIER="${HOST_OS_NAME}-${HOST_ARCH_NAME}"
 CROSS=""
 [ "$CLASSIFIER" != "$HOST_CLASSIFIER" ] && CROSS=" (cross from $HOST_CLASSIFIER)"

@@ -60,14 +60,20 @@ echo "[build-zstd] Building zstd $CLASSIFIER$CROSS with zig cc (jobs=$JOBS)..."
 
 # Library sources: core (common/compress/decompress) plus the dictionary
 # builder (ZDICT_* API). legacy/ and deprecated/ are intentionally excluded.
+# huf_decompress_amd64.S is hand-written BMI2 Huffman-decode asm; its body is
+# entirely wrapped in `#if ZSTD_ENABLE_ASM_X86_64_BMI2` (gated on __x86_64__),
+# so it compiles to a no-op object on every non-x86_64 target and only kicks
+# in there via zstd's own runtime BMI2 detection (DYNAMIC_BMI2) — safe to
+# always include rather than special-case it per classifier.
 SRCS=$(find "$ZSTD_LIB/common" "$ZSTD_LIB/compress" "$ZSTD_LIB/decompress" \
             "$ZSTD_LIB/dictBuilder" -name '*.c' | sort)
+SRCS="$SRCS
+$ZSTD_LIB/decompress/huf_decompress_amd64.S"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # Compile flags:
-#   -DZSTD_DISABLE_ASM=1  -> skip x86-only .S files, identical codegen every target
 #   -DZSTD_MULTITHREAD off -> single-threaded, no pthread dependency (hermetic)
 #   -DXXH_NAMESPACE        -> matches zstd's own build, avoids xxhash symbol clashes
 # ELF/Mach-O: -fvisibility=hidden + zstd's ZSTDLIB_VISIBLE keeps the surface
@@ -83,8 +89,21 @@ LINK_EXTRA=""
 STRIP_FLAG="-s"
 case "$CLASSIFIER" in
     windows-*) VIS_FLAG=""; LINK_EXTRA="-Wl,--export-all-symbols"; STRIP_FLAG="" ;;
+    # Full RELRO + immediate binding: GOT is remapped read-only after startup
+    # relocation, closing off the classic GOT-overwrite exploit primitive.
+    # ELF-only (-z is a GNU ld/lld ELF flag; Mach-O/PE have no equivalent).
+    linux-*) LINK_EXTRA="-Wl,-z,relro,-z,now" ;;
 esac
-CFLAGS="-O3 -DNDEBUG -DZSTD_DISABLE_ASM=1 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
+
+# Modern ARM baseline: ARMv8-A + CRC (zig's -mcpu syntax; clang's GCC-style
+# -march=armv8-a+crc isn't accepted by zig's driver). "generic" keeps every
+# aarch64 CPU supported, unlike pinning to e.g. apple_m1.
+ARCH_FLAG=""
+case "$CLASSIFIER" in
+    *-aarch64) ARCH_FLAG="-mcpu=generic+crc" ;;
+esac
+
+CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
         -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
 
 i=0

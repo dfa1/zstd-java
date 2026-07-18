@@ -6,6 +6,8 @@ git tags, which trigger publication to Maven Central.
 
 ## [Unreleased]
 
+## [0.10] - 2026-07-18
+
 ### Added
 - Native builds now compile with `ZSTD_MULTITHREAD`, making
   `ZstdCompressParameter.NB_WORKERS` (plus `JOB_SIZE` and `OVERLAP_LOG`)

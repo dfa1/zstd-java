@@ -4,7 +4,7 @@
 
 	<groupId>io.github.dfa1.zstd</groupId>
 	<artifactId>zstd-java</artifactId>
-	<version>0.9</version>
+	<version>0.10</version>
 	<packaging>pom</packaging>
 
 	<name>zstd-java</name>

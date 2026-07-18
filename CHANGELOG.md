@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
-## [Unreleased]
+## [0.9] - 2026-07-18
 
 ### Added
 - Native builds now decode legacy zstd frame formats v0.4-v0.7
@@ -30,6 +30,13 @@ git tags, which trigger publication to Maven Central.
   immediate binding (`-Wl,-z,relro,-z,now`), closing off the classic
   GOT-overwrite exploit primitive. Verified with `llvm-readelf`.
   ([#71](https://github.com/dfa1/zstd-java/pull/71))
+- `windows-x86_64`/`windows-aarch64` native builds now export only zstd's
+  public API (`ZSTD_*`/`ZDICT_*`) from the DLL, via `-DZSTD_DLL_EXPORT=1`
+  (the PE analogue of the `-fvisibility=hidden` surface already used on
+  ELF/Mach-O), instead of dumping every internal symbol
+  (`FSE_*`/`HUF_*`/`COVER_*`/...) into the export table via
+  `--export-all-symbols`. Cut the windows-x86_64 export table from 576 to
+  185 symbols. ([#79](https://github.com/dfa1/zstd-java/pull/79))
 
 ### Fixed
 - Building the native library from source on Windows was silently broken:
@@ -38,6 +45,13 @@ git tags, which trigger publication to Maven Central.
   `bash` explicitly. A second latent bug this surfaced — unrecognized/Windows
   host OS detection crashed the build script under `set -u` — is fixed
   alongside it. ([#75](https://github.com/dfa1/zstd-java/pull/75))
+- Native library compilation now runs every translation unit through a real
+  parallel work queue (`xargs -P`) instead of a fixed-size batch-then-wait
+  loop, and aborts immediately if any `zig cc` invocation fails. Previously a
+  failed compile under `&`/`wait` was invisible to `set -e` — it could
+  silently produce no `.o` and only surface later as a cryptic link error, or
+  worse, a link that "succeeded" against a stale `.o` left over from a
+  previous run. ([#78](https://github.com/dfa1/zstd-java/pull/78))
 
 Investigated and **rejected** as part of the same effort (see
 [#70](https://github.com/dfa1/zstd-java/issues/70) for full benchmark data):

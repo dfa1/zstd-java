@@ -43,9 +43,19 @@ public enum ZstdCompressParameter {
     CHECKSUM_FLAG(201),
     /// Write the dictionary id into the frame header (1, the default) or not (0).
     DICT_ID_FLAG(202),
-    /// Number of worker threads (0 = single-threaded). Requires a multithreaded
-    /// build of the native library; the bundled library is single-threaded, so a
-    /// non-zero value has no effect.
+    /// Number of worker threads (0 = single-threaded, the default).
+    ///
+    /// Workers engage only when the input exceeds zstd's internal job-size
+    /// minimum (512 KiB for one-shot compression); smaller inputs compress
+    /// single-threaded regardless. Multithreaded output is a valid zstd frame
+    /// but is not byte-identical to single-threaded output. Out-of-range
+    /// values are clamped into [#bounds()] rather than rejected.
+    ///
+    /// The worker threads spawn lazily on the first compress call and belong
+    /// to the context: [ZstdCompressContext#reset(ZstdResetDirective)] does
+    /// not release them, only [ZstdCompressContext#close()] does. A context
+    /// that compresses with workers also holds large native job buffers
+    /// (tens of MB, scaling with workers and job size) until closed.
     NB_WORKERS(400),
     /// Size of a compression job, in bytes, when multithreading (0 = automatic).
     JOB_SIZE(401),

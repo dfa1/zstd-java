@@ -53,10 +53,6 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// mismatch, native error-code marshaling). Pure-Java logic identical on every
 /// platform (enum bounds sweeps, dictionary-training algorithm variants,
 /// record equals/hashCode) belongs in the unit suite, not here.
-///
-/// Deliberately excludes multithreaded compression (`NB_WORKERS` > 0): the
-/// bundled native library is single-threaded, so exercising it would only
-/// prove the parameter is a no-op, not that threading works.
 public class Smoke {
 
     private static final String PLATFORM = System.getProperty("os.name") + "/" + System.getProperty("os.arch");
@@ -72,6 +68,7 @@ public class Smoke {
         compressContextAdvancedParameters();
         decompressContextAdvanced();
         prefixCompression();
+        mtRoundTrip();
 
         List<byte[]> samples = jsonSamples();
         ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
@@ -258,6 +255,21 @@ public class Smoke {
             dctx.refPrefix(prefix);
             byte[] restored = dctx.decompress(delta, newVersion.length);
             checkArrayEquals(newVersion, restored, "prefix compression round-trip mismatch");
+        }
+    }
+
+    private static void mtRoundTrip() {
+        // Native worker-thread spawning is exactly the platform-specific
+        // behavior this smoke suite exists for: pthreads on glibc/musl,
+        // Win32 _beginthreadex on Windows. 2 MiB clears zstd's 512 KiB
+        // job-size minimum so workers actually engage.
+        byte[] original = new String(sampleText(), StandardCharsets.UTF_8).repeat(60)
+                .getBytes(StandardCharsets.UTF_8);
+        try (ZstdCompressContext cctx = new ZstdCompressContext()) {
+            cctx.parameter(ZstdCompressParameter.NB_WORKERS, 2);
+            byte[] compressed = cctx.compress(original);
+            checkArrayEquals(original, Zstd.decompress(compressed, original.length),
+                    "multithreaded (NB_WORKERS=2) round-trip mismatch");
         }
     }
 

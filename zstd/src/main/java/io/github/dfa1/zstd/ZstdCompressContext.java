@@ -10,6 +10,12 @@ import java.util.Objects;
 /// state allocation, making it cheaper than the stateless [Zstd#compress]
 /// on hot paths. Not thread-safe: confine an instance to one thread or pool it.
 ///
+/// A context that has compressed with [ZstdCompressParameter#NB_WORKERS]
+/// set above zero owns live native worker threads and job buffers that
+/// [#reset(ZstdResetDirective)] does **not** release — only [#close()]
+/// frees them. Give such a context a dedicated owner and close it when
+/// done; never keep it in a long-lived pool.
+///
 /// {@snippet :
 /// try (ZstdCompressContext ctx = new ZstdCompressContext().level(19)) {
 ///     for (byte[] msg : messages) {

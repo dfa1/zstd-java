@@ -1,8 +1,9 @@
 # ADR 0014: Single-threaded native build (no `nbWorkers`)
 
-- **Status:** Accepted
+- **Status:** Superseded
 - **Date:** 2026-06-27
 - **Deciders:** project maintainer
+- **Superseded by:** [ADR 0015](0015-enable-zstd-multithread.md)
 
 ## Context
 

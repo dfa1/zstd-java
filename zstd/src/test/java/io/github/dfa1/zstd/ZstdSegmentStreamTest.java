@@ -109,7 +109,7 @@ class ZstdSegmentStreamTest {
                 assertThat(p.consumed()).isEqualTo(original.length);
                 assertThat(p.ingested()).isEqualTo(original.length);
                 assertThat(p.flushed()).isEqualTo(r.bytesProduced());
-                assertThat(p.activeWorkers()).isZero(); // single-threaded build
+                assertThat(p.activeWorkers()).isZero(); // no workers configured
             }
         }
     }

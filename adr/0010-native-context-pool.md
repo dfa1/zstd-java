@@ -29,6 +29,14 @@ bare native contexts, decoupling `#contexts` from `#threads`:
   not a thread count. Excess vthreads block (backpressure) instead of OOM.
 - **Leak-proof borrow** — a `withContext(...)` form that always returns the
   context, even on exception.
+- **`NB_WORKERS` banned** *(amendment, [ADR 0015](0015-enable-zstd-multithread.md))* —
+  pooled contexts must reject `NB_WORKERS > 0` (or be closed instead of
+  recycled once it was set). `ZSTD_CCtx_reset` never frees the lazily-created
+  worker-thread pool (`cctx->mtctx`) — only `ZSTD_freeCCtx` does — so one
+  borrower enabling workers would permanently attach N live OS threads and
+  tens of MB of job buffers to that pool slot, silently inherited by every
+  future borrower. Multithreaded compression requires a dedicated,
+  caller-owned, unpooled context.
 
 Dictionaries are **not** pooled: a `const` CDict/DDict is thread-safe for
 concurrent use, so it is a shared singleton. The efficient composition is

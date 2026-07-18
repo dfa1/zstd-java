@@ -27,9 +27,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// Not thread-safe: confine an instance to a single thread.
 public final class ZstdOutputStream extends OutputStream {
 
-    // ZSTD_cParameter / ZSTD_EndDirective values from zstd.h — see
+    // ZSTD_EndDirective values from zstd.h — see
     // https://facebook.github.io/zstd/doc/api_manual_latest.html
-    private static final int ZSTD_C_COMPRESSION_LEVEL = 100;
     private static final int ZSTD_E_CONTINUE = 0;
     private static final int ZSTD_E_FLUSH = 1;
     private static final int ZSTD_E_END = 2;
@@ -105,7 +104,7 @@ public final class ZstdOutputStream extends OutputStream {
             c = NativeCall.createOrThrow("ZSTD_createCCtx", () -> (MemorySegment) Bindings.CREATE_CCTX.invokeExact());
             this.cctx = c;
             NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
-                    cctx, ZSTD_C_COMPRESSION_LEVEL, level));
+                    cctx, ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
             if (dictionary != null) {
                 loadDictionary(dictionary);
             }
@@ -140,6 +139,21 @@ public final class ZstdOutputStream extends OutputStream {
             NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_LOAD_DICTIONARY.invokeExact(
                     cctx, dictSeg, (long) raw.length));
         }
+    }
+
+    /// Sets an advanced compression parameter — e.g.
+    /// [ZstdCompressParameter#NB_WORKERS] for multithreaded compression of a
+    /// large or unbounded [#write] stream. Set it right after construction,
+    /// before the first `write`; changing it mid-frame is not supported.
+    ///
+    /// @param parameter the parameter to set
+    /// @param value     the value, validated natively against the parameter's bounds
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the value is out of range for the parameter
+    public ZstdOutputStream parameter(ZstdCompressParameter parameter, int value) {
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
+                cctx, parameter.value(), value));
+        return this;
     }
 
     @Override

@@ -82,9 +82,14 @@ compression is only for dedicated, caller-owned contexts —
 ### Risks to manage
 - PR CI compiles all six classifiers but executes tests only on linux-x86_64;
   thread spawning on Windows/macOS/musl is proven by the release-smoke matrix
-  (`Smoke.mtRoundTrip`), not by PR CI.
-- Streaming classes (`ZstdCompressStream`, `ZstdOutputStream`) have no
-  parameter setter, so MT is one-shot-only today; tracked as a follow-up.
+  (`Smoke.multiThreadRoundTrip`), not by PR CI.
+- ~~Streaming classes (`ZstdCompressStream`, `ZstdOutputStream`) have no
+  parameter setter, so MT is one-shot-only today; tracked as a follow-up.~~
+  Resolved by [issue #82](https://github.com/dfa1/zstd-java/issues/82): both
+  classes now expose `parameter(ZstdCompressParameter, int)`, set once right
+  after construction and before the first `compress`/`write` call — the same
+  lifecycle constraint above applies, since the streams already own their
+  context exclusively for their lifetime and free it on `close()`.
 
 ## Alternatives considered
 

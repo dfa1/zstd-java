@@ -5,8 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 
+import static io.github.dfa1.zstd.ZstdTestSupport.bytesOf;
+import static io.github.dfa1.zstd.ZstdTestSupport.segmentOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Multithreaded compression via `NB_WORKERS`. zstd engages workers only when
@@ -74,6 +80,50 @@ class ZstdMultithreadTest {
 
             // Then the frame decompresses back to the original
             assertThat(Zstd.decompress(frame)).isEqualTo(LARGE_PAYLOAD);
+        }
+    }
+
+    @Nested
+    class SegmentStreamRoundTrip {
+
+        @ParameterizedTest
+        @ValueSource(ints = {1, 2})
+        void roundTripsWithWorkers(int nbWorkers) {
+            // Given a segment stream configured with worker threads
+            byte[] frame;
+            try (Arena arena = Arena.ofConfined();
+                 ZstdCompressStream sut = new ZstdCompressStream()) {
+                sut.parameter(ZstdCompressParameter.NB_WORKERS, nbWorkers);
+
+                // When compressing a payload large enough to engage the workers
+                MemorySegment src = segmentOf(arena, LARGE_PAYLOAD);
+                MemorySegment dst = arena.allocate(Zstd.compressBound(LARGE_PAYLOAD.length));
+                ZstdStreamResult r = sut.compress(dst, src, ZstdEndDirective.END);
+                frame = bytesOf(dst, r.bytesProduced());
+            }
+
+            // Then the frame decompresses back to the original
+            assertThat(Zstd.decompress(frame)).isEqualTo(LARGE_PAYLOAD);
+        }
+    }
+
+    @Nested
+    class OutputStreamRoundTrip {
+
+        @ParameterizedTest
+        @ValueSource(ints = {1, 2})
+        void roundTripsWithWorkers(int nbWorkers) throws IOException {
+            // Given an output stream configured with worker threads
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream sut = new ZstdOutputStream(sink)) {
+                sut.parameter(ZstdCompressParameter.NB_WORKERS, nbWorkers);
+
+                // When writing a payload large enough to engage the workers
+                sut.write(LARGE_PAYLOAD);
+            }
+
+            // Then the frame decompresses back to the original
+            assertThat(Zstd.decompress(sink.toByteArray(), LARGE_PAYLOAD.length)).isEqualTo(LARGE_PAYLOAD);
         }
     }
 

@@ -37,7 +37,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1, jvmArgsAppend = "--enable-native-access=ALL-UNNAMED")
 @Warmup(iterations = 3)
 @Measurement(iterations = 5)
-public class MtCompressBenchmark {
+public class MultiThreadCompressBenchmark {
 
     @Param({"1048576", "67108864"})
     private int size;

@@ -102,12 +102,12 @@ class ZstdJniInteropTest {
     class Multithreaded {
 
         /// Above zstd's 512 KiB minimum job size, so workers actually engage.
-        private static final int MT_PAYLOAD_SIZE = 2 * 1024 * 1024;
+        private static final int MULTI_THREAD_PAYLOAD_SIZE = 2 * 1024 * 1024;
 
         @ParameterizedTest
         @ValueSource(ints = {1, 2})
-        void javaMtCompressJniDecompress(int nbWorkers) {
-            byte[] data = compressible(new Random(0x5EED), MT_PAYLOAD_SIZE);
+        void javaMultiThreadCompressJniDecompress(int nbWorkers) {
+            byte[] data = compressible(new Random(0x5EED), MULTI_THREAD_PAYLOAD_SIZE);
 
             byte[] frame;
             try (ZstdCompressContext ctx = new ZstdCompressContext()) {
@@ -118,8 +118,8 @@ class ZstdJniInteropTest {
         }
 
         @Test
-        void jniMtCompressJavaDecompress() throws Exception {
-            byte[] data = compressible(new Random(0xFEED), MT_PAYLOAD_SIZE);
+        void jniMultiThreadCompressJavaDecompress() throws Exception {
+            byte[] data = compressible(new Random(0xFEED), MULTI_THREAD_PAYLOAD_SIZE);
 
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             try (var zout = new com.github.luben.zstd.ZstdOutputStream(sink)) {
@@ -127,6 +127,18 @@ class ZstdJniInteropTest {
                 zout.write(data);
             }
             assertThat(Zstd.decompress(sink.toByteArray(), data.length)).isEqualTo(data);
+        }
+
+        @Test
+        void javaMultiThreadStreamCompressJniDecompress() throws Exception {
+            byte[] data = compressible(new Random(0xC0FFEE), MULTI_THREAD_PAYLOAD_SIZE);
+
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (ZstdOutputStream zout = new ZstdOutputStream(sink)) {
+                zout.parameter(ZstdCompressParameter.NB_WORKERS, 2);
+                zout.write(data);
+            }
+            assertThat(com.github.luben.zstd.Zstd.decompress(sink.toByteArray(), data.length)).isEqualTo(data);
         }
     }
 

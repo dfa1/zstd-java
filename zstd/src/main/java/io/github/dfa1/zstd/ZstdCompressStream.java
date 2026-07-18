@@ -82,6 +82,21 @@ public final class ZstdCompressStream extends NativeObject {
         }
     }
 
+    /// Sets an advanced compression parameter — e.g.
+    /// [ZstdCompressParameter#NB_WORKERS] for multithreaded streaming
+    /// compression. Set it right after construction, before the first
+    /// [#compress] call; changing it mid-frame is not supported.
+    ///
+    /// @param parameter the parameter to set
+    /// @param value     the value, validated natively against the parameter's bounds
+    /// @return `this`, for chaining
+    /// @throws ZstdException if the value is out of range for the parameter
+    public ZstdCompressStream parameter(ZstdCompressParameter parameter, int value) {
+        NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
+                ptr(), parameter.value(), value));
+        return this;
+    }
+
     /// Compresses as much of `src` as fits into `dst` in one step.
     ///
     /// Advance the source by [ZstdStreamResult#bytesConsumed()] and write out

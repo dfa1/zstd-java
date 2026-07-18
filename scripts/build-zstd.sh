@@ -95,12 +95,17 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # Compile flags:
-#   -DZSTD_MULTITHREAD off -> single-threaded. NOT a hermeticity choice - zig
-#                             bundles pthreads for every target regardless.
-#                             Left off for now (undecided, not evaluated on
-#                             the merits); this makes ZstdCompressParameter's
-#                             NB_WORKERS a silent no-op. See #80.
-#   -DXXH_NAMESPACE        -> matches zstd's own build, avoids xxhash symbol clashes
+#   -DZSTD_MULTITHREAD=1 -> multithreaded compression (ZSTD_c_nbWorkers), per
+#                           ADR 0015. Unix targets get pthreads from zig's
+#                           bundled libc; Windows uses zstd's native Win32
+#                           threading (threading.h wraps _beginthreadex /
+#                           CRITICAL_SECTION), so no winpthreads anywhere. No
+#                           explicit -pthread/-lpthread at link: an ELF .so may
+#                           carry undefined pthread symbols, and the JVM
+#                           process always has them loaded before dlopen —
+#                           avoiding a DT_NEEDED libpthread.so.0 entry keeps
+#                           the musl/gcompat smoke legs working.
+#   -DXXH_NAMESPACE      -> matches zstd's own build, avoids xxhash symbol clashes
 # ELF/Mach-O: -fvisibility=hidden + zstd's ZSTDLIB_VISIBLE keeps the surface
 # minimal. Windows/MinGW: -fvisibility=hidden stays on too (it governs whether
 # lld auto-exports undecorated globals on PE, same as ELF/Mach-O) and
@@ -137,7 +142,7 @@ esac
 # ships by default. v0.1-v0.3 stay off (ZSTD_LEGACY_SUPPORT>=4 skips their
 # zstd_v0{1,2,3}.c decoders per legacy/zstd_legacy.h) — those predate zstd's
 # 1.0 stabilization and are vanishingly unlikely to show up in the wild.
-CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DZSTD_LEGACY_SUPPORT=4 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
+CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DZSTD_MULTITHREAD=1 -DZSTD_LEGACY_SUPPORT=4 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
         $DLL_EXPORT_FLAG -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
 
 # xargs -P keeps all $JOBS slots saturated (a fixed-size batch-then-wait loop

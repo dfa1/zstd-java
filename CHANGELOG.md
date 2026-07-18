@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [Unreleased]
+
+### Added
+- Native builds now compile with `ZSTD_MULTITHREAD`, making
+  `ZstdCompressParameter.NB_WORKERS` (plus `JOB_SIZE` and `OVERLAP_LOG`)
+  functional instead of a silent no-op. Workers engage above zstd's 512 KiB
+  job-size minimum; multithreaded frames are format-valid but not
+  byte-identical to single-threaded output. A context that compressed with
+  workers holds its native worker threads until `close()` — `reset()` does
+  not release them, so give such contexts a dedicated owner (never pool
+  them). See [ADR 0015](adr/0015-enable-zstd-multithread.md), which
+  supersedes ADR 0014.
+  ([#80](https://github.com/dfa1/zstd-java/issues/80))
+
 ## [0.9] - 2026-07-18
 
 ### Added

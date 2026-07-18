@@ -32,4 +32,5 @@ shipped, so contributors can see *why* the project looks the way it does.
 | 0011 | JPMS module descriptor                             | Accepted  |
 | 0012 | Benchmark methodology and publishing               | Proposed  |
 | 0013 | Binding coverage scope — exclude legacy/deprecated | Accepted  |
-| 0014 | Single-threaded native build (no `nbWorkers`)      | Accepted  |
+| 0014 | Single-threaded native build (no `nbWorkers`)      | Superseded |
+| 0015 | Enable `ZSTD_MULTITHREAD` (native `nbWorkers`)     | Accepted  |

@@ -99,12 +99,13 @@ trap 'rm -rf "$WORK"' EXIT
 #                           ADR 0015. Unix targets get pthreads from zig's
 #                           bundled libc; Windows uses zstd's native Win32
 #                           threading (threading.h wraps _beginthreadex /
-#                           CRITICAL_SECTION), so no winpthreads anywhere. No
-#                           explicit -pthread/-lpthread at link: an ELF .so may
-#                           carry undefined pthread symbols, and the JVM
-#                           process always has them loaded before dlopen —
-#                           avoiding a DT_NEEDED libpthread.so.0 entry keeps
-#                           the musl/gcompat smoke legs working.
+#                           CRITICAL_SECTION), so no winpthreads anywhere - the
+#                           DLL imports stay UCRT + KERNEL32 only. On linux-gnu
+#                           zig records DT_NEEDED libpthread.so.0 with pre-2.34
+#                           versioned symbols (GLIBC_2.2.5/2.3.2): present on
+#                           every glibc distro back to RHEL 8/Ubuntu 20.04/AL2,
+#                           and irrelevant to the musl smoke legs, which are
+#                           expected-fail until musl natives ship regardless.
 #   -DXXH_NAMESPACE      -> matches zstd's own build, avoids xxhash symbol clashes
 # ELF/Mach-O: -fvisibility=hidden + zstd's ZSTDLIB_VISIBLE keeps the surface
 # minimal. Windows/MinGW: -fvisibility=hidden stays on too (it governs whether

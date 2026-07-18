@@ -98,9 +98,14 @@ trap 'rm -rf "$WORK"' EXIT
 #   -DZSTD_MULTITHREAD off -> single-threaded, no pthread dependency (hermetic)
 #   -DXXH_NAMESPACE        -> matches zstd's own build, avoids xxhash symbol clashes
 # ELF/Mach-O: -fvisibility=hidden + zstd's ZSTDLIB_VISIBLE keeps the surface
-# minimal. Windows/MinGW: drop hidden visibility and let lld auto-export every
-# symbol into the PE export table (the classic, reliable MinGW DLL path).
+# minimal. Windows/MinGW: -fvisibility=hidden stays on too (it governs whether
+# lld auto-exports undecorated globals on PE, same as ELF/Mach-O) and
+# -DZSTD_DLL_EXPORT=1 flips zstd.h's ZSTDLIB_API to __declspec(dllexport) for
+# just the public API - the PE analogue of ZSTDLIB_VISIBLE, giving the same
+# tight export set on all three platforms instead of dumping every internal
+# symbol (FSE_*, HUF_*, COVER_*, ...) into the DLL's export table.
 VIS_FLAG="-fvisibility=hidden"
+DLL_EXPORT_FLAG=""
 LINK_EXTRA=""
 # Strip the symbol/debug tables at link time. An unstripped ELF .so carries full
 # debug_info and is ~6x larger than needed (4.0M -> ~250K); -s drops it. PE/COFF
@@ -109,7 +114,7 @@ LINK_EXTRA=""
 # those are deleted after the link below rather than suppressed via strip.
 STRIP_FLAG="-s"
 case "$CLASSIFIER" in
-    windows-*) VIS_FLAG=""; LINK_EXTRA="-Wl,--export-all-symbols"; STRIP_FLAG="" ;;
+    windows-*) DLL_EXPORT_FLAG="-DZSTD_DLL_EXPORT=1"; STRIP_FLAG="" ;;
     # Full RELRO + immediate binding: GOT is remapped read-only after startup
     # relocation, closing off the classic GOT-overwrite exploit primitive.
     # ELF-only (-z is a GNU ld/lld ELF flag; Mach-O/PE have no equivalent).
@@ -129,7 +134,7 @@ esac
 # zstd_v0{1,2,3}.c decoders per legacy/zstd_legacy.h) — those predate zstd's
 # 1.0 stabilization and are vanishingly unlikely to show up in the wild.
 CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DZSTD_LEGACY_SUPPORT=4 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
-        -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
+        $DLL_EXPORT_FLAG -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
 
 i=0
 for src in $SRCS; do

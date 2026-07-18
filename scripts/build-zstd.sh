@@ -95,7 +95,11 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # Compile flags:
-#   -DZSTD_MULTITHREAD off -> single-threaded, no pthread dependency (hermetic)
+#   -DZSTD_MULTITHREAD off -> single-threaded. NOT a hermeticity choice - zig
+#                             bundles pthreads for every target regardless.
+#                             Left off for now (undecided, not evaluated on
+#                             the merits); this makes ZstdCompressParameter's
+#                             NB_WORKERS a silent no-op. See #80.
 #   -DXXH_NAMESPACE        -> matches zstd's own build, avoids xxhash symbol clashes
 # ELF/Mach-O: -fvisibility=hidden + zstd's ZSTDLIB_VISIBLE keeps the surface
 # minimal. Windows/MinGW: -fvisibility=hidden stays on too (it governs whether

@@ -5,6 +5,7 @@ import com.github.luben.zstd.ZstdDictDecompress;
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressDictionary;
+import io.github.dfa1.zstd.ZstdCompressParameter;
 import io.github.dfa1.zstd.ZstdDecompressContext;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdInputStream;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -93,6 +95,38 @@ class ZstdJniInteropTest {
                 restored = zin.readAllBytes();
             }
             assertThat(restored).isEqualTo(data);
+        }
+    }
+
+    @Nested
+    class Multithreaded {
+
+        /// Above zstd's 512 KiB minimum job size, so workers actually engage.
+        private static final int MT_PAYLOAD_SIZE = 2 * 1024 * 1024;
+
+        @ParameterizedTest
+        @ValueSource(ints = {1, 2})
+        void javaMtCompressJniDecompress(int nbWorkers) {
+            byte[] data = compressible(new Random(0x5EED), MT_PAYLOAD_SIZE);
+
+            byte[] frame;
+            try (ZstdCompressContext ctx = new ZstdCompressContext()) {
+                ctx.parameter(ZstdCompressParameter.NB_WORKERS, nbWorkers);
+                frame = ctx.compress(data);
+            }
+            assertThat(com.github.luben.zstd.Zstd.decompress(frame, data.length)).isEqualTo(data);
+        }
+
+        @Test
+        void jniMtCompressJavaDecompress() throws Exception {
+            byte[] data = compressible(new Random(0xFEED), MT_PAYLOAD_SIZE);
+
+            ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            try (var zout = new com.github.luben.zstd.ZstdOutputStream(sink)) {
+                zout.setWorkers(2);
+                zout.write(data);
+            }
+            assertThat(Zstd.decompress(sink.toByteArray(), data.length)).isEqualTo(data);
         }
     }
 

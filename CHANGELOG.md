@@ -4,6 +4,49 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are released as `v*`
 git tags, which trigger publication to Maven Central.
 
+## [Unreleased]
+
+### Added
+- Native builds now decode legacy zstd frame formats v0.4-v0.7
+  (`ZSTD_LEGACY_SUPPORT=4`, matching zstd-jni's default). v0.1-v0.3 stay
+  unsupported — they predate zstd's 1.0 stabilization and are essentially
+  never seen in practice. Verified against a real fixture of five concatenated
+  legacy frames extracted from zstd's own test suite. ([#73](https://github.com/dfa1/zstd-java/pull/73))
+
+### Changed
+- `linux-x86_64`/`osx-x86_64`/`windows-x86_64` native builds now include
+  zstd's hand-written BMI2 Huffman-decode assembly (previously disabled). It
+  is a no-op on non-x86_64 targets and only activates via zstd's own runtime
+  CPU detection; benchmarked as throughput-neutral on this project's
+  synthetic workload but carries no measured downside either.
+  ([#71](https://github.com/dfa1/zstd-java/pull/71))
+- `aarch64` native builds now target an ARMv8-A + CRC baseline
+  (`-mcpu=generic+crc`, zig's spelling of `-march=armv8-a+crc`), instead of
+  the fully generic baseline. Measured +6.9% compress / +12-14% decompress
+  throughput on Apple Silicon. ([#71](https://github.com/dfa1/zstd-java/pull/71))
+
+### Security
+- `linux-x86_64`/`linux-aarch64` native builds now link with full RELRO and
+  immediate binding (`-Wl,-z,relro,-z,now`), closing off the classic
+  GOT-overwrite exploit primitive. Verified with `llvm-readelf`.
+  ([#71](https://github.com/dfa1/zstd-java/pull/71))
+
+### Fixed
+- Building the native library from source on Windows was silently broken:
+  Maven's exec plugin tried to execute `build-zstd.sh` directly, which only
+  works via a shebang on macOS/Linux. Windows builds now invoke it through
+  `bash` explicitly. A second latent bug this surfaced — unrecognized/Windows
+  host OS detection crashed the build script under `set -u` — is fixed
+  alongside it. ([#75](https://github.com/dfa1/zstd-java/pull/75))
+
+Investigated and **rejected** as part of the same effort (see
+[#70](https://github.com/dfa1/zstd-java/issues/70) for full benchmark data):
+LTO (real compress regression on x86_64, unsupported on macOS entirely — zig's
+Mach-O linker has no LTO support) and an `x86-64-v3` baseline (mixed result,
+hurts compress more than it helps decompress). Both would have traded away
+this project's existing compress-side edge over zstd-jni for a smaller
+decompress-side gain.
+
 ## [0.8] - 2026-07-12
 
 ### Added

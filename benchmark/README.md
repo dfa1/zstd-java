@@ -21,7 +21,7 @@ Plus a multithreading suite (kept separate so the single-threaded numbers stay
 longitudinally comparable, and because MT is a no-op below zstd's 512 KiB job
 minimum):
 
-- `MtCompressBenchmark` — 1 MiB / 64 MiB × `nbWorkers` 0 / 2 / 4 at level 3,
+- `MultiThreadCompressBenchmark` — 1 MiB / 64 MiB × `nbWorkers` 0 / 2 / 4 at level 3,
   zero-copy `MemorySegment` path only. The 1 MiB legs measure MT overhead on a
   single-job input (no speedup expected by design — at level 3 the default job
   size is ~8 MiB); the 64 MiB legs span multiple jobs and show the scaling.

@@ -68,7 +68,7 @@ public class Smoke {
         compressContextAdvancedParameters();
         decompressContextAdvanced();
         prefixCompression();
-        mtRoundTrip();
+        multiThreadRoundTrip();
 
         List<byte[]> samples = jsonSamples();
         ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
@@ -258,7 +258,7 @@ public class Smoke {
         }
     }
 
-    private static void mtRoundTrip() {
+    private static void multiThreadRoundTrip() {
         // Native worker-thread spawning is exactly the platform-specific
         // behavior this smoke suite exists for: pthreads on glibc/musl,
         // Win32 _beginthreadex on Windows. 2 MiB clears zstd's 512 KiB

@@ -31,9 +31,9 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | Reusable contexts | 6 / 8 | CCtx/DCtx create/free/compress/decompress |
 | Dictionary — simple | 11 / 23 | raw + digested (CDict/DDict) + dict-id queries; `_advanced`/`_byReference`/`Begin` variants not bound |
 | Dictionary training (ZDICT) | 8 / 12 | trainFromBuffer, cover/fastCover optimizers, finalizeDictionary, getDictHeaderSize |
-| Streaming — compress | 3 / 22 | `ZstdOutputStream` (compressStream2 + buffer sizes) |
-| Streaming — decompress | 3 / 15 | `ZstdInputStream` (decompressStream + buffer sizes) |
-| Advanced parameters | 14 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `C/DCtx_refPrefix`, `c/dParam_getBounds`; multithreaded compression via `NB_WORKERS` (one-shot `ZstdCompressContext` only — the streaming classes expose no parameter setter). The `ZSTD_CCtx_params` bundle (the 10 unbound rows in this section's table below) is experimental (`ZSTDLIB_STATIC_API`, no stability guarantee — exported, but intentionally not surfaced) — see [ADR 0013](../adr/0013-binding-coverage-scope.md) |
+| Streaming — compress | 3 / 22 | `ZstdOutputStream` (`byte[]`/`java.io`) and `ZstdCompressStream` (zero-copy `MemorySegment`) — both drive `compressStream2` + buffer sizes |
+| Streaming — decompress | 3 / 15 | `ZstdInputStream` (`byte[]`/`java.io`) and `ZstdDecompressStream` (zero-copy `MemorySegment`) — both drive `decompressStream` + buffer sizes |
+| Advanced parameters | 14 / 38 | all `ZSTD_cParameter` + `ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter`; `compress2`, `C/DCtx_setParameter`, `C/DCtx_reset`, `C/DCtx_loadDictionary`, `CCtx_refCDict`/`DCtx_refDDict`, `C/DCtx_refPrefix`, `c/dParam_getBounds`; multithreaded compression via `NB_WORKERS` (ADR 0015) is reachable from `ZstdCompressContext.parameter()` and from both streaming classes' `parameter()` (`ZstdCompressStream`, `ZstdOutputStream`). The `ZSTD_CCtx_params` bundle (the 10 unbound rows in this section's table below) is experimental (`ZSTDLIB_STATIC_API`, no stability guarantee — exported, but intentionally not surfaced) — see [ADR 0013](../adr/0013-binding-coverage-scope.md) |
 | Frame inspection | 12 / 13 | `ZstdFrame` + getFrameProgression; `_advanced` not bound |
 | Memory sizing | 9 / 14 | sizeof_C/DCtx, sizeof_C/DDict, estimate C/DCtx + C/DDict size, in-place decompression margin |
 | Low-level block | 0 / 12 | expert block/continue API not bound |
@@ -58,8 +58,8 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 | `ZDICT_trainFromBuffer` | `ZstdDictionary.train` |
 | `ZDICT_getDictID` | `ZstdDictionary.id` |
 | `ZDICT_isError`, `ZDICT_getErrorName` | internal error mapping in `ZstdDictionary` |
-| `ZSTD_compressStream2`, `ZSTD_CStreamInSize`, `ZSTD_CStreamOutSize`, `ZSTD_CCtx_setParameter` | `ZstdOutputStream` |
-| `ZSTD_decompressStream`, `ZSTD_DStreamInSize`, `ZSTD_DStreamOutSize` | `ZstdInputStream` |
+| `ZSTD_compressStream2`, `ZSTD_CStreamInSize`, `ZSTD_CStreamOutSize`, `ZSTD_CCtx_setParameter` | `ZstdOutputStream`, `ZstdCompressStream` |
+| `ZSTD_decompressStream`, `ZSTD_DStreamInSize`, `ZSTD_DStreamOutSize` | `ZstdInputStream`, `ZstdDecompressStream` |
 | `ZSTD_compress2`, `ZSTD_CCtx_setParameter` | `ZstdCompressContext.parameter` / `checksum` / `longDistanceMatching` / `windowLog` (all of `ZstdCompressParameter`) |
 | `ZSTD_DCtx_setParameter` | `ZstdDecompressContext.parameter` / `windowLogMax` (`ZstdDecompressParameter`) |
 | `ZSTD_CCtx_setPledgedSrcSize` | `ZstdOutputStream.withPledgedSize` |
@@ -79,8 +79,8 @@ rather than the deprecated `ZSTD_getDecompressedSize`.
 
 ## Roadmap (priority order)
 
-1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`compressStream2`, `decompressStream`, bounded buffers, dictionary constructors, `pledgedSrcSize` via `withPledgedSize`). Remaining: `MemorySegment`-buffer driver.
-2. ~~**Advanced parameters**~~ — done: every `ZSTD_cParameter`/`ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter` (+ `bounds()`), on both contexts; `pledgedSrcSize`. `nbWorkers` is functional (ADR 0015); reachable from `ZstdCompressContext.parameter()` only — the streaming classes have no parameter setter yet.
+1. ~~**Streaming**~~ — done: `ZstdOutputStream` / `ZstdInputStream` (`byte[]`/`java.io`, `compressStream2`, `decompressStream`, bounded buffers, dictionary constructors, `pledgedSrcSize` via `withPledgedSize`) and `ZstdCompressStream` / `ZstdDecompressStream` (zero-copy `MemorySegment` driver on the same native calls).
+2. ~~**Advanced parameters**~~ — done: every `ZSTD_cParameter`/`ZSTD_dParameter` via `ZstdCompressParameter`/`ZstdDecompressParameter` (+ `bounds()`), on both contexts; `pledgedSrcSize`. `nbWorkers` is functional (ADR 0015) and reachable from `ZstdCompressContext.parameter()` and from `ZstdCompressStream.parameter()` / `ZstdOutputStream.parameter()`.
 3. ~~**Frame inspection**~~ — done: `ZstdFrame` (`isFrame`, `header`, `compressedSize`, `decompressedBound`, `decompressedSize`, `dictId`, skippable, `getFrameProgression`); dict-id from raw/CDict/DDict.
 4. ~~**Better dictionaries**~~ — done: COVER / fast-COVER optimizers, `finalizeDictionary`, `getDictHeaderSize`.
 5. ~~**Typed errors**~~ — done: `ZstdException.code()` returns `ZstdErrorCode` (via `getErrorCode`).

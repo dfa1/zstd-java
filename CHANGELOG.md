@@ -42,10 +42,11 @@ git tags, which trigger publication to Maven Central.
 Investigated and **rejected** as part of the same effort (see
 [#70](https://github.com/dfa1/zstd-java/issues/70) for full benchmark data):
 LTO (real compress regression on x86_64, unsupported on macOS entirely — zig's
-Mach-O linker has no LTO support) and an `x86-64-v3` baseline (mixed result,
-hurts compress more than it helps decompress). Both would have traded away
-this project's existing compress-side edge over zstd-jni for a smaller
-decompress-side gain.
+Mach-O linker has no LTO support, tracked in
+[#77](https://github.com/dfa1/zstd-java/issues/77)) and an `x86-64-v3`
+baseline (mixed result, hurts compress more than it helps decompress). Both
+would have traded away this project's existing compress-side edge over
+zstd-jni for a smaller decompress-side gain.
 
 ## [0.8] - 2026-07-12
 

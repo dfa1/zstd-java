@@ -131,14 +131,20 @@ esac
 CFLAGS="-O3 $ARCH_FLAG -DNDEBUG -DZSTD_LEGACY_SUPPORT=4 -DXXH_NAMESPACE=ZSTD_ $VIS_FLAG \
         -I$ZSTD_LIB -I$ZSTD_LIB/common -fPIC"
 
-i=0
-for src in $SRCS; do
-    out="$WORK/$(basename "$src").o"
-    zig cc -target "$ZIG_TARGET" $CFLAGS -c "$src" -o "$out" &
-    i=$((i + 1))
-    [ $((i % JOBS)) -eq 0 ] && wait
-done
-wait
+# xargs -P keeps all $JOBS slots saturated (a fixed-size batch-then-wait loop
+# idles every other core behind the batch's slowest TU) and, unlike bare `&` +
+# `wait`, actually propagates a failing compile's exit status - xargs -P exits
+# non-zero if any invocation does, which set -e then catches. A silently
+# swallowed failed zig cc would otherwise surface only as a missing .o and a
+# cryptic link error, or worse, a link that "succeeds" with a stale .o left
+# over from a previous run.
+compile_one() {
+    zig cc -target "$ZIG_TARGET" $CFLAGS -c "$1" -o "$WORK/$(basename "$1").o"
+}
+export -f compile_one
+export ZIG_TARGET CFLAGS WORK
+
+printf '%s\n' $SRCS | xargs -P "$JOBS" -I{} bash -c 'compile_one "$@"' _ {}
 
 # Link the shared library. zstd.h marks the public API with ZSTDLIB_VISIBLE,
 # so -fvisibility=hidden keeps everything else internal.

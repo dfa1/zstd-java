@@ -137,8 +137,8 @@ jobs:
             -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
             compile exec:exec
 
-  summary:
-    name: summary
+  results:
+    name: results
     needs: [resolve, smoke]
     if: always()
     runs-on: ubuntu-latest
@@ -154,10 +154,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           jobs=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
-            --jq '[.jobs[] | select(.name != "resolve version" and .name != "summary")]')
+            --jq '[.jobs[] | select(.name != "resolve version" and .name != "results")]')
 
           {
             echo "### Release smoke — version ${{ needs.resolve.outputs.version }}"
+            echo
+            echo "- **gating**: one of the 5 native-runner legs (linux/macOS/Windows). Must pass — a failure here fails the whole workflow."
+            echo "- **probe**: one of the 8 container legs testing extra libc/distro combos (musl, Jammy, UBI, Amazon Linux 2023)."
+            echo "  Informational only (\`continue-on-error: true\`) — a probe failing does not fail the workflow."
             echo
             echo "| Leg | Kind | Result |"
             echo "|---|---|---|"

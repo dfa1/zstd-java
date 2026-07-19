@@ -48,34 +48,34 @@ jobs:
   smoke:
     name: ${{ matrix.classifier }}${{ matrix.label && format(' ({0})', matrix.label) || '' }}
     needs: resolve
-    # Container legs are probes (different glibc distros, musl/Alpine); they don't
-    # gate the workflow. The five native runner legs do.
-    continue-on-error: ${{ matrix.experimental || false }}
+    # Every leg gates the workflow, including the 8 container legs — the
+    # library claims to be portable across distros/libcs, so a failure on any
+    # of them is a real regression, not a shrug.
     strategy:
       fail-fast: false
       matrix:
         # distribution is per-leg for clarity and easy override. Zulu ships JDK 25
         # for all targets (incl. Windows/ARM64, which Temurin does not yet) and
         # matches publish.yml. Legs with `container` run the linux native inside a
-        # container to probe compatibility on different distributions and libcs.
+        # container to check compatibility on other distributions and libcs.
         include:
           - { os: ubuntu-latest,    classifier: linux-x86_64,    distribution: zulu }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64,   distribution: zulu }
           - { os: macos-14,         classifier: osx-aarch64,     distribution: zulu }
           - { os: windows-latest,   classifier: windows-x86_64,  distribution: zulu }
           - { os: windows-11-arm,   classifier: windows-aarch64, distribution: zulu }
-          # musl (Alpine) — glibc natives on a musl libc; expected to fail until musl natives ship
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl,    experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl,    experimental: true }
+          # musl (Alpine) — glibc natives on a musl libc
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-alpine",    label: musl }
           # Ubuntu 22.04 (Jammy) — glibc 2.35; eclipse-temurin has no bookworm tag for JDK 25
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-jammy",       label: jammy,  experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-jammy",       label: jammy,  experimental: true }
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-jammy",       label: jammy }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-jammy",       label: jammy }
           # Red Hat UBI 10 minimal — glibc 2.34 (RHEL-like)
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi,   experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi,   experimental: true }
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi }
           # Amazon Linux 2023 (RHEL-like) — glibc 2.34
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023 }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023 }
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -106,7 +106,7 @@ jobs:
             -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
             compile exec:exec
 
-      # --- container probe: extraction needs unzip, which some minimal images
+      # --- container leg: extraction needs unzip, which some minimal images
       #     (al2023) ship without any package manager at all to install it
       #     with. Sidestep that entirely: extract Maven once on the host
       #     (ubuntu-latest always has curl+unzip) from the same pinned
@@ -159,27 +159,22 @@ jobs:
           {
             echo "### Release smoke — version ${{ needs.resolve.outputs.version }}"
             echo
-            echo "- **gating**: one of the 5 native-runner legs (linux/macOS/Windows). Must pass — a failure here fails the whole workflow."
-            echo "- **probe**: one of the 8 container legs testing extra libc/distro combos (musl, Jammy, UBI, Amazon Linux 2023)."
-            echo "  Informational only (\`continue-on-error: true\`) — a probe failing does not fail the workflow."
+            echo "Every host below gates the workflow — a failure on any one of them is a real portability regression."
             echo
-            echo "| Leg | Kind | Result |"
-            echo "|---|---|---|"
+            echo "| Host | Result |"
+            echo "|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "$jobs" | jq -r '.[] |
-            (if (.name | contains("(")) then "probe" else "gating" end) as $kind |
             (if .conclusion == "success" then "✅ pass"
              elif .conclusion == "skipped" then "⏭️ skipped"
              else "❌ **" + (.conclusion // "unknown") + "**" end) as $result |
-            "| " + .name + " | " + $kind + " | " + $result + " |"' >> "$GITHUB_STEP_SUMMARY"
+            "| " + .name + " | " + $result + " |"' >> "$GITHUB_STEP_SUMMARY"
 
-          gating_total=$(echo "$jobs" | jq '[.[] | select(.name | contains("(") | not)] | length')
-          gating_pass=$(echo "$jobs" | jq '[.[] | select((.name | contains("(") | not) and .conclusion == "success")] | length')
-          probe_total=$(echo "$jobs" | jq '[.[] | select(.name | contains("("))] | length')
-          probe_pass=$(echo "$jobs" | jq '[.[] | select((.name | contains("(")) and .conclusion == "success")] | length')
+          total=$(echo "$jobs" | jq 'length')
+          pass=$(echo "$jobs" | jq '[.[] | select(.conclusion == "success")] | length')
 
           {
             echo
-            echo "**Gating: $gating_pass/$gating_total** · **Probes: $probe_pass/$probe_total**"
+            echo "**$pass/$total passed**"
           } >> "$GITHUB_STEP_SUMMARY"

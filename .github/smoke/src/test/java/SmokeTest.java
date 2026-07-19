@@ -25,6 +25,9 @@ import io.github.dfa1.zstd.ZstdResetDirective;
 import io.github.dfa1.zstd.ZstdSkippableContent;
 import io.github.dfa1.zstd.ZstdStreamResult;
 
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,7 +44,9 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// library loads and links correctly on the host OS/arch/libc, and that
 /// off-heap `MemorySegment` interop and native struct layouts (streaming
 /// buffers, frame progression) work there.
-/// Run against a release from Maven Central, one arch per CI matrix leg.
+/// Run against a release from Maven Central, one arch per CI matrix leg, via
+/// `mvn test` — a JUnit failure here fails just that one check, so a single
+/// broken symbol doesn't hide every other result behind it.
 ///
 /// This deliberately does *not* re-derive full API correctness — that's the
 /// job of the module's JUnit suite, which runs once per PR and fails with a
@@ -51,37 +56,22 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// mismatch, native error-code marshaling). Pure-Java logic identical on every
 /// platform (enum bounds sweeps, dictionary-training algorithm variants,
 /// record equals/hashCode) belongs in the unit suite, not here.
-public class Smoke {
+class SmokeTest {
 
     private static final String PLATFORM = System.getProperty("os.name") + "/" + System.getProperty("os.arch");
 
-    public static void main(String[] args) throws IOException {
-        versionAndSizing();
-        coreRoundTrip();
-        explicitBoundDecompress();
-        zeroCopyFrameSize();
-        corruptAndInvalidInput();
-        frameIntrospection();
-        skippableFrames();
-        compressContextAdvancedParameters();
-        decompressContextAdvanced();
-        prefixCompression();
-        multiThreadRoundTrip();
+    private static ZstdDictionary dict;
+    private static byte[] message;
 
+    @BeforeAll
+    static void trainDictionary() {
         List<byte[]> samples = jsonSamples();
-        ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
-        byte[] message = samples.get(7);
-
-        contextDictionaryPaths(dict, message);
-        digestedDictionaries(dict, message);
-        zeroCopyContextCompression();
-        streamingZeroCopy();
-        streamingIo();
-
-        System.out.println("OK " + PLATFORM + " | zstd " + Zstd.version() + " | all smoke checks passed");
+        dict = ZstdDictionary.train(samples, 8 * 1024);
+        message = samples.get(7);
     }
 
-    private static void versionAndSizing() {
+    @Test
+    void versionAndSizing() {
         check(!Zstd.version().isBlank(), "version() returned blank");
         check(Zstd.versionNumber() > 0, "versionNumber() not positive");
 
@@ -98,7 +88,8 @@ public class Smoke {
         check(Zstd.estimateDecompressDictSize(4096) > 0, "estimateDecompressDictSize() not positive");
     }
 
-    private static void coreRoundTrip() {
+    @Test
+    void coreRoundTrip() {
         byte[] original = sampleText();
 
         byte[] compressedDefault = Zstd.compress(original);
@@ -109,7 +100,8 @@ public class Smoke {
         check(compressed.length < original.length, "expected compression to shrink the input");
     }
 
-    private static void explicitBoundDecompress() {
+    @Test
+    void explicitBoundDecompress() {
         byte[] original = sampleText();
         byte[] compressed = Zstd.compress(original);
 
@@ -125,7 +117,8 @@ public class Smoke {
         }
     }
 
-    private static void zeroCopyFrameSize() {
+    @Test
+    void zeroCopyFrameSize() {
         byte[] original = sampleText();
         byte[] compressed = Zstd.compress(original);
         try (Arena arena = Arena.ofConfined()) {
@@ -134,7 +127,8 @@ public class Smoke {
         }
     }
 
-    private static void corruptAndInvalidInput() {
+    @Test
+    void corruptAndInvalidInput() {
         byte[] original = sampleText();
         try (ZstdCompressContext cctx = new ZstdCompressContext().checksum(true)) {
             byte[] framed = cctx.compress(original);
@@ -162,7 +156,8 @@ public class Smoke {
         }
     }
 
-    private static void frameIntrospection() {
+    @Test
+    void frameIntrospection() {
         byte[] original = sampleText();
         byte[] compressed = Zstd.compress(original);
 
@@ -187,7 +182,8 @@ public class Smoke {
         check(!header.hasChecksum(), "header(byte[]).hasChecksum() expected false (checksum not enabled)");
     }
 
-    private static void skippableFrames() {
+    @Test
+    void skippableFrames() {
         byte[] payload = "smoke-test skippable payload".getBytes(StandardCharsets.UTF_8);
         byte[] frame = ZstdFrame.writeSkippableFrame(payload, 3);
 
@@ -199,7 +195,8 @@ public class Smoke {
         check(read.magicVariant() == 3, "readSkippableFrame() magicVariant mismatch");
     }
 
-    private static void compressContextAdvancedParameters() {
+    @Test
+    void compressContextAdvancedParameters() {
         byte[] original = sampleText();
         try (ZstdCompressContext cctx = new ZstdCompressContext()) {
             cctx.level(5)
@@ -220,7 +217,8 @@ public class Smoke {
         }
     }
 
-    private static void decompressContextAdvanced() {
+    @Test
+    void decompressContextAdvanced() {
         byte[] original = sampleText();
         try (ZstdCompressContext cctx = new ZstdCompressContext().windowLog(23);
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
@@ -236,7 +234,8 @@ public class Smoke {
         }
     }
 
-    private static void prefixCompression() {
+    @Test
+    void prefixCompression() {
         byte[] previousVersion = sampleText();
         byte[] newVersion = (new String(previousVersion, StandardCharsets.UTF_8) + " and a tiny delta at the end")
                 .getBytes(StandardCharsets.UTF_8);
@@ -256,7 +255,8 @@ public class Smoke {
         }
     }
 
-    private static void multiThreadRoundTrip() {
+    @Test
+    void multiThreadRoundTrip() {
         // Native worker-thread spawning is exactly the platform-specific
         // behavior this smoke suite exists for: pthreads on glibc/musl,
         // Win32 _beginthreadex on Windows. 2 MiB clears zstd's 512 KiB
@@ -271,7 +271,8 @@ public class Smoke {
         }
     }
 
-    private static void contextDictionaryPaths(ZstdDictionary dict, byte[] message) {
+    @Test
+    void contextDictionaryPaths() {
         try (ZstdCompressContext cctx = new ZstdCompressContext();
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
             byte[] compressed = cctx.compress(message, dict);
@@ -280,7 +281,8 @@ public class Smoke {
         }
     }
 
-    private static void digestedDictionaries(ZstdDictionary dict, byte[] message) {
+    @Test
+    void digestedDictionaries() {
         try (ZstdCompressDictionary cdict = dict.compressDict();
              ZstdDecompressDictionary ddict = dict.decompressDict();
              ZstdCompressContext cctx = new ZstdCompressContext();
@@ -293,7 +295,8 @@ public class Smoke {
         }
     }
 
-    private static void zeroCopyContextCompression() {
+    @Test
+    void zeroCopyContextCompression() {
         try (Arena arena = Arena.ofConfined();
              ZstdCompressContext cctx = new ZstdCompressContext();
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
@@ -309,7 +312,8 @@ public class Smoke {
         }
     }
 
-    private static void streamingZeroCopy() {
+    @Test
+    void streamingZeroCopy() {
         try (ZstdCompressStream cs = new ZstdCompressStream()) {
             check(cs.sizeOf() > 0, "no-arg ZstdCompressStream.sizeOf() not positive");
         }
@@ -344,7 +348,8 @@ public class Smoke {
         }
     }
 
-    private static void streamingIo() throws IOException {
+    @Test
+    void streamingIo() throws IOException {
         byte[] original = sampleText();
 
         ByteArrayOutputStream sink = new ByteArrayOutputStream();

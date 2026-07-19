@@ -92,10 +92,11 @@ jobs:
           distribution: ${{ matrix.distribution }}
           java-version: '25'
 
-      # --- native runner path (glibc / macOS / Windows): a real `mvn compile
-      #     exec:exec` against .github/smoke/pom.xml, via the vendored Maven
-      #     Wrapper so no preinstalled Maven is required. -Dzstd.version and
-      #     -Dzstd.classifier pin the release and native jar under test. ---
+      # --- native runner path (glibc / macOS / Windows): a real `mvn test`
+      #     against .github/smoke/pom.xml (JUnit 5 via Surefire), via the
+      #     vendored Maven Wrapper so no preinstalled Maven is required.
+      #     -Dzstd.version and -Dzstd.classifier pin the release and native
+      #     jar under test. ---
       - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
         if: ${{ !matrix.container }}
         shell: bash
@@ -104,7 +105,7 @@ jobs:
         run: |
           sh .github/smoke/mvnw -f .github/smoke/pom.xml --no-transfer-progress \
             -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
-            compile exec:exec
+            test
 
       # --- container leg: extraction needs unzip, which some minimal images
       #     (al2023) ship without any package manager at all to install it
@@ -135,7 +136,7 @@ jobs:
           docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP/maven:/opt/maven:ro" -w /w "${{ matrix.container }}" \
             /opt/maven/bin/mvn -f .github/smoke/pom.xml --no-transfer-progress \
             -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
-            compile exec:exec
+            test
 
   results:
     name: results
@@ -161,15 +162,18 @@ jobs:
             echo
             echo "Every host below gates the workflow — a failure on any one of them is a real portability regression."
             echo
-            echo "| Host | Result |"
-            echo "|---|---|"
+            echo "| Host | Result | Duration |"
+            echo "|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "$jobs" | jq -r '.[] |
             (if .conclusion == "success" then "✅ pass"
              elif .conclusion == "skipped" then "⏭️ skipped"
              else "❌ **" + (.conclusion // "unknown") + "**" end) as $result |
-            "| " + .name + " | " + $result + " |"' >> "$GITHUB_STEP_SUMMARY"
+            (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601))) as $dur |
+            (($dur / 60) | floor) as $m | ($dur % 60) as $s |
+            (if $m > 0 then ($m | tostring) + "m " + ($s | tostring) + "s" else ($s | tostring) + "s" end) as $duration |
+            "| " + .name + " | " + $result + " | " + $duration + " |"' >> "$GITHUB_STEP_SUMMARY"
 
           total=$(echo "$jobs" | jq 'length')
           pass=$(echo "$jobs" | jq '[.[] | select(.conclusion == "success")] | length')

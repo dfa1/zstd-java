@@ -83,49 +83,41 @@ jobs:
       - name: Checkout (smoke sources only)
         uses: actions/checkout@v7
 
+      # Host JDK is only needed for the native runner path — the container
+      # path runs its own build entirely inside the target image (see below).
       - name: Set up JDK 25 (host)
+        if: ${{ !matrix.container }}
         uses: actions/setup-java@v5
         with:
           distribution: ${{ matrix.distribution }}
           java-version: '25'
 
-      # --- native runner path (glibc / macOS / Windows): run via JBang on the host ---
-      - name: Set up JBang
-        if: ${{ !matrix.container }}
-        uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
-
+      # --- native runner path (glibc / macOS / Windows): a real `mvn compile
+      #     exec:exec` against .github/smoke/pom.xml, via the vendored Maven
+      #     Wrapper so no preinstalled Maven is required. -Dzstd.version and
+      #     -Dzstd.classifier pin the release and native jar under test. ---
       - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
         if: ${{ !matrix.container }}
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          jbang --java 25 \
-            --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
-            .github/smoke/Smoke.java
+          sh .github/smoke/mvnw -f .github/smoke/pom.xml --no-transfer-progress \
+            -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
+            compile exec:exec
 
-      # --- container probe: fetch + compile on the glibc host, run inside the target
-      #     container, so node-based actions never run under the foreign libc/distro ---
-      - name: Fetch released jars and compile the smoke (container)
+      # --- container probe: the same Maven build runs *inside* the target
+      #     container (the image's own JDK, no host JDK/Maven involved), so
+      #     dependency resolution, compilation, and native-lib loading all
+      #     happen under that distro's libc. Only `docker run` itself executes
+      #     on the host. ---
+      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (${{ matrix.label }})
         if: ${{ matrix.container }}
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
-            -Dartifact="io.github.dfa1.zstd:zstd:${VERSION}" \
-            -DoutputDirectory=libs -Dmdep.stripVersion=true
-          mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
-            -Dartifact="io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
-            -DoutputDirectory=libs -Dmdep.stripVersion=true
-          mkdir -p out
-          javac -cp libs/zstd.jar -d out .github/smoke/Smoke.java
-
-      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (${{ matrix.label }})
-        if: ${{ matrix.container }}
-        shell: bash
-        run: |
           docker run --rm -v "$PWD:/w" -w /w "${{ matrix.container }}" \
-            java --enable-native-access=ALL-UNNAMED \
-            -cp "libs/zstd.jar:libs/zstd-native-${{ matrix.classifier }}.jar:out" \
-            Smoke
+            sh .github/smoke/mvnw -f .github/smoke/pom.xml --no-transfer-progress \
+            -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
+            compile exec:exec

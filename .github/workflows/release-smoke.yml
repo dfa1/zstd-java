@@ -83,49 +83,99 @@ jobs:
       - name: Checkout (smoke sources only)
         uses: actions/checkout@v7
 
+      # Host JDK is only needed for the native runner path — the container
+      # path runs its own build entirely inside the target image (see below).
       - name: Set up JDK 25 (host)
+        if: ${{ !matrix.container }}
         uses: actions/setup-java@v5
         with:
           distribution: ${{ matrix.distribution }}
           java-version: '25'
 
-      # --- native runner path (glibc / macOS / Windows): run via JBang on the host ---
-      - name: Set up JBang
-        if: ${{ !matrix.container }}
-        uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
-
+      # --- native runner path (glibc / macOS / Windows): a real `mvn compile
+      #     exec:exec` against .github/smoke/pom.xml, via the vendored Maven
+      #     Wrapper so no preinstalled Maven is required. -Dzstd.version and
+      #     -Dzstd.classifier pin the release and native jar under test. ---
       - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }}
         if: ${{ !matrix.container }}
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          jbang --java 25 \
-            --deps "io.github.dfa1.zstd:zstd:${VERSION},io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
-            .github/smoke/Smoke.java
+          sh .github/smoke/mvnw -f .github/smoke/pom.xml --no-transfer-progress \
+            -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
+            compile exec:exec
 
-      # --- container probe: fetch + compile on the glibc host, run inside the target
-      #     container, so node-based actions never run under the foreign libc/distro ---
-      - name: Fetch released jars and compile the smoke (container)
+      # --- container probe: extraction needs unzip, which some minimal images
+      #     (al2023) ship without any package manager at all to install it
+      #     with. Sidestep that entirely: extract Maven once on the host
+      #     (ubuntu-latest always has curl+unzip) from the same pinned
+      #     distributionUrl the wrapper uses, then mount it read-only into the
+      #     container. The container only needs its own `java` on PATH — no
+      #     unzip/tar/package manager required inside it at all. ---
+      - name: Extract Maven (host, mounted read-only into the container)
+        if: ${{ matrix.container }}
+        shell: bash
+        run: |
+          distributionUrl=$(sed -n 's/^distributionUrl=//p' .github/smoke/.mvn/wrapper/maven-wrapper.properties)
+          curl -fsSL --proto '=https' --tlsv1.2 "$distributionUrl" -o "$RUNNER_TEMP/maven.zip"
+          unzip -q "$RUNNER_TEMP/maven.zip" -d "$RUNNER_TEMP/maven-extract"
+          mv "$RUNNER_TEMP"/maven-extract/apache-maven-*/ "$RUNNER_TEMP/maven"
+
+      # The same Maven build runs *inside* the target container (its own JDK,
+      # no host JDK involved), so dependency resolution, compilation, and
+      # native-lib loading all happen under that distro's libc. Only
+      # `docker run` itself, plus the Maven extraction above, run on the host.
+      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (${{ matrix.label }})
         if: ${{ matrix.container }}
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
-            -Dartifact="io.github.dfa1.zstd:zstd:${VERSION}" \
-            -DoutputDirectory=libs -Dmdep.stripVersion=true
-          mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
-            -Dartifact="io.github.dfa1.zstd:zstd-native-${{ matrix.classifier }}:${VERSION}" \
-            -DoutputDirectory=libs -Dmdep.stripVersion=true
-          mkdir -p out
-          javac -cp libs/zstd.jar -d out .github/smoke/Smoke.java
+          docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP/maven:/opt/maven:ro" -w /w "${{ matrix.container }}" \
+            /opt/maven/bin/mvn -f .github/smoke/pom.xml --no-transfer-progress \
+            -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
+            compile exec:exec
 
-      - name: Smoke-test ${{ needs.resolve.outputs.version }} on ${{ matrix.classifier }} (${{ matrix.label }})
-        if: ${{ matrix.container }}
-        shell: bash
+  summary:
+    name: summary
+    needs: [resolve, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      # Per-leg results aren't visible to a needs-context (needs.smoke.result is
+      # one aggregate string for the whole matrix), so pull the real per-job
+      # conclusions from the Actions API and render one table up front instead
+      # of making readers open all 13 jobs to see what actually passed.
+      - name: Build results table
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          docker run --rm -v "$PWD:/w" -w /w "${{ matrix.container }}" \
-            java --enable-native-access=ALL-UNNAMED \
-            -cp "libs/zstd.jar:libs/zstd-native-${{ matrix.classifier }}.jar:out" \
-            Smoke
+          jobs=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name != "resolve version" and .name != "summary")]')
+
+          {
+            echo "### Release smoke — version ${{ needs.resolve.outputs.version }}"
+            echo
+            echo "| Leg | Kind | Result |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "$jobs" | jq -r '.[] |
+            (if (.name | contains("(")) then "probe" else "gating" end) as $kind |
+            (if .conclusion == "success" then "✅ pass"
+             elif .conclusion == "skipped" then "⏭️ skipped"
+             else "❌ **" + (.conclusion // "unknown") + "**" end) as $result |
+            "| " + .name + " | " + $kind + " | " + $result + " |"' >> "$GITHUB_STEP_SUMMARY"
+
+          gating_total=$(echo "$jobs" | jq '[.[] | select(.name | contains("(") | not)] | length')
+          gating_pass=$(echo "$jobs" | jq '[.[] | select((.name | contains("(") | not) and .conclusion == "success")] | length')
+          probe_total=$(echo "$jobs" | jq '[.[] | select(.name | contains("("))] | length')
+          probe_pass=$(echo "$jobs" | jq '[.[] | select((.name | contains("(")) and .conclusion == "success")] | length')
+
+          {
+            echo
+            echo "**Gating: $gating_pass/$gating_total** · **Probes: $probe_pass/$probe_total**"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Standalone smoke-test project — deliberately NOT a module of the root
+  reactor. It exercises a PUBLISHED release pulled from Maven Central (no
+  source build, no submodule, no zig), one native classifier at a time, so it
+  tests exactly what users consume. See release-smoke.yml, which runs this
+  once per OS/arch/libc leg via `mvnw compile exec:exec` with
+  -Dzstd.version/-Dzstd.classifier for the version and native jar under test.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>io.github.dfa1.zstd.smoke</groupId>
+	<artifactId>smoke</artifactId>
+	<version>0</version>
+	<packaging>jar</packaging>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.release>25</maven.compiler.release>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd</artifactId>
+			<version>${zstd.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.github.dfa1.zstd</groupId>
+			<artifactId>zstd-native-${zstd.classifier}</artifactId>
+			<version>${zstd.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<finalName>smoke</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.6.3</version>
+				<configuration>
+					<executable>java</executable>
+					<classpathScope>runtime</classpathScope>
+					<arguments>
+						<argument>--enable-native-access=ALL-UNNAMED</argument>
+						<argument>-classpath</argument>
+						<classpath/>
+						<argument>Smoke</argument>
+					</arguments>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

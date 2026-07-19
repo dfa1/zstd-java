@@ -1,8 +1,6 @@
-///usr/bin/env jbang "$0" "$@" ; exit $?
-//JAVA 25
-//RUNTIME_OPTIONS --enable-native-access=ALL-UNNAMED
-// Dependencies are supplied at run time via `jbang --deps ...` so the workflow
-// can pin the released version and the per-arch native jar from the matrix.
+// Dependencies (io.github.dfa1.zstd:zstd and the per-arch native jar) are
+// resolved by ../pom.xml from -Dzstd.version/-Dzstd.classifier, so the
+// workflow can pin the released version and the matrix's native jar.
 
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressContext;

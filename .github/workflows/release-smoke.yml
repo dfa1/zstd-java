@@ -73,9 +73,11 @@ jobs:
           # Red Hat UBI 10 minimal — glibc 2.34 (RHEL-like)
           - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi,   experimental: true }
           - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "eclipse-temurin:25-jdk-ubi10-minimal", label: ubi,   experimental: true }
-          # Amazon Linux 2023 (RHEL-like) — glibc 2.34
-          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
-          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true }
+          # Amazon Linux 2023 (RHEL-like) — glibc 2.34. Minimal image ships
+          # neither unzip nor tar, so mvnw can't extract the Maven distribution
+          # without containerSetup installing one first.
+          - { os: ubuntu-latest,    classifier: linux-x86_64,  distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true, containerSetup: "microdnf install -y -q unzip" }
+          - { os: ubuntu-24.04-arm, classifier: linux-aarch64, distribution: zulu, container: "amazoncorretto:25-al2023",    label: al2023,  experimental: true, containerSetup: "microdnf install -y -q unzip" }
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -118,6 +120,4 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           docker run --rm -v "$PWD:/w" -w /w "${{ matrix.container }}" \
-            sh .github/smoke/mvnw -f .github/smoke/pom.xml --no-transfer-progress \
-            -Dzstd.version="$VERSION" -Dzstd.classifier=${{ matrix.classifier }} \
-            compile exec:exec
+            sh -c "${{ matrix.containerSetup && format('{0} && ', matrix.containerSetup) || '' }}sh .github/smoke/mvnw -f .github/smoke/pom.xml --no-transfer-progress -Dzstd.version=$VERSION -Dzstd.classifier=${{ matrix.classifier }} compile exec:exec"

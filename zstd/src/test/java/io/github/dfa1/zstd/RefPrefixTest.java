@@ -52,11 +52,11 @@ class RefPrefixTest {
             MemorySegment src = segmentOf(arena, random);
 
             long baseline;
-            try (ZstdCompressContext cctx = new ZstdCompressContext().level(19)) {
+            try (ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19))) {
                 baseline = cctx.compress(arena, src).byteSize();
             }
             byte[] frame;
-            try (ZstdCompressContext cctx = new ZstdCompressContext().level(19)) {
+            try (ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19))) {
                 cctx.refPrefix(prefix);
                 MemorySegment f = cctx.compress(arena, src);
                 frame = bytesOf(f, (int) f.byteSize());
@@ -118,7 +118,7 @@ class RefPrefixTest {
         // and one context kept open across two compressions with the prefix set once.
         byte[] random = randomBytes(0xCAFE, 16384);
         try (Arena arena = Arena.ofConfined();
-             ZstdCompressContext cctx = new ZstdCompressContext().level(19)) {
+             ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19))) {
             MemorySegment prefix = segmentOf(arena, random);
             MemorySegment src = segmentOf(arena, random);
             MemorySegment first = arena.allocate(Zstd.compressBound(random.length));

@@ -17,7 +17,7 @@ import java.util.Objects;
 /// done; never keep it in a long-lived pool.
 ///
 /// {@snippet :
-/// try (ZstdCompressContext ctx = new ZstdCompressContext().level(19)) {
+/// try (ZstdCompressContext ctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19))) {
 ///     for (byte[] msg : messages) {
 ///         sink.accept(ctx.compress(msg));
 ///     }
@@ -25,12 +25,12 @@ import java.util.Objects;
 /// }
 public final class ZstdCompressContext extends NativeObject {
 
-    private int level;
+    private ZstdCompressionLevel level;
 
     /// Creates a new compression context at the default level.
     public ZstdCompressContext() {
         super(create());
-        this.level = Zstd.defaultCompressionLevel();
+        this.level = ZstdCompressionLevel.DEFAULT;
     }
 
     private static MemorySegment create() {
@@ -41,9 +41,9 @@ public final class ZstdCompressContext extends NativeObject {
     ///
     /// @param level the compression level to use
     /// @return `this`, for chaining
-    public ZstdCompressContext level(int level) {
+    public ZstdCompressContext level(ZstdCompressionLevel level) {
         this.level = level;
-        setParam(ZstdCompressParameter.COMPRESSION_LEVEL, level);
+        setParam(ZstdCompressParameter.COMPRESSION_LEVEL, level.value());
         return this;
     }
 
@@ -108,7 +108,7 @@ public final class ZstdCompressContext extends NativeObject {
         Objects.requireNonNull(directive, "directive");
         NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_RESET.invokeExact(ptr(), directive.value()));
         if (directive != ZstdResetDirective.SESSION_ONLY) {
-            this.level = Zstd.defaultCompressionLevel();
+            this.level = ZstdCompressionLevel.DEFAULT;
         }
         return this;
     }
@@ -255,7 +255,7 @@ public final class ZstdCompressContext extends NativeObject {
             long bound = Zstd.compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
             long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS_USING_DICT.invokeExact(
-                    ptr(), out, bound, in, (long) src.length, dseg, (long) d.length, level));
+                    ptr(), out, bound, in, (long) src.length, dseg, (long) d.length, level.value()));
             return Zstd.copyOut(out, written);
         }
     }

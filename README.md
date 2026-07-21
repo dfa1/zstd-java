@@ -29,7 +29,7 @@ One-shot round-trip with `byte[]` — the convenient path:
 import io.github.dfa1.zstd.Zstd;
 
 byte[] data = ...;
-byte[] frame = Zstd.compress(data);        // or Zstd.compress(data, level)
+byte[] frame = Zstd.compress(data);        // or Zstd.compress(data, new ZstdCompressionLevel(19))
 byte[] back  = Zstd.decompress(frame);     // size read from the frame header
 ```
 

@@ -17,19 +17,19 @@ class ZstdMemoryTest {
 
         @Test
         void contextEstimatesArePositive() {
-            assertThat(Zstd.estimateCompressContextSize(3)).isPositive();
+            assertThat(Zstd.estimateCompressContextSize(new ZstdCompressionLevel(3))).isPositive();
             assertThat(Zstd.estimateDecompressContextSize()).isPositive();
         }
 
         @Test
         void higherLevelEstimatesAtLeastAsLarge() {
-            assertThat(Zstd.estimateCompressContextSize(19))
-                    .isGreaterThanOrEqualTo(Zstd.estimateCompressContextSize(1));
+            assertThat(Zstd.estimateCompressContextSize(new ZstdCompressionLevel(19)))
+                    .isGreaterThanOrEqualTo(Zstd.estimateCompressContextSize(new ZstdCompressionLevel(1)));
         }
 
         @Test
         void dictionaryEstimatesArePositive() {
-            assertThat(Zstd.estimateCompressDictSize(64 * 1024, 3)).isPositive();
+            assertThat(Zstd.estimateCompressDictSize(64 * 1024, new ZstdCompressionLevel(3))).isPositive();
             assertThat(Zstd.estimateDecompressDictSize(64 * 1024)).isPositive();
         }
     }

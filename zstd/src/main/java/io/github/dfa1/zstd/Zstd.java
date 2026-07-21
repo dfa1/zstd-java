@@ -29,23 +29,22 @@ public final class Zstd {
     /// @param src bytes to compress
     /// @return a self-describing zstd frame
     public static byte[] compress(byte[] src) {
-        return compress(src, defaultCompressionLevel());
+        return compress(src, ZstdCompressionLevel.DEFAULT);
     }
 
     /// Compresses `src` at the given level.
     ///
     /// @param src   bytes to compress
-    /// @param level compression level in [[#minCompressionLevel()], [#maxCompressionLevel()]];
-    ///              higher is smaller but slower
+    /// @param level the compression level to use; higher is smaller but slower
     /// @return a self-describing zstd frame
-    public static byte[] compress(byte[] src, int level) {
+    public static byte[] compress(byte[] src, ZstdCompressionLevel level) {
         Objects.requireNonNull(src, "src");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, src);
             long bound = compressBound(src.length);
             MemorySegment out = arena.allocate(bound);
             long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS.invokeExact(
-                    out, bound, in, (long) src.length, level));
+                    out, bound, in, (long) src.length, level.value()));
             return copyOut(out, written);
         }
     }
@@ -239,11 +238,11 @@ public final class Zstd {
     /// Estimates the memory a compression context will use at `level`, before
     /// creating one — useful for budgeting.
     ///
-    /// @param level the compression level
+    /// @param level the compression level to use
     /// @return the estimated context size in bytes
-    public static long estimateCompressContextSize(int level) {
+    public static long estimateCompressContextSize(ZstdCompressionLevel level) {
         try {
-            return (long) Bindings.ESTIMATE_CCTX_SIZE.invokeExact(level);
+            return (long) Bindings.ESTIMATE_CCTX_SIZE.invokeExact(level.value());
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
@@ -264,11 +263,11 @@ public final class Zstd {
     /// will use at `level`.
     ///
     /// @param dictSize the raw dictionary size in bytes
-    /// @param level    the compression level
+    /// @param level    the compression level to use
     /// @return the estimated digested-dictionary size in bytes
-    public static long estimateCompressDictSize(long dictSize, int level) {
+    public static long estimateCompressDictSize(long dictSize, ZstdCompressionLevel level) {
         try {
-            return (long) Bindings.ESTIMATE_CDICT_SIZE.invokeExact(dictSize, level);
+            return (long) Bindings.ESTIMATE_CDICT_SIZE.invokeExact(dictSize, level.value());
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

@@ -120,18 +120,20 @@ public final class ZstdDictionary {
     /// @return the trained dictionary
     /// @throws ZstdException if training fails
     public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes) {
-        return trainCover(samples, maxDictBytes, 0);
+        return optimize(samples, maxDictBytes, 0, false);
     }
 
     /// Trains a COVER dictionary optimized for a specific compression level.
     ///
     /// @param samples          representative payloads to learn from
     /// @param maxDictBytes     upper bound on the produced dictionary size
-    /// @param compressionLevel the level the dictionary will be used at (0 = default)
+    /// @param compressionLevel the level the dictionary will be used at (a level
+    ///                         whose [ZstdCompressionLevel#value()] is 0 = default)
     /// @return the trained dictionary
     /// @throws ZstdException if training fails
-    public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes, int compressionLevel) {
-        return optimize(samples, maxDictBytes, compressionLevel, false);
+    public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes,
+                                            ZstdCompressionLevel compressionLevel) {
+        return optimize(samples, maxDictBytes, compressionLevel.value(), false);
     }
 
     /// Trains a dictionary with the fast COVER algorithm, auto-tuning its
@@ -143,18 +145,20 @@ public final class ZstdDictionary {
     /// @return the trained dictionary
     /// @throws ZstdException if training fails
     public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes) {
-        return trainFastCover(samples, maxDictBytes, 0);
+        return optimize(samples, maxDictBytes, 0, true);
     }
 
     /// Trains a fast COVER dictionary optimized for a specific compression level.
     ///
     /// @param samples          representative payloads to learn from
     /// @param maxDictBytes     upper bound on the produced dictionary size
-    /// @param compressionLevel the level the dictionary will be used at (0 = default)
+    /// @param compressionLevel the level the dictionary will be used at (a level
+    ///                         whose [ZstdCompressionLevel#value()] is 0 = default)
     /// @return the trained dictionary
     /// @throws ZstdException if training fails
-    public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes, int compressionLevel) {
-        return optimize(samples, maxDictBytes, compressionLevel, true);
+    public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes,
+                                                ZstdCompressionLevel compressionLevel) {
+        return optimize(samples, maxDictBytes, compressionLevel.value(), true);
     }
 
     private static ZstdDictionary optimize(List<byte[]> samples, int maxDictBytes,
@@ -189,11 +193,12 @@ public final class ZstdDictionary {
     /// @param content          the raw dictionary content to wrap
     /// @param samples          representative payloads to tune entropy tables on
     /// @param maxDictBytes     upper bound on the produced dictionary size
-    /// @param compressionLevel the level the dictionary will be used at (0 = default)
+    /// @param compressionLevel the level the dictionary will be used at (a level
+    ///                         whose [ZstdCompressionLevel#value()] is 0 = default)
     /// @return the finalized dictionary
     /// @throws ZstdException if finalization fails
     public static ZstdDictionary finalizeFrom(byte[] content, List<byte[]> samples,
-                                              int maxDictBytes, int compressionLevel) {
+                                              int maxDictBytes, ZstdCompressionLevel compressionLevel) {
         Objects.requireNonNull(content, "content");
         Objects.requireNonNull(samples, SAMPLES);
         requireNonEmpty(samples, "finalize");
@@ -201,7 +206,7 @@ public final class ZstdDictionary {
             FlatSamples in = flatten(arena, samples);
             MemorySegment contentSeg = Zstd.copyIn(arena, content);
             MemorySegment params = arena.allocate(Bindings.ZDICT_PARAMS_LAYOUT);
-            params.set(JAVA_INT, 0, compressionLevel);  // compressionLevel; notificationLevel/dictID = 0
+            params.set(JAVA_INT, 0, compressionLevel.value());  // compressionLevel; notificationLevel/dictID = 0
             MemorySegment dictBuf = arena.allocate(maxDictBytes);
             long produced;
             try {
@@ -307,12 +312,12 @@ public final class ZstdDictionary {
     ///
     /// @param level the compression level to fix for the digested dictionary
     /// @return a digested compression dictionary the caller must close
-    public ZstdCompressDictionary compressDict(int level) {
+    public ZstdCompressDictionary compressDict(ZstdCompressionLevel level) {
         return new ZstdCompressDictionary(this, level);
     }
 
     /// Digests this dictionary for compression at the library default level.
-    /// Otherwise identical to [#compressDict(int)].
+    /// Otherwise identical to [#compressDict(ZstdCompressionLevel)].
     ///
     /// @return a digested compression dictionary the caller must close
     public ZstdCompressDictionary compressDict() {

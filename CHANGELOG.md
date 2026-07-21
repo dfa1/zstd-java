@@ -6,6 +6,19 @@ git tags, which trigger publication to Maven Central.
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** every public API that took a raw `int` compression level now
+  takes a `ZstdCompressionLevel` value type, which validates the level against
+  the linked libzstd's accepted range at construction (throwing
+  `IllegalArgumentException`) rather than deferring to native clamping/errors.
+  Affects `Zstd.compress(byte[], …)`, `Zstd.estimateCompressContextSize`,
+  `Zstd.estimateCompressDictSize`, `ZstdCompressContext.level`,
+  `ZstdCompressStream`, `ZstdOutputStream`, `ZstdCompressDictionary`,
+  `ZstdDictionary.compressDict`/`trainCover`/`trainFastCover`/`finalizeFrom`.
+  Use `new ZstdCompressionLevel(19)` or the `DEFAULT`/`FASTEST`/`MAX` constants.
+  The `Zstd.min/max/defaultCompressionLevel()` bound queries still return `int`.
+  ([#93](https://github.com/dfa1/zstd-java/issues/93))
+
 ## [0.10] - 2026-07-18
 
 ### Added

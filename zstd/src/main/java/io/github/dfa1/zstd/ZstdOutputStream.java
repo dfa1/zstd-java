@@ -19,7 +19,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// Closing finishes the frame and closes the underlying stream.
 ///
 /// {@snippet :
-/// try (ZstdOutputStream zout = new ZstdOutputStream(Files.newOutputStream(path), 19)) {
+/// try (ZstdOutputStream zout = new ZstdOutputStream(Files.newOutputStream(path), new ZstdCompressionLevel(19))) {
 ///     source.transferTo(zout);
 /// }
 /// }
@@ -50,14 +50,14 @@ public final class ZstdOutputStream extends OutputStream {
     ///
     /// @param out the stream to write the compressed frame to
     public ZstdOutputStream(OutputStream out) {
-        this(out, Zstd.defaultCompressionLevel());
+        this(out, ZstdCompressionLevel.DEFAULT);
     }
 
     /// Wraps `out`, compressing at `level`.
     ///
     /// @param out   the stream to write the compressed frame to
-    /// @param level the compression level
-    public ZstdOutputStream(OutputStream out, int level) {
+    /// @param level the compression level to use
+    public ZstdOutputStream(OutputStream out, ZstdCompressionLevel level) {
         this(out, level, null);
     }
 
@@ -66,7 +66,7 @@ public final class ZstdOutputStream extends OutputStream {
     /// @param out        the stream to write the compressed frame to
     /// @param dictionary the dictionary to compress against
     public ZstdOutputStream(OutputStream out, ZstdDictionary dictionary) {
-        this(out, Zstd.defaultCompressionLevel(), dictionary);
+        this(out, ZstdCompressionLevel.DEFAULT, dictionary);
     }
 
     /// Wraps `out` and declares the exact total number of bytes that will be
@@ -75,10 +75,10 @@ public final class ZstdOutputStream extends OutputStream {
     /// bound. Writing a different total raises an error when the stream closes.
     ///
     /// @param out            the stream to write the compressed frame to
-    /// @param level          the compression level
+    /// @param level          the compression level to use
     /// @param pledgedSrcSize the exact number of uncompressed bytes that will be written
     /// @return a stream that will stamp the content size into the frame
-    public static ZstdOutputStream withPledgedSize(OutputStream out, int level, long pledgedSrcSize) {
+    public static ZstdOutputStream withPledgedSize(OutputStream out, ZstdCompressionLevel level, long pledgedSrcSize) {
         ZstdOutputStream stream = new ZstdOutputStream(out, level);
         stream.setPledgedSrcSize(pledgedSrcSize);
         return stream;
@@ -91,9 +91,9 @@ public final class ZstdOutputStream extends OutputStream {
     /// Wraps `out`, compressing against `dictionary` at `level`.
     ///
     /// @param out        the stream to write the compressed frame to
-    /// @param level      the compression level
+    /// @param level      the compression level to use
     /// @param dictionary the dictionary to compress against, or `null` for none
-    public ZstdOutputStream(OutputStream out, int level, ZstdDictionary dictionary) {
+    public ZstdOutputStream(OutputStream out, ZstdCompressionLevel level, ZstdDictionary dictionary) {
         this.out = Objects.requireNonNull(out, "out");
         this.arena = Arena.ofConfined();
         this.in = new ZstdStreamBuffer(arena);
@@ -104,7 +104,7 @@ public final class ZstdOutputStream extends OutputStream {
             c = NativeCall.createOrThrow("ZSTD_createCCtx", () -> (MemorySegment) Bindings.CREATE_CCTX.invokeExact());
             this.cctx = c;
             NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
-                    cctx, ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
+                    cctx, ZstdCompressParameter.COMPRESSION_LEVEL.value(), level.value()));
             if (dictionary != null) {
                 loadDictionary(dictionary);
             }

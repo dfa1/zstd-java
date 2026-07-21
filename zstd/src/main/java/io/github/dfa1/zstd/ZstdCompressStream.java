@@ -36,21 +36,21 @@ public final class ZstdCompressStream extends NativeObject {
 
     /// Creates a streaming compressor at the default level.
     public ZstdCompressStream() {
-        this(Zstd.defaultCompressionLevel());
+        this(ZstdCompressionLevel.DEFAULT);
     }
 
     /// Creates a streaming compressor at `level`.
     ///
-    /// @param level the compression level
-    public ZstdCompressStream(int level) {
+    /// @param level the compression level to use
+    public ZstdCompressStream(ZstdCompressionLevel level) {
         this(level, null);
     }
 
     /// Creates a streaming compressor at `level` using `dictionary`.
     ///
-    /// @param level      the compression level
+    /// @param level      the compression level to use
     /// @param dictionary the dictionary to compress against, or `null` for none
-    public ZstdCompressStream(int level, ZstdDictionary dictionary) {
+    public ZstdCompressStream(ZstdCompressionLevel level, ZstdDictionary dictionary) {
         // Own the context first, so any failure setting it up is cleaned up by
         // close() — one release path, no leak on a half-built stream.
         super(createCctx());
@@ -59,7 +59,7 @@ public final class ZstdCompressStream extends NativeObject {
         this.out = new ZstdStreamBuffer(arena);
         try {
             NativeCall.checkReturnValue(() -> (long) Bindings.CCTX_SET_PARAMETER.invokeExact(
-                    ptr(), ZstdCompressParameter.COMPRESSION_LEVEL.value(), level));
+                    ptr(), ZstdCompressParameter.COMPRESSION_LEVEL.value(), level.value()));
             if (dictionary != null) {
                 loadDictionary(dictionary);
             }

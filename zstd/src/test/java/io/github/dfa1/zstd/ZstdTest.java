@@ -62,7 +62,7 @@ class ZstdTest {
 
         @ParameterizedTest
         @MethodSource("io.github.dfa1.zstd.ZstdTestSupport#levels")
-        void roundTripAtEveryLevel(int level) {
+        void roundTripAtEveryLevel(ZstdCompressionLevel level) {
             // Given a payload compressed at the given level
             byte[] original = "payload-data-".repeat(500).getBytes(StandardCharsets.UTF_8);
             byte[] frame = Zstd.compress(original, level);
@@ -71,7 +71,7 @@ class ZstdTest {
             byte[] restored = Zstd.decompress(frame);
 
             // Then the original is recovered
-            assertThat(restored).as("level %d", level).isEqualTo(original);
+            assertThat(restored).as("level %s", level).isEqualTo(original);
         }
 
         @Test

@@ -3,6 +3,7 @@ package io.github.dfa1.zstd.it;
 import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdDecompressContext;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
@@ -136,7 +137,7 @@ class GoldenCorpusTest {
             byte[] data = read(file);
 
             // When
-            byte[] frame = Zstd.compress(data, Zstd.defaultCompressionLevel());
+            byte[] frame = Zstd.compress(data, ZstdCompressionLevel.DEFAULT);
 
             // Then
             assertThat(com.github.luben.zstd.Zstd.decompress(frame, data.length)).isEqualTo(data);

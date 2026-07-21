@@ -4,6 +4,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdDecompressContext;
 import java.io.UncheckedIOException;
 import java.io.IOException;
@@ -88,7 +89,7 @@ public class GoldenCorpusBenchmark {
         srcSize = src.length;
         frame = Zstd.compress(src);
 
-        cctx = new ZstdCompressContext().level(level);
+        cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(level));
         dctx = new ZstdDecompressContext();
         bound = (int) Zstd.compressBound(srcSize);
         compressDst = new byte[bound];

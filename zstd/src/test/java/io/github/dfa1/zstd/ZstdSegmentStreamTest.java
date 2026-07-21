@@ -123,7 +123,7 @@ class ZstdSegmentStreamTest {
             byte[] sample = "{\"id\":1,\"user\":\"u\",\"event\":\"x\"}".getBytes(StandardCharsets.UTF_8);
 
             try (Arena arena = Arena.ofConfined();
-                 ZstdCompressStream cs = new ZstdCompressStream(3, dict);
+                 ZstdCompressStream cs = new ZstdCompressStream(new ZstdCompressionLevel(3), dict);
                  ZstdDecompressStream ds = new ZstdDecompressStream(dict)) {
 
                 MemorySegment src = segmentOf(arena, sample);

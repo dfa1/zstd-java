@@ -5,6 +5,7 @@
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressDictionary;
+import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdCompressParameter;
 import io.github.dfa1.zstd.ZstdCompressStream;
 import io.github.dfa1.zstd.ZstdDecompressContext;
@@ -82,9 +83,11 @@ class SmokeTest {
         check(def >= min && def <= max, "defaultCompressionLevel() out of [min,max]");
 
         check(Zstd.compressBound(1000) >= 1000, "compressBound() below input size");
-        check(Zstd.estimateCompressContextSize(def) > 0, "estimateCompressContextSize() not positive");
+        check(Zstd.estimateCompressContextSize(ZstdCompressionLevel.DEFAULT) > 0,
+                "estimateCompressContextSize() not positive");
         check(Zstd.estimateDecompressContextSize() > 0, "estimateDecompressContextSize() not positive");
-        check(Zstd.estimateCompressDictSize(4096, def) > 0, "estimateCompressDictSize() not positive");
+        check(Zstd.estimateCompressDictSize(4096, ZstdCompressionLevel.DEFAULT) > 0,
+                "estimateCompressDictSize() not positive");
         check(Zstd.estimateDecompressDictSize(4096) > 0, "estimateDecompressDictSize() not positive");
     }
 
@@ -95,7 +98,7 @@ class SmokeTest {
         byte[] compressedDefault = Zstd.compress(original);
         checkArrayEquals(original, Zstd.decompress(compressedDefault), "compress(byte[]) round-trip mismatch");
 
-        byte[] compressed = Zstd.compress(original, Zstd.maxCompressionLevel());
+        byte[] compressed = Zstd.compress(original, ZstdCompressionLevel.MAX);
         checkArrayEquals(original, Zstd.decompress(compressed), "compress(byte[], level) round-trip mismatch");
         check(compressed.length < original.length, "expected compression to shrink the input");
     }
@@ -199,7 +202,7 @@ class SmokeTest {
     void compressContextAdvancedParameters() {
         byte[] original = sampleText();
         try (ZstdCompressContext cctx = new ZstdCompressContext()) {
-            cctx.level(5)
+            cctx.level(new ZstdCompressionLevel(5))
                     .checksum(true)
                     .longDistanceMatching(true)
                     .windowLog(20)
@@ -211,7 +214,7 @@ class SmokeTest {
             check(cctx.sizeOf() > 0, "cctx.sizeOf() not positive");
 
             cctx.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
-            byte[] afterReset = cctx.level(3).compress(original);
+            byte[] afterReset = cctx.level(new ZstdCompressionLevel(3)).compress(original);
             checkArrayEquals(original, Zstd.decompress(afterReset, original.length),
                     "compress after SESSION_AND_PARAMETERS reset mismatch");
         }
@@ -361,7 +364,8 @@ class SmokeTest {
         }
 
         ByteArrayOutputStream sinkPledged = new ByteArrayOutputStream();
-        try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sinkPledged, 5, original.length)) {
+        try (ZstdOutputStream zout =
+                     ZstdOutputStream.withPledgedSize(sinkPledged, new ZstdCompressionLevel(5), original.length)) {
             zout.write(original);
         }
         byte[] pledgedFrame = sinkPledged.toByteArray();

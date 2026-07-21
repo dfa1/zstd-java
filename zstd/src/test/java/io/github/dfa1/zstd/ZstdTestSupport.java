@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /// Shared low-level helpers for the segment-based tests: copy a `byte[]` into a
@@ -89,9 +88,12 @@ final class ZstdTestSupport {
     }
 
     /// The compression levels worth exercising: both extremes, default, and a low one.
-    static IntStream levels() {
-        return IntStream.of(
-                Zstd.minCompressionLevel(), 1, Zstd.defaultCompressionLevel(), Zstd.maxCompressionLevel());
+    static Stream<ZstdCompressionLevel> levels() {
+        return Stream.of(
+                ZstdCompressionLevel.FASTEST,
+                new ZstdCompressionLevel(1),
+                ZstdCompressionLevel.DEFAULT,
+                ZstdCompressionLevel.MAX);
     }
 
     private static byte[] random(Random r, int size) {

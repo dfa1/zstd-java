@@ -4,6 +4,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.github.dfa1.zstd.Zstd;
 import io.github.dfa1.zstd.ZstdCompressContext;
+import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdCompressParameter;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -59,7 +60,7 @@ public class MultiThreadCompressBenchmark {
         byte[] src = BenchData.generate(size);
         int bound = (int) Zstd.compressBound(size);
 
-        ctx = new ZstdCompressContext().level(level);
+        ctx = new ZstdCompressContext().level(new ZstdCompressionLevel(level));
         if (nbWorkers > 0) {
             ctx.parameter(ZstdCompressParameter.NB_WORKERS, nbWorkers);
         }

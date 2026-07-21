@@ -15,13 +15,13 @@ import java.util.Objects;
 /// Immutable once built and safe to share across threads (the digested dictionary is read-only).
 public final class ZstdCompressDictionary extends NativeObject {
 
-    private final int level;
+    private final ZstdCompressionLevel level;
 
     /// Digests `dict` for compression at the given level.
     ///
     /// @param dict  the dictionary to digest
     /// @param level the compression level to fix for this digested dictionary
-    public ZstdCompressDictionary(ZstdDictionary dict, int level) {
+    public ZstdCompressDictionary(ZstdDictionary dict, ZstdCompressionLevel level) {
         super(create(dict, level));
         this.level = level;
     }
@@ -30,7 +30,7 @@ public final class ZstdCompressDictionary extends NativeObject {
     ///
     /// @param dict the dictionary to digest
     public ZstdCompressDictionary(ZstdDictionary dict) {
-        this(dict, Zstd.defaultCompressionLevel());
+        this(dict, ZstdCompressionLevel.DEFAULT);
     }
 
     /// Digests a native dictionary segment for compression at the given level,
@@ -39,11 +39,11 @@ public final class ZstdCompressDictionary extends NativeObject {
     /// `dict` must be a native (off-heap) [MemorySegment] — e.g. an mmap slice or
     /// an arena buffer. Its bytes are copied into the digested dictionary, so the
     /// segment may be released once the constructor returns. Heap-backed callers
-    /// should use [ZstdCompressDictionary(ZstdDictionary, int)] instead.
+    /// should use [ZstdCompressDictionary(ZstdDictionary, ZstdCompressionLevel)] instead.
     ///
     /// @param dict  native dictionary content
     /// @param level the compression level to fix for this digested dictionary
-    public ZstdCompressDictionary(MemorySegment dict, int level) {
+    public ZstdCompressDictionary(MemorySegment dict, ZstdCompressionLevel level) {
         super(create(dict, level));
         this.level = level;
     }
@@ -53,29 +53,29 @@ public final class ZstdCompressDictionary extends NativeObject {
     ///
     /// @param dict native dictionary content
     public ZstdCompressDictionary(MemorySegment dict) {
-        this(dict, Zstd.defaultCompressionLevel());
+        this(dict, ZstdCompressionLevel.DEFAULT);
     }
 
-    private static MemorySegment create(ZstdDictionary dict, int level) {
+    private static MemorySegment create(ZstdDictionary dict, ZstdCompressionLevel level) {
         Objects.requireNonNull(dict, "dict");
         try (Arena arena = Arena.ofConfined()) {
             byte[] raw = dict.raw();
             MemorySegment d = Zstd.copyIn(arena, raw);
             return NativeCall.createOrThrow("ZSTD_createCDict",
-                    () -> (MemorySegment) Bindings.CREATE_CDICT.invokeExact(d, (long) raw.length, level));
+                    () -> (MemorySegment) Bindings.CREATE_CDICT.invokeExact(d, (long) raw.length, level.value()));
         }
     }
 
-    private static MemorySegment create(MemorySegment dict, int level) {
+    private static MemorySegment create(MemorySegment dict, ZstdCompressionLevel level) {
         NativeCall.requireNative(dict, "dict");
         return NativeCall.createOrThrow("ZSTD_createCDict",
-                () -> (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level));
+                () -> (MemorySegment) Bindings.CREATE_CDICT.invokeExact(dict, dict.byteSize(), level.value()));
     }
 
     /// The level this dictionary was digested at.
     ///
     /// @return the fixed compression level
-    public int level() {
+    public ZstdCompressionLevel level() {
         return level;
     }
 

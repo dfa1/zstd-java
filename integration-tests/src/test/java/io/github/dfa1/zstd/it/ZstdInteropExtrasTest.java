@@ -3,6 +3,7 @@ package io.github.dfa1.zstd.it;
 import com.github.luben.zstd.ZstdCompressCtx;
 import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
 import io.github.dfa1.zstd.ZstdFrame;
@@ -127,7 +128,7 @@ class ZstdInteropExtrasTest {
             byte[] payload = "after the skippable frame ".repeat(1000).getBytes(StandardCharsets.UTF_8);
             byte[] meta = "sidecar-metadata".getBytes(StandardCharsets.UTF_8);
             byte[] skippable = ZstdFrame.writeSkippableFrame(meta, 0);
-            byte[] real = Zstd.compress(payload, Zstd.defaultCompressionLevel());
+            byte[] real = Zstd.compress(payload, ZstdCompressionLevel.DEFAULT);
 
             // When
             byte[] restored = jniStreamDecode(concat(skippable, real));
@@ -164,8 +165,8 @@ class ZstdInteropExtrasTest {
         void javaFramesConcatReadByJniStream() {
             // Given
             byte[] joined = concat(
-                    Zstd.compress(a, Zstd.defaultCompressionLevel()),
-                    Zstd.compress(b, Zstd.defaultCompressionLevel()));
+                    Zstd.compress(a, ZstdCompressionLevel.DEFAULT),
+                    Zstd.compress(b, ZstdCompressionLevel.DEFAULT));
 
             // When
             byte[] restored = jniStreamDecode(joined);
@@ -266,7 +267,7 @@ class ZstdInteropExtrasTest {
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
 
             // When
-            try (ZstdOutputStream zout = new ZstdOutputStream(sink, 7)) {
+            try (ZstdOutputStream zout = new ZstdOutputStream(sink, new ZstdCompressionLevel(7))) {
                 writeInChunks(zout, data);
             }
 

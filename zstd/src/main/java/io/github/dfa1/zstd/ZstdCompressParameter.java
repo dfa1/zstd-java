@@ -9,7 +9,7 @@ package io.github.dfa1.zstd;
 /// are validated natively — an out-of-range value raises a [ZstdException].
 public enum ZstdCompressParameter {
 
-    /// Compression level. Prefer [ZstdCompressContext#level(int)].
+    /// Compression level. Prefer [ZstdCompressContext#level(ZstdCompressionLevel)].
     COMPRESSION_LEVEL(100),
     /// Maximum back-reference distance, as a power of two (larger = better ratio, more memory).
     WINDOW_LOG(101),

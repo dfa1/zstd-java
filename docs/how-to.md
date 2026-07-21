@@ -8,7 +8,7 @@ Task-focused recipes. Each assumes you have the library on the classpath (see th
 Reuse a context to amortize native allocation across many calls:
 
 ```java
-try (ZstdCompressContext cctx = new ZstdCompressContext().level(19);
+try (ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19));
      ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     byte[] packed   = cctx.compress(message);
     byte[] restored = dctx.decompress(packed, message.length);
@@ -26,7 +26,7 @@ or to abort a half-written frame and start clean — without freeing and recreat
 it. Pick what to clear with `ZstdResetDirective`:
 
 ```java
-try (ZstdCompressContext cctx = new ZstdCompressContext().level(19)) {
+try (ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19))) {
     byte[] a = cctx.compress(first);
 
     // Cheap: drop any unflushed frame state, keep the level and parameters.
@@ -51,7 +51,7 @@ matching) set on the context. To combine the two, make the dictionary *sticky*
 with `loadDictionary` — then the normal `compress` path honors both:
 
 ```java
-try (ZstdCompressContext cctx = new ZstdCompressContext().level(19).checksum(true)) {
+try (ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19)).checksum(true)) {
     cctx.loadDictionary(dict);          // ZstdDictionary, or a native MemorySegment
     byte[] frame = cctx.compress(record); // dictionary + checksum, together
 }
@@ -62,7 +62,7 @@ by reference — no per-call digesting, no copy. It pairs with `reset` for a
 pooled, recycled context:
 
 ```java
-try (ZstdCompressDictionary cdict = dict.compressDict(19)) {
+try (ZstdCompressDictionary cdict = dict.compressDict(new ZstdCompressionLevel(19))) {
     // one cctx per pooled worker, all sharing the one digested dictionary
     try (ZstdCompressContext cctx = new ZstdCompressContext()) {
         cctx.refDictionary(cdict);          // borrowed; cdict must outlive cctx
@@ -105,7 +105,7 @@ ZstdDictionary reloaded = ZstdDictionary.of(persisted);
 On a hot path, digest the dictionary once to skip per-call setup:
 
 ```java
-try (ZstdCompressDictionary cdict = dict.compressDict(19);
+try (ZstdCompressDictionary cdict = dict.compressDict(new ZstdCompressionLevel(19));
      ZstdDecompressDictionary ddict = dict.decompressDict();
      ZstdCompressContext cctx = new ZstdCompressContext();
      ZstdDecompressContext dctx = new ZstdDecompressContext()) {
@@ -231,7 +231,7 @@ can't size the arena (see [the explanation](zero-copy.md)). Tell the encoder the
 total up front and it stamps the content size into the header:
 
 ```java
-try (var zout = ZstdOutputStream.withPledgedSize(sink, 6, data.length)) {
+try (var zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), data.length)) {
     zout.write(data);                                 // pledge must equal bytes written
 }
 MemorySegment src = MemorySegment.ofBuffer(mmap);     // downstream, in a mapped reader

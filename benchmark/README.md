@@ -29,6 +29,14 @@ minimum):
 Payloads (`BenchData`) are deterministic, ~3x-compressible text so the ratios
 are realistic rather than all-zeros or random noise.
 
+Plus a large-file suite, kept separate because it writes real payload files to
+disk and is disk-/time-heavy (see below):
+
+- `LargeFileBenchmark` — mmap + `ZstdCompressStream` vs. `zstd-jni`'s classic
+  `ZstdOutputStream` path, at sizes from 4 MiB to 10 GiB. This is the JMH-backed
+  source for the mmap-vs-`zstd-jni` numbers in
+  [docs/zero-copy.md](../docs/zero-copy.md).
+
 ## Build
 
 ```bash
@@ -41,8 +49,8 @@ Produces a self-contained `benchmark/target/benchmarks.jar`. The host's native
 ## Run
 
 ```bash
-# everything (full warmup/measurement — takes a few minutes)
-java -jar benchmark/target/benchmarks.jar
+# everything except LargeFileBenchmark (full warmup/measurement — a few minutes)
+java -jar benchmark/target/benchmarks.jar -e LargeFileBenchmark
 
 # one suite, one size
 java -jar benchmark/target/benchmarks.jar CompressBenchmark -p size=1048576
@@ -53,6 +61,19 @@ java -jar benchmark/target/benchmarks.jar -f 1 -wi 1 -i 3 -p size=65536
 
 `--enable-native-access=ALL-UNNAMED` is applied to forked JVMs via `@Fork`, so
 no extra flags are needed.
+
+**Always exclude or explicitly filter to `LargeFileBenchmark`** — unlike the
+suites above, a full run writes payload files up to 10 GiB (cached under
+`${java.io.tmpdir}/zstd-java-bench-large-files/`, reused across variants and
+reruns but never deleted automatically) and takes tens of minutes:
+
+```bash
+# full large-file suite (all 5 sizes, 4 MiB–10 GiB — tens of minutes, ~16 GiB disk)
+java -jar benchmark/target/benchmarks.jar LargeFileBenchmark
+
+# one size only
+java -jar benchmark/target/benchmarks.jar LargeFileBenchmark -p sizeLabel=64MiB
+```
 
 ## Reading results
 

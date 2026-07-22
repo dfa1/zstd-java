@@ -29,17 +29,17 @@ class ZstdSegmentTest {
                  ZstdDecompressContext dctx = new ZstdDecompressContext()) {
 
                 MemorySegment src = segmentOf(arena, original);
-                MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
+                MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(original.length)).value());
 
                 // When compressed into a caller-sized destination
                 long packedLen = cctx.compress(dst, src);
                 MemorySegment frame = dst.asSlice(0, packedLen);
 
                 // Then the frame header reports the original size, and it decodes back
-                long outLen = Zstd.decompressedSize(frame);
-                assertThat(outLen).isEqualTo(original.length);
+                ZstdByteSize outLen = Zstd.decompressedSize(frame);
+                assertThat(outLen).isEqualTo(new ZstdByteSize(original.length));
 
-                MemorySegment out = arena.allocate(outLen);
+                MemorySegment out = arena.allocate(outLen.value());
                 long written = dctx.decompress(out, frame);
                 assertThat(bytesOf(out, written)).isEqualTo(original);
             }

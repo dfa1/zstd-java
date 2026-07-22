@@ -19,11 +19,6 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 /// }
 public final class Zstd {
 
-    /// Sentinel returned by zstd when a frame carries no decompressed-size header.
-    static final long CONTENTSIZE_UNKNOWN = -1L;
-    /// Sentinel returned by zstd when the input is not a valid zstd frame.
-    static final long CONTENTSIZE_ERROR = -2L;
-
     /// Compresses `src` at the library default level.
     ///
     /// @param src bytes to compress
@@ -41,10 +36,10 @@ public final class Zstd {
         Objects.requireNonNull(src, "src");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, src);
-            long bound = compressBound(src.length);
-            MemorySegment out = arena.allocate(bound);
+            ZstdByteSize bound = compressBound(new ZstdByteSize(src.length));
+            MemorySegment out = arena.allocate(bound.value());
             long written = NativeCall.checkReturnValue(() -> (long) Bindings.COMPRESS.invokeExact(
-                    out, bound, in, (long) src.length, level.value()));
+                    out, bound.value(), in, (long) src.length, level.value()));
             return copyOut(out, written);
         }
     }
@@ -56,50 +51,56 @@ public final class Zstd {
     /// header and allocates a buffer of that size. The header is part of the input,
     /// so a hostile frame can declare a large size (up to the maximum array length)
     /// and force a correspondingly large allocation — a decompression-bomb denial of
-    /// service. For input you do not control, use [#decompress(byte[], int)] with a
+    /// service. For input you do not control, use [#decompress(byte[], ZstdByteSize)] with a
     /// sane bound instead.
     ///
     /// @param compressed a complete zstd frame
     /// @return the original bytes
     /// @throws ZstdException if the frame is invalid, its content size is not stored
-    ///                       (use [#decompress(byte[], int)] for the latter), or the
+    ///                       (use [#decompress(byte[], ZstdByteSize)] for the latter), or the
     ///                       declared size exceeds the maximum array length
     public static byte[] decompress(byte[] compressed) {
         Objects.requireNonNull(compressed, "compressed");
-        long size = requireStoredContentSize(frameContentSize(compressed));
-        return decompress(compressed, toArrayLength(size));
+        return decompressInternal(compressed, toArrayLength(frameContentSize(compressed)));
     }
 
-    /// Narrows a frame-declared content size to a `byte[]` length, rejecting sizes
-    /// that exceed what a Java array can hold. The size comes from the (untrusted)
-    /// frame header, so this fails with a [ZstdException] rather than letting a raw
-    /// `ArithmeticException` escape.
+    /// Narrows a size to a `byte[]` length, rejecting sizes that exceed what a
+    /// Java array can hold. Used at both `decompress` entry points — where the
+    /// size comes from an (untrusted) frame header, or from a caller-supplied
+    /// bound — so this fails with a [ZstdException] rather than letting a raw
+    /// `ArithmeticException` escape [ZstdByteSize#toIntExact()].
     ///
-    /// @param size a non-negative content size from a frame header
+    /// @param size a decompressed-size bound, declared or caller-supplied
     /// @return `size` as an `int`
     /// @throws ZstdException if `size` exceeds [Integer#MAX_VALUE]
-    private static int toArrayLength(long size) {
-        if (size > Integer.MAX_VALUE) {
-            throw new ZstdException("decompressed size " + size
-                    + " exceeds the maximum array length; use decompress(byte[], int) to bound it");
+    private static int toArrayLength(ZstdByteSize size) {
+        try {
+            return size.toIntExact();
+        } catch (ArithmeticException e) {
+            throw new ZstdException("decompressed size " + size.value()
+                    + " exceeds the maximum array length");
         }
-        return (int) size;
     }
 
-    /// Decompresses a zstd frame into a buffer of at most `maxSize` bytes.
+    /// Decompresses a zstd frame into a buffer of at most `maxSizeBound` bytes.
     /// Use this when the original size is known out-of-band or not stored in the frame.
     ///
-    /// This is the safe entry point for **untrusted** input: `maxSize` caps the
-    /// allocation and decode, so a hostile frame cannot trigger an oversized
+    /// This is the safe entry point for **untrusted** input: `maxSizeBound` caps
+    /// the allocation and decode, so a hostile frame cannot trigger an oversized
     /// allocation the way [#decompress(byte[])] can. Pick a bound your caller can
     /// afford; the frame is rejected if its content exceeds it.
     ///
     /// @param compressed a complete zstd frame
-    /// @param maxSize    upper bound on the decompressed length
-    /// @return the original bytes (length ≤ `maxSize`)
-    /// @throws ZstdException if the frame is invalid or larger than `maxSize`
-    public static byte[] decompress(byte[] compressed, int maxSize) {
+    /// @param maxSizeBound upper bound on the decompressed length
+    /// @return the original bytes (length ≤ `maxSizeBound`)
+    /// @throws ZstdException if the frame is invalid, larger than `maxSizeBound`, or
+    ///                       `maxSizeBound` exceeds the maximum array length
+    public static byte[] decompress(byte[] compressed, ZstdByteSize maxSizeBound) {
         Objects.requireNonNull(compressed, "compressed");
+        return decompressInternal(compressed, toArrayLength(maxSizeBound));
+    }
+
+    private static byte[] decompressInternal(byte[] compressed, int maxSize) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, compressed);
             MemorySegment out = arena.allocate(Math.max(maxSize, 1));
@@ -116,7 +117,7 @@ public final class Zstd {
     /// @param frame a complete zstd frame
     /// @return the decompressed length in bytes
     /// @throws ZstdException if the frame is invalid or does not store its size
-    public static long decompressedSize(MemorySegment frame) {
+    public static ZstdByteSize decompressedSize(MemorySegment frame) {
         NativeCall.requireNative(frame, "frame");
         long size;
         try {
@@ -124,23 +125,7 @@ public final class Zstd {
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
-        return requireStoredContentSize(size);
-    }
-
-    /// Maps a raw `ZSTD_getFrameContentSize` / `ZSTD_findDecompressedSize` result to
-    /// a usable length, turning zstd's negative sentinels into exceptions.
-    ///
-    /// @param size a content size, or a `CONTENTSIZE_UNKNOWN` / `CONTENTSIZE_ERROR` sentinel
-    /// @return `size` when it is a real length
-    /// @throws ZstdException if the size is not stored, or the input is not valid zstd data
-    static long requireStoredContentSize(long size) {
-        if (size == CONTENTSIZE_UNKNOWN) {
-            throw new ZstdException("decompressed size not stored in frame");
-        }
-        if (size == CONTENTSIZE_ERROR) {
-            throw new ZstdException("not a valid zstd frame");
-        }
-        return size;
+        return ZstdByteSize.fromFrameContentSize(size);
     }
 
     /// Dictionary id stamped in raw dictionary `bytes`, read with the core
@@ -184,22 +169,25 @@ public final class Zstd {
     ///
     /// @param srcSize the uncompressed input length in bytes
     /// @return the worst-case compressed size for that input
-    public static long compressBound(long srcSize) {
+    public static ZstdByteSize compressBound(ZstdByteSize srcSize) {
         try {
-            return (long) Bindings.COMPRESS_BOUND.invokeExact(srcSize);
+            return new ZstdByteSize((long) Bindings.COMPRESS_BOUND.invokeExact(srcSize.value()));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
     }
 
-    /// Decompressed size stored in the frame header, or a negative sentinel.
-    private static long frameContentSize(byte[] compressed) {
+    /// Decompressed size stored in the frame header, validated via
+    /// [ZstdByteSize#fromFrameContentSize(long)].
+    private static ZstdByteSize frameContentSize(byte[] compressed) {
+        long raw;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment in = copyIn(arena, compressed);
-            return (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(in, (long) compressed.length);
+            raw = (long) Bindings.GET_FRAME_CONTENT_SIZE.invokeExact(in, (long) compressed.length);
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
+        return ZstdByteSize.fromFrameContentSize(raw);
     }
 
     /// Highest supported compression level.
@@ -240,9 +228,9 @@ public final class Zstd {
     ///
     /// @param level the compression level to use
     /// @return the estimated context size in bytes
-    public static long estimateCompressContextSize(ZstdCompressionLevel level) {
+    public static ZstdByteSize estimateCompressContextSize(ZstdCompressionLevel level) {
         try {
-            return (long) Bindings.ESTIMATE_CCTX_SIZE.invokeExact(level.value());
+            return new ZstdByteSize((long) Bindings.ESTIMATE_CCTX_SIZE.invokeExact(level.value()));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
@@ -251,9 +239,9 @@ public final class Zstd {
     /// Estimates the memory a decompression context will use.
     ///
     /// @return the estimated context size in bytes
-    public static long estimateDecompressContextSize() {
+    public static ZstdByteSize estimateDecompressContextSize() {
         try {
-            return (long) Bindings.ESTIMATE_DCTX_SIZE.invokeExact();
+            return new ZstdByteSize((long) Bindings.ESTIMATE_DCTX_SIZE.invokeExact());
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
@@ -265,9 +253,9 @@ public final class Zstd {
     /// @param dictSize the raw dictionary size in bytes
     /// @param level    the compression level to use
     /// @return the estimated digested-dictionary size in bytes
-    public static long estimateCompressDictSize(long dictSize, ZstdCompressionLevel level) {
+    public static ZstdByteSize estimateCompressDictSize(ZstdByteSize dictSize, ZstdCompressionLevel level) {
         try {
-            return (long) Bindings.ESTIMATE_CDICT_SIZE.invokeExact(dictSize, level.value());
+            return new ZstdByteSize((long) Bindings.ESTIMATE_CDICT_SIZE.invokeExact(dictSize.value(), level.value()));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
@@ -278,9 +266,10 @@ public final class Zstd {
     ///
     /// @param dictSize the raw dictionary size in bytes
     /// @return the estimated digested-dictionary size in bytes
-    public static long estimateDecompressDictSize(long dictSize) {
+    public static ZstdByteSize estimateDecompressDictSize(ZstdByteSize dictSize) {
         try {
-            return (long) Bindings.ESTIMATE_DDICT_SIZE.invokeExact(dictSize, 0); // ZSTD_dlm_byCopy
+            // ZSTD_dlm_byCopy
+            return new ZstdByteSize((long) Bindings.ESTIMATE_DDICT_SIZE.invokeExact(dictSize.value(), 0));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

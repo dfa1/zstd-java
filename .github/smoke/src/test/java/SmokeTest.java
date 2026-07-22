@@ -3,6 +3,7 @@
 // workflow can pin the released version and the matrix's native jar.
 
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdByteSize;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressDictionary;
 import io.github.dfa1.zstd.ZstdCompressionLevel;
@@ -67,7 +68,7 @@ class SmokeTest {
     @BeforeAll
     static void trainDictionary() {
         List<byte[]> samples = jsonSamples();
-        dict = ZstdDictionary.train(samples, 8 * 1024);
+        dict = ZstdDictionary.train(samples, ZstdByteSize.ofKiB(8));
         message = samples.get(7);
     }
 
@@ -82,13 +83,13 @@ class SmokeTest {
         check(min < max, "minCompressionLevel() >= maxCompressionLevel()");
         check(def >= min && def <= max, "defaultCompressionLevel() out of [min,max]");
 
-        check(Zstd.compressBound(1000) >= 1000, "compressBound() below input size");
-        check(Zstd.estimateCompressContextSize(ZstdCompressionLevel.DEFAULT) > 0,
+        check(Zstd.compressBound(new ZstdByteSize(1000)).value() >= 1000, "compressBound() below input size");
+        check(Zstd.estimateCompressContextSize(ZstdCompressionLevel.DEFAULT).value() > 0,
                 "estimateCompressContextSize() not positive");
-        check(Zstd.estimateDecompressContextSize() > 0, "estimateDecompressContextSize() not positive");
-        check(Zstd.estimateCompressDictSize(4096, ZstdCompressionLevel.DEFAULT) > 0,
+        check(Zstd.estimateDecompressContextSize().value() > 0, "estimateDecompressContextSize() not positive");
+        check(Zstd.estimateCompressDictSize(new ZstdByteSize(4096), ZstdCompressionLevel.DEFAULT).value() > 0,
                 "estimateCompressDictSize() not positive");
-        check(Zstd.estimateDecompressDictSize(4096) > 0, "estimateDecompressDictSize() not positive");
+        check(Zstd.estimateDecompressDictSize(new ZstdByteSize(4096)).value() > 0, "estimateDecompressDictSize() not positive");
     }
 
     @Test
@@ -108,11 +109,11 @@ class SmokeTest {
         byte[] original = sampleText();
         byte[] compressed = Zstd.compress(original);
 
-        byte[] restored = Zstd.decompress(compressed, original.length);
+        byte[] restored = Zstd.decompress(compressed, new ZstdByteSize(original.length));
         checkArrayEquals(original, restored, "decompress(byte[], maxSize) mismatch");
 
         try {
-            Zstd.decompress(compressed, 1);
+            Zstd.decompress(compressed, new ZstdByteSize(1));
             throw new AssertionError("expected ZstdException for an undersized maxSize on " + PLATFORM);
         } catch (ZstdException expected) {
             check(expected.code() == ZstdErrorCode.DST_SIZE_TOO_SMALL,
@@ -126,7 +127,7 @@ class SmokeTest {
         byte[] compressed = Zstd.compress(original);
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment frame = toNative(arena, compressed);
-            check(Zstd.decompressedSize(frame) == original.length, "decompressedSize(MemorySegment) mismatch");
+            check(Zstd.decompressedSize(frame).value() == original.length, "decompressedSize(MemorySegment) mismatch");
         }
     }
 
@@ -142,7 +143,7 @@ class SmokeTest {
             // payload happens to compress on a given platform.
             corrupted[corrupted.length - 1] ^= 0xFF;
             try {
-                Zstd.decompress(corrupted, original.length);
+                Zstd.decompress(corrupted, new ZstdByteSize(original.length));
                 throw new AssertionError("expected ZstdException for a corrupted checksum on " + PLATFORM);
             } catch (ZstdException expected) {
                 check(expected.code() == ZstdErrorCode.CHECKSUM_WRONG,
@@ -168,8 +169,8 @@ class SmokeTest {
         check(!ZstdFrame.isZstdFrame("plain text, not zstd".getBytes(StandardCharsets.UTF_8)),
                 "isZstdFrame(byte[]) true for non-zstd data");
         check(ZstdFrame.compressedSize(compressed) == compressed.length, "compressedSize(byte[]) mismatch");
-        check(ZstdFrame.decompressedSize(compressed) == original.length, "decompressedSize(byte[]) mismatch");
-        check(ZstdFrame.decompressedBound(compressed) >= original.length, "decompressedBound(byte[]) too small");
+        check(ZstdFrame.decompressedSize(compressed).value() == original.length, "decompressedSize(byte[]) mismatch");
+        check(ZstdFrame.decompressedBound(compressed).value() >= original.length, "decompressedBound(byte[]) too small");
         check(ZstdFrame.decompressionMargin(compressed) >= 0, "decompressionMargin(byte[]) negative");
         check(!ZstdFrame.dictId(compressed).isPresent(), "dictId(byte[]) expected NONE for a non-dictionary frame");
         check(!ZstdFrame.isSkippableFrame(compressed), "isSkippableFrame(byte[]) true for a standard frame");
@@ -178,7 +179,7 @@ class SmokeTest {
         check(headerSize > 0 && headerSize <= compressed.length, "headerSize(byte[]) out of range");
 
         ZstdFrameHeader header = ZstdFrame.header(compressed);
-        check(header.contentSize().isPresent() && header.contentSize().getAsLong() == original.length,
+        check(header.contentSize().isPresent() && header.contentSize().get().value() == original.length,
                 "header(byte[]).contentSize() mismatch");
         check(header.frameType() == ZstdFrameType.STANDARD, "header(byte[]).frameType() expected STANDARD");
         check(header.headerSize() == headerSize, "header(byte[]).headerSize() disagreed with headerSize(byte[])");
@@ -209,13 +210,13 @@ class SmokeTest {
                     .parameter(ZstdCompressParameter.STRATEGY, 3);
 
             byte[] compressed = cctx.compress(original);
-            checkArrayEquals(original, Zstd.decompress(compressed, original.length),
+            checkArrayEquals(original, Zstd.decompress(compressed, new ZstdByteSize(original.length)),
                     "advanced-parameter round-trip mismatch");
-            check(cctx.sizeOf() > 0, "cctx.sizeOf() not positive");
+            check(cctx.sizeOf().value() > 0, "cctx.sizeOf() not positive");
 
             cctx.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
             byte[] afterReset = cctx.level(new ZstdCompressionLevel(3)).compress(original);
-            checkArrayEquals(original, Zstd.decompress(afterReset, original.length),
+            checkArrayEquals(original, Zstd.decompress(afterReset, new ZstdByteSize(original.length)),
                     "compress after SESSION_AND_PARAMETERS reset mismatch");
         }
     }
@@ -228,7 +229,7 @@ class SmokeTest {
             dctx.windowLogMax(24);
             byte[] restored = dctx.decompress(cctx.compress(original), original.length);
             checkArrayEquals(original, restored, "windowLogMax() decompress round-trip mismatch");
-            check(dctx.sizeOf() > 0, "dctx.sizeOf() not positive");
+            check(dctx.sizeOf().value() > 0, "dctx.sizeOf() not positive");
 
             dctx.reset(ZstdResetDirective.PARAMETERS);
             dctx.parameter(ZstdDecompressParameter.WINDOW_LOG_MAX, 24);
@@ -269,7 +270,7 @@ class SmokeTest {
         try (ZstdCompressContext cctx = new ZstdCompressContext()) {
             cctx.parameter(ZstdCompressParameter.NB_WORKERS, 2);
             byte[] compressed = cctx.compress(original);
-            checkArrayEquals(original, Zstd.decompress(compressed, original.length),
+            checkArrayEquals(original, Zstd.decompress(compressed, new ZstdByteSize(original.length)),
                     "multithreaded (NB_WORKERS=2) round-trip mismatch");
         }
     }
@@ -293,8 +294,8 @@ class SmokeTest {
             byte[] compressed = cctx.compress(message, cdict);
             byte[] restored = dctx.decompress(compressed, message.length, ddict);
             checkArrayEquals(message, restored, "digested-dictionary round-trip mismatch");
-            check(cdict.sizeOf() > 0, "ZstdCompressDictionary.sizeOf() not positive");
-            check(ddict.sizeOf() > 0, "ZstdDecompressDictionary.sizeOf() not positive");
+            check(cdict.sizeOf().value() > 0, "ZstdCompressDictionary.sizeOf() not positive");
+            check(ddict.sizeOf().value() > 0, "ZstdDecompressDictionary.sizeOf() not positive");
         }
     }
 
@@ -306,7 +307,7 @@ class SmokeTest {
             byte[] original = sampleText();
             MemorySegment src = toNative(arena, original);
 
-            MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
+            MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(src.byteSize())).value());
             long written = cctx.compress(dst, src);
             MemorySegment restored = arena.allocate(original.length);
             long read = dctx.decompress(restored, dst.asSlice(0, written));
@@ -318,18 +319,18 @@ class SmokeTest {
     @Test
     void streamingZeroCopy() {
         try (ZstdCompressStream cs = new ZstdCompressStream()) {
-            check(cs.sizeOf() > 0, "no-arg ZstdCompressStream.sizeOf() not positive");
+            check(cs.sizeOf().value() > 0, "no-arg ZstdCompressStream.sizeOf() not positive");
         }
 
         byte[] original = sampleText();
         try (Arena arena = Arena.ofConfined();
              ZstdCompressStream cs = new ZstdCompressStream(Zstd.defaultCompressionLevel())) {
             MemorySegment src = toNative(arena, original);
-            MemorySegment dst = arena.allocate(Zstd.compressBound(src.byteSize()));
+            MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(src.byteSize())).value());
             ZstdStreamResult result = cs.compress(dst, src, ZstdEndDirective.END);
             check(result.isComplete(), "single-shot ZstdCompressStream.compress(END) did not complete");
             check(result.bytesConsumed() == original.length, "ZstdCompressStream consumed byte count mismatch");
-            check(cs.sizeOf() > 0, "ZstdCompressStream.sizeOf() not positive");
+            check(cs.sizeOf().value() > 0, "ZstdCompressStream.sizeOf() not positive");
 
             // Reads a native struct (ZSTD_frameProgression) through fixed field
             // offsets — worth checking per platform since padding/alignment is
@@ -346,7 +347,7 @@ class SmokeTest {
                 check(decodeResult.isComplete(), "ZstdDecompressStream.decompress() did not complete");
                 checkArrayEquals(original, toByteArray(out, decodeResult.bytesProduced()),
                         "zero-copy streaming round-trip mismatch");
-                check(ds.sizeOf() > 0, "ZstdDecompressStream.sizeOf() not positive");
+                check(ds.sizeOf().value() > 0, "ZstdDecompressStream.sizeOf() not positive");
             }
         }
     }
@@ -365,11 +366,11 @@ class SmokeTest {
 
         ByteArrayOutputStream sinkPledged = new ByteArrayOutputStream();
         try (ZstdOutputStream zout =
-                     ZstdOutputStream.withPledgedSize(sinkPledged, new ZstdCompressionLevel(5), original.length)) {
+                     ZstdOutputStream.withPledgedSize(sinkPledged, new ZstdCompressionLevel(5), new ZstdByteSize(original.length))) {
             zout.write(original);
         }
         byte[] pledgedFrame = sinkPledged.toByteArray();
-        check(ZstdFrame.header(pledgedFrame).contentSize().orElseThrow() == original.length,
+        check(ZstdFrame.header(pledgedFrame).contentSize().orElseThrow().value() == original.length,
                 "withPledgedSize() did not stamp the declared content size into the frame header");
         checkArrayEquals(original, Zstd.decompress(pledgedFrame), "withPledgedSize() round-trip mismatch");
     }

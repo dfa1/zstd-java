@@ -97,7 +97,7 @@ class ZstdMultithreadTest {
 
                 // When compressing a payload large enough to engage the workers
                 MemorySegment src = segmentOf(arena, LARGE_PAYLOAD);
-                MemorySegment dst = arena.allocate(Zstd.compressBound(LARGE_PAYLOAD.length));
+                MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(LARGE_PAYLOAD.length)).value());
                 ZstdStreamResult r = sut.compress(dst, src, ZstdEndDirective.END);
                 frame = bytesOf(dst, r.bytesProduced());
             }
@@ -123,7 +123,7 @@ class ZstdMultithreadTest {
             }
 
             // Then the frame decompresses back to the original
-            assertThat(Zstd.decompress(sink.toByteArray(), LARGE_PAYLOAD.length)).isEqualTo(LARGE_PAYLOAD);
+            assertThat(Zstd.decompress(sink.toByteArray(), new ZstdByteSize(LARGE_PAYLOAD.length))).isEqualTo(LARGE_PAYLOAD);
         }
     }
 
@@ -135,14 +135,14 @@ class ZstdMultithreadTest {
             // Given a context that compressed once without workers (baseline size)
             try (ZstdCompressContext sut = new ZstdCompressContext()) {
                 sut.compress(LARGE_PAYLOAD);
-                long baseline = sut.sizeOf();
+                long baseline = sut.sizeOf().value();
 
                 // When compressing with workers, then resetting session and parameters
                 sut.parameter(ZstdCompressParameter.NB_WORKERS, 2);
                 sut.compress(LARGE_PAYLOAD);
-                long afterMultithread = sut.sizeOf();
+                long afterMultithread = sut.sizeOf().value();
                 sut.reset(ZstdResetDirective.SESSION_AND_PARAMETERS);
-                long afterReset = sut.sizeOf();
+                long afterReset = sut.sizeOf().value();
 
                 // Then the worker pool and job buffers were allocated by the MT
                 // compress, and reset did NOT release them — only close() does.

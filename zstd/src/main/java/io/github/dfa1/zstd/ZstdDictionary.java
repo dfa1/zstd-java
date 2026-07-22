@@ -18,14 +18,14 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /// similar payloads (log lines, JSON records, protobufs) dramatically smaller
 /// than compressing each one independently.
 ///
-/// Obtain one by [training][#train(List, int)] on representative
+/// Obtain one by [training][#train(List, ZstdByteSize)] on representative
 /// samples, or wrap dictionary bytes you already have with [#of(byte[])].
 /// Pass it to [ZstdCompressContext] / [ZstdDecompressContext] to compress and
 /// decompress against it. For a hot path, digest it once into a
 /// [ZstdCompressDictionary] / [ZstdDecompressDictionary].
 ///
 /// {@snippet :
-/// ZstdDictionary dict = ZstdDictionary.train(sampleRecords, 64 * 1024);
+/// ZstdDictionary dict = ZstdDictionary.train(sampleRecords, ZstdByteSize.ofKiB(64));
 /// try (ZstdCompressContext ctx = new ZstdCompressContext()) {
 ///     byte[] packed = ctx.compress(record, dict);
 /// }
@@ -90,20 +90,22 @@ public final class ZstdDictionary {
     /// Aim for at least a few hundred samples totalling ~100× the target
     /// dictionary size; too little data yields a weak dictionary.
     ///
-    /// @param samples       representative payloads to learn from
-    /// @param maxDictBytes  upper bound on the produced dictionary size (e.g. 110 KiB)
+    /// @param samples      representative payloads to learn from
+    /// @param maxDictBytes upper bound on the produced dictionary size (e.g. 110 KiB)
     /// @return the trained dictionary
-    /// @throws ZstdException if training fails (commonly: not enough sample data)
-    public static ZstdDictionary train(List<byte[]> samples, int maxDictBytes) {
+    /// @throws ZstdException if training fails (commonly: not enough sample data),
+    ///                       or `maxDictBytes` exceeds the maximum array length
+    public static ZstdDictionary train(List<byte[]> samples, ZstdByteSize maxDictBytes) {
         Objects.requireNonNull(samples, SAMPLES);
         requireNonEmpty(samples, "train");
+        int maxDictBytesLength = toBufferLength(maxDictBytes);
         try (Arena arena = Arena.ofConfined()) {
             FlatSamples in = flatten(arena, samples);
-            MemorySegment dictBuf = arena.allocate(maxDictBytes);
+            MemorySegment dictBuf = arena.allocate(maxDictBytesLength);
             long produced;
             try {
                 produced = (long) Bindings.ZDICT_TRAIN.invokeExact(
-                        dictBuf, (long) maxDictBytes, in.data(), in.sizes(), in.count());
+                        dictBuf, (long) maxDictBytesLength, in.data(), in.sizes(), in.count());
             } catch (Throwable t) {
                 throw NativeCall.rethrow(t);
             }
@@ -118,8 +120,9 @@ public final class ZstdDictionary {
     /// @param samples      representative payloads to learn from
     /// @param maxDictBytes upper bound on the produced dictionary size
     /// @return the trained dictionary
-    /// @throws ZstdException if training fails
-    public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes) {
+    /// @throws ZstdException if training fails, or `maxDictBytes` exceeds the
+    ///                       maximum array length
+    public static ZstdDictionary trainCover(List<byte[]> samples, ZstdByteSize maxDictBytes) {
         return optimize(samples, maxDictBytes, 0, false);
     }
 
@@ -130,8 +133,9 @@ public final class ZstdDictionary {
     /// @param compressionLevel the level the dictionary will be used at (a level
     ///                         whose [ZstdCompressionLevel#value()] is 0 = default)
     /// @return the trained dictionary
-    /// @throws ZstdException if training fails
-    public static ZstdDictionary trainCover(List<byte[]> samples, int maxDictBytes,
+    /// @throws ZstdException if training fails, or `maxDictBytes` exceeds the
+    ///                       maximum array length
+    public static ZstdDictionary trainCover(List<byte[]> samples, ZstdByteSize maxDictBytes,
                                             ZstdCompressionLevel compressionLevel) {
         return optimize(samples, maxDictBytes, compressionLevel.value(), false);
     }
@@ -143,8 +147,9 @@ public final class ZstdDictionary {
     /// @param samples      representative payloads to learn from
     /// @param maxDictBytes upper bound on the produced dictionary size
     /// @return the trained dictionary
-    /// @throws ZstdException if training fails
-    public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes) {
+    /// @throws ZstdException if training fails, or `maxDictBytes` exceeds the
+    ///                       maximum array length
+    public static ZstdDictionary trainFastCover(List<byte[]> samples, ZstdByteSize maxDictBytes) {
         return optimize(samples, maxDictBytes, 0, true);
     }
 
@@ -155,16 +160,18 @@ public final class ZstdDictionary {
     /// @param compressionLevel the level the dictionary will be used at (a level
     ///                         whose [ZstdCompressionLevel#value()] is 0 = default)
     /// @return the trained dictionary
-    /// @throws ZstdException if training fails
-    public static ZstdDictionary trainFastCover(List<byte[]> samples, int maxDictBytes,
+    /// @throws ZstdException if training fails, or `maxDictBytes` exceeds the
+    ///                       maximum array length
+    public static ZstdDictionary trainFastCover(List<byte[]> samples, ZstdByteSize maxDictBytes,
                                                 ZstdCompressionLevel compressionLevel) {
         return optimize(samples, maxDictBytes, compressionLevel.value(), true);
     }
 
-    private static ZstdDictionary optimize(List<byte[]> samples, int maxDictBytes,
+    private static ZstdDictionary optimize(List<byte[]> samples, ZstdByteSize maxDictBytes,
                                            int compressionLevel, boolean fast) {
         Objects.requireNonNull(samples, SAMPLES);
         requireNonEmpty(samples, "train");
+        int maxDictBytesLength = toBufferLength(maxDictBytes);
         try (Arena arena = Arena.ofConfined()) {
             FlatSamples in = flatten(arena, samples);
             // zeroed params (auto-tune k/d/steps); set single-threaded + target level.
@@ -173,11 +180,11 @@ public final class ZstdDictionary {
             params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement(FIELD_NB_THREADS)), 1);
             params.set(JAVA_INT, layout.byteOffset(PathElement.groupElement(FIELD_COMPRESSION_LEVEL)), compressionLevel);
             MethodHandle handle = fast ? Bindings.ZDICT_OPTIMIZE_FASTCOVER : Bindings.ZDICT_OPTIMIZE_COVER;
-            MemorySegment dictBuf = arena.allocate(maxDictBytes);
+            MemorySegment dictBuf = arena.allocate(maxDictBytesLength);
             long produced;
             try {
                 produced = (long) handle.invokeExact(
-                        dictBuf, (long) maxDictBytes, in.data(), in.sizes(), in.count(), params);
+                        dictBuf, (long) maxDictBytesLength, in.data(), in.sizes(), in.count(), params);
             } catch (Throwable t) {
                 throw NativeCall.rethrow(t);
             }
@@ -196,27 +203,40 @@ public final class ZstdDictionary {
     /// @param compressionLevel the level the dictionary will be used at (a level
     ///                         whose [ZstdCompressionLevel#value()] is 0 = default)
     /// @return the finalized dictionary
-    /// @throws ZstdException if finalization fails
+    /// @throws ZstdException if finalization fails, or `maxDictBytes` exceeds the
+    ///                       maximum array length
     public static ZstdDictionary finalizeFrom(byte[] content, List<byte[]> samples,
-                                              int maxDictBytes, ZstdCompressionLevel compressionLevel) {
+                                              ZstdByteSize maxDictBytes, ZstdCompressionLevel compressionLevel) {
         Objects.requireNonNull(content, "content");
         Objects.requireNonNull(samples, SAMPLES);
         requireNonEmpty(samples, "finalize");
+        int maxDictBytesLength = toBufferLength(maxDictBytes);
         try (Arena arena = Arena.ofConfined()) {
             FlatSamples in = flatten(arena, samples);
             MemorySegment contentSeg = Zstd.copyIn(arena, content);
             MemorySegment params = arena.allocate(Bindings.ZDICT_PARAMS_LAYOUT);
             params.set(JAVA_INT, 0, compressionLevel.value());  // compressionLevel; notificationLevel/dictID = 0
-            MemorySegment dictBuf = arena.allocate(maxDictBytes);
+            MemorySegment dictBuf = arena.allocate(maxDictBytesLength);
             long produced;
             try {
                 produced = (long) Bindings.ZDICT_FINALIZE_DICTIONARY.invokeExact(
-                        dictBuf, (long) maxDictBytes, contentSeg, (long) content.length,
+                        dictBuf, (long) maxDictBytesLength, contentSeg, (long) content.length,
                         in.data(), in.sizes(), in.count(), params);
             } catch (Throwable t) {
                 throw NativeCall.rethrow(t);
             }
             return toDictionary(dictBuf, produced, "dictionary finalization");
+        }
+    }
+
+    /// Narrows a dictionary-size bound to a buffer length, rejecting sizes that
+    /// exceed what a Java array can hold, with a [ZstdException] rather than a
+    /// raw `ArithmeticException` escaping [ZstdByteSize#toIntExact()].
+    private static int toBufferLength(ZstdByteSize maxDictBytes) {
+        try {
+            return maxDictBytes.toIntExact();
+        } catch (ArithmeticException e) {
+            throw new ZstdException("maxDictBytes " + maxDictBytes.value() + " exceeds the maximum array length");
         }
     }
 

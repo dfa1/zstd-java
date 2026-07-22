@@ -7,6 +7,35 @@ git tags, which trigger publication to Maven Central.
 ## [Unreleased]
 
 ### Changed
+- **Breaking:** every public API that took or returned a naked `int`/`long` byte
+  size or count now takes/returns a `ZstdByteSize` value type, which rejects
+  negative values at construction (throwing `IllegalArgumentException`) — once
+  you hold a `ZstdByteSize` it is guaranteed valid, no more wondering whether a
+  raw `long` from the library still needs checking. Sizes that must fit a
+  `byte[]` narrow via `ZstdByteSize.toIntExact()` (throwing
+  `ArithmeticException` above `Integer.MAX_VALUE`), matching the JDK's own
+  `Math.toIntExact`; native and streaming totals pass through as `long`. A
+  frame-declared content size that is a zstd sentinel, or otherwise invalid
+  (including the unsigned range above `Long.MAX_VALUE`, read as a negative
+  `long`), fails fast with `ZstdException` via
+  `ZstdByteSize.fromFrameContentSize(long)` rather than reaching the
+  constructor's generic negative-value guard; `ZstdFrameHeader.contentSize()`
+  is now `Optional<ZstdByteSize>` (was `OptionalLong`) via the sibling
+  `ZstdByteSize.fromFrameHeaderContentSize(long)`, which treats any negative
+  reading — not just the sentinel — as absent, since it can only mean an
+  unrepresentable declared size. Affects
+  `Zstd.decompress(byte[], …)`, `Zstd.compressBound`,
+  `Zstd.estimateCompressContextSize`/`estimateDecompressContextSize`/
+  `estimateCompressDictSize`/`estimateDecompressDictSize`,
+  `Zstd.decompressedSize(MemorySegment)`,
+  `ZstdDictionary.train`/`trainCover`/`trainFastCover`/`finalizeFrom`,
+  `ZstdOutputStream.withPledgedSize`, `ZstdFrame.decompressedSize`/
+  `decompressedBound`, `ZstdFrameHeader.contentSize`, and `sizeOf()` on
+  `ZstdCompressContext`/`ZstdDecompressContext`/`ZstdCompressStream`/
+  `ZstdDecompressStream`/`ZstdCompressDictionary`/`ZstdDecompressDictionary`.
+  Use `new ZstdByteSize(n)`, or `ZstdByteSize.ofKiB(n)`/`ofMiB(n)` for a size
+  expressed in KiB/MiB.
+  ([#96](https://github.com/dfa1/zstd-java/issues/96))
 - **Breaking:** every public API that took a raw `int` compression level now
   takes a `ZstdCompressionLevel` value type, which validates the level against
   the linked libzstd's accepted range at construction (throwing

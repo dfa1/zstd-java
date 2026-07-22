@@ -264,8 +264,8 @@ public final class ZstdDecompressContext extends NativeObject {
     /// @return a segment of exactly the decompressed length, allocated in `arena`
     /// @throws ZstdException if the frame is invalid or stores no size
     public MemorySegment decompress(Arena arena, MemorySegment frame) {
-        long size = Zstd.decompressedSize(frame);
-        MemorySegment out = arena.allocate(size);
+        ZstdByteSize size = Zstd.decompressedSize(frame);
+        MemorySegment out = arena.allocate(size.value());
         decompress(out, frame);
         return out;
     }
@@ -278,8 +278,8 @@ public final class ZstdDecompressContext extends NativeObject {
     /// @param dict  the pre-digested decompression dictionary
     /// @return a segment of exactly the decompressed length, allocated in `arena`
     public MemorySegment decompress(Arena arena, MemorySegment frame, ZstdDecompressDictionary dict) {
-        long size = Zstd.decompressedSize(frame);
-        MemorySegment out = arena.allocate(size);
+        ZstdByteSize size = Zstd.decompressedSize(frame);
+        MemorySegment out = arena.allocate(size.value());
         decompress(out, frame, dict);
         return out;
     }
@@ -287,9 +287,9 @@ public final class ZstdDecompressContext extends NativeObject {
     /// Current native memory used by this context, in bytes.
     ///
     /// @return the live context size
-    public long sizeOf() {
+    public ZstdByteSize sizeOf() {
         try {
-            return (long) Bindings.SIZEOF_DCTX.invokeExact(ptr());
+            return new ZstdByteSize((long) Bindings.SIZEOF_DCTX.invokeExact(ptr()));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

@@ -58,7 +58,7 @@ public final class ZstdFrame {
     /// @param data one or more concatenated zstd frames
     /// @return an upper bound on the combined decompressed size
     /// @throws ZstdException if the input is not valid zstd data
-    public static long decompressedBound(byte[] data) {
+    public static ZstdByteSize decompressedBound(byte[] data) {
         try (Arena arena = Arena.ofConfined()) {
             return decompressedBound(Zstd.copyIn(arena, data), data.length);
         }
@@ -69,7 +69,7 @@ public final class ZstdFrame {
     /// @param data one or more concatenated zstd frames
     /// @return an upper bound on the combined decompressed size
     /// @throws ZstdException if the input is not valid zstd data
-    public static long decompressedBound(MemorySegment data) {
+    public static ZstdByteSize decompressedBound(MemorySegment data) {
         return decompressedBound(data, data.byteSize());
     }
 
@@ -85,7 +85,7 @@ public final class ZstdFrame {
     /// @return the exact combined decompressed size
     /// @throws ZstdException if the input is not valid zstd data, or any frame does
     ///                       not record its decompressed size
-    public static long decompressedSize(byte[] data) {
+    public static ZstdByteSize decompressedSize(byte[] data) {
         try (Arena arena = Arena.ofConfined()) {
             return decompressedSize(Zstd.copyIn(arena, data), data.length);
         }
@@ -98,7 +98,7 @@ public final class ZstdFrame {
     /// @return the exact combined decompressed size
     /// @throws ZstdException if the input is not valid zstd data, or any frame does
     ///                       not record its decompressed size
-    public static long decompressedSize(MemorySegment data) {
+    public static ZstdByteSize decompressedSize(MemorySegment data) {
         return decompressedSize(data, data.byteSize());
     }
 
@@ -288,7 +288,7 @@ public final class ZstdFrame {
         return NativeCall.checkReturnValue(() -> (long) Bindings.FIND_FRAME_COMPRESSED_SIZE.invokeExact(data, size));
     }
 
-    private static long decompressedBound(MemorySegment data, long size) {
+    private static ZstdByteSize decompressedBound(MemorySegment data, long size) {
         long bound;
         try {
             bound = (long) Bindings.DECOMPRESS_BOUND.invokeExact(data, size);
@@ -296,17 +296,17 @@ public final class ZstdFrame {
             throw NativeCall.rethrow(t);
         }
         // ZSTD_decompressBound never returns CONTENTSIZE_UNKNOWN, only a bound or the error sentinel
-        return Zstd.requireStoredContentSize(bound);
+        return ZstdByteSize.fromFrameContentSize(bound);
     }
 
-    private static long decompressedSize(MemorySegment data, long size) {
+    private static ZstdByteSize decompressedSize(MemorySegment data, long size) {
         long total;
         try {
             total = (long) Bindings.FIND_DECOMPRESSED_SIZE.invokeExact(data, size);
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }
-        return Zstd.requireStoredContentSize(total);
+        return ZstdByteSize.fromFrameContentSize(total);
     }
 
     private static long decompressionMargin(MemorySegment data, long size) {

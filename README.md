@@ -41,7 +41,7 @@ import io.github.dfa1.zstd.*;
 import java.util.List;
 
 List<byte[]> samples = ...;                       // representative records
-ZstdDictionary dict = ZstdDictionary.train(samples, 8 * 1024);
+ZstdDictionary dict = ZstdDictionary.train(samples, ZstdByteSize.ofKiB(8));
 
 byte[] message = ...;
 try (ZstdCompressContext cctx = new ZstdCompressContext();

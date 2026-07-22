@@ -27,7 +27,7 @@ class ZstdSegmentStreamTest {
                  ZstdDecompressStream ds = new ZstdDecompressStream()) {
 
                 MemorySegment src = segmentOf(arena, original);
-                MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
+                MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(original.length)).value());
 
                 // When compressed in one END step
                 ZstdStreamResult c = cs.compress(dst, src, ZstdEndDirective.END);
@@ -97,7 +97,7 @@ class ZstdSegmentStreamTest {
                  ZstdCompressStream cs = new ZstdCompressStream()) {
 
                 MemorySegment src = segmentOf(arena, original);
-                MemorySegment dst = arena.allocate(Zstd.compressBound(original.length));
+                MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(original.length)).value());
 
                 // fresh stream: nothing moved yet
                 assertThat(cs.progress().consumed()).isZero();
@@ -127,7 +127,7 @@ class ZstdSegmentStreamTest {
                  ZstdDecompressStream ds = new ZstdDecompressStream(dict)) {
 
                 MemorySegment src = segmentOf(arena, sample);
-                MemorySegment dst = arena.allocate(Zstd.compressBound(sample.length));
+                MemorySegment dst = arena.allocate(Zstd.compressBound(new ZstdByteSize(sample.length)).value());
                 ZstdStreamResult c = cs.compress(dst, src, ZstdEndDirective.END);
 
                 MemorySegment out = arena.allocate(sample.length);

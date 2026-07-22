@@ -24,7 +24,7 @@ class RefPrefixTest {
              ZstdDecompressContext dctx = new ZstdDecompressContext()) {
             MemorySegment prefix = segmentOf(arena, prefixBytes);
             MemorySegment src = segmentOf(arena, dataBytes);
-            MemorySegment frame = arena.allocate(Zstd.compressBound(dataBytes.length));
+            MemorySegment frame = arena.allocate(Zstd.compressBound(new ZstdByteSize(dataBytes.length)).value());
             MemorySegment out = arena.allocate(dataBytes.length);
 
             // When
@@ -94,7 +94,7 @@ class RefPrefixTest {
              ZstdCompressContext cctx = new ZstdCompressContext()) {
             MemorySegment prefix = segmentOf(arena, "a prior version of the text".getBytes());
             MemorySegment src = segmentOf(arena, dataBytes);
-            MemorySegment frame = arena.allocate(Zstd.compressBound(dataBytes.length));
+            MemorySegment frame = arena.allocate(Zstd.compressBound(new ZstdByteSize(dataBytes.length)).value());
 
             // When — set then clear the prefix before compressing
             cctx.refPrefix(prefix);
@@ -121,8 +121,8 @@ class RefPrefixTest {
              ZstdCompressContext cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(19))) {
             MemorySegment prefix = segmentOf(arena, random);
             MemorySegment src = segmentOf(arena, random);
-            MemorySegment first = arena.allocate(Zstd.compressBound(random.length));
-            MemorySegment second = arena.allocate(Zstd.compressBound(random.length));
+            MemorySegment first = arena.allocate(Zstd.compressBound(new ZstdByteSize(random.length)).value());
+            MemorySegment second = arena.allocate(Zstd.compressBound(new ZstdByteSize(random.length)).value());
 
             // When — first frame consumes the prefix; second is compressed with no re-set
             cctx.refPrefix(prefix);

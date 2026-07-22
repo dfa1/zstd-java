@@ -3,6 +3,7 @@ package io.github.dfa1.zstd.bench;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdByteSize;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdDecompressContext;
@@ -91,7 +92,7 @@ public class GoldenCorpusBenchmark {
 
         cctx = new ZstdCompressContext().level(new ZstdCompressionLevel(level));
         dctx = new ZstdDecompressContext();
-        bound = (int) Zstd.compressBound(srcSize);
+        bound = Zstd.compressBound(new ZstdByteSize(srcSize)).toIntExact();
         compressDst = new byte[bound];
 
         arena = Arena.ofConfined();

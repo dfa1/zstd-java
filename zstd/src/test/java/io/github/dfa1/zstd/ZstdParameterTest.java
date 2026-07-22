@@ -47,7 +47,7 @@ class ZstdParameterTest {
             frame[frame.length / 2] ^= 0x01;
 
             // When decompressed
-            ThrowingCallable result = () -> Zstd.decompress(frame, PAYLOAD.length);
+            ThrowingCallable result = () -> Zstd.decompress(frame, new ZstdByteSize(PAYLOAD.length));
 
             // Then the integrity check fails
             assertThatThrownBy(result).isInstanceOf(ZstdException.class);

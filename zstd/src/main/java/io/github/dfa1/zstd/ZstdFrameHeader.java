@@ -1,6 +1,6 @@
 package io.github.dfa1.zstd;
 
-import java.util.OptionalLong;
+import java.util.Optional;
 
 /// Parsed contents of a zstd frame header, from `ZSTD_getFrameHeader`.
 ///
@@ -25,9 +25,7 @@ public record ZstdFrameHeader(
     /// The decompressed size, if the frame records it.
     ///
     /// @return the content size, or empty if the frame does not store it
-    public OptionalLong contentSize() {
-        return frameContentSize == Zstd.CONTENTSIZE_UNKNOWN
-                ? OptionalLong.empty()
-                : OptionalLong.of(frameContentSize);
+    public Optional<ZstdByteSize> contentSize() {
+        return ZstdByteSize.fromFrameHeaderContentSize(frameContentSize);
     }
 }

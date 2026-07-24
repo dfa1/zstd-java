@@ -141,9 +141,9 @@ public final class ZstdCompressStream extends NativeObject {
     /// Current native memory used by this stream's context, in bytes.
     ///
     /// @return the live context size
-    public long sizeOf() {
+    public ZstdByteSize sizeOf() {
         try {
-            return (long) Bindings.SIZEOF_CCTX.invokeExact(ptr());
+            return new ZstdByteSize((long) Bindings.SIZEOF_CCTX.invokeExact(ptr()));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

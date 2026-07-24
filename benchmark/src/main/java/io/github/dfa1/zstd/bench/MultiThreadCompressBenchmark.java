@@ -3,6 +3,7 @@ package io.github.dfa1.zstd.bench;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdByteSize;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdCompressParameter;
@@ -40,6 +41,8 @@ import org.openjdk.jmh.annotations.Warmup;
 @Measurement(iterations = 5)
 public class MultiThreadCompressBenchmark {
 
+    // 1 MiB, 64 MiB — JMH @Param requires compile-time constant Strings, so
+    // these can't be expressed via ZstdByteSize.ofMiB.
     @Param({"1048576", "67108864"})
     private int size;
 
@@ -58,7 +61,7 @@ public class MultiThreadCompressBenchmark {
     @Setup(Level.Trial)
     public void setup() {
         byte[] src = BenchData.generate(size);
-        int bound = (int) Zstd.compressBound(size);
+        int bound = Zstd.compressBound(new ZstdByteSize(size)).toIntExact();
 
         ctx = new ZstdCompressContext().level(new ZstdCompressionLevel(level));
         if (nbWorkers > 0) {

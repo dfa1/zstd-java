@@ -78,9 +78,9 @@ public final class ZstdOutputStream extends OutputStream {
     /// @param level          the compression level to use
     /// @param pledgedSrcSize the exact number of uncompressed bytes that will be written
     /// @return a stream that will stamp the content size into the frame
-    public static ZstdOutputStream withPledgedSize(OutputStream out, ZstdCompressionLevel level, long pledgedSrcSize) {
+    public static ZstdOutputStream withPledgedSize(OutputStream out, ZstdCompressionLevel level, ZstdByteSize pledgedSrcSize) {
         ZstdOutputStream stream = new ZstdOutputStream(out, level);
-        stream.setPledgedSrcSize(pledgedSrcSize);
+        stream.setPledgedSrcSize(pledgedSrcSize.value());
         return stream;
     }
 

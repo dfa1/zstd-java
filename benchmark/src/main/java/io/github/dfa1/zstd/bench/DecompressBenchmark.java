@@ -35,6 +35,8 @@ import org.openjdk.jmh.annotations.Warmup;
 @Measurement(iterations = 5)
 public class DecompressBenchmark {
 
+    // 1 KiB, 64 KiB, 1 MiB, 64 MiB — JMH @Param requires compile-time constant
+    // Strings, so these can't be expressed via ZstdByteSize.ofKiB/ofMiB.
     @Param({"1024", "65536", "1048576", "67108864"})
     private int size;
 

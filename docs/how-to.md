@@ -90,7 +90,7 @@ dictionary compresses each one far smaller than it could be alone. Train one on
 representative samples:
 
 ```java
-ZstdDictionary dict = ZstdDictionary.train(sampleRecords, 16 * 1024);
+ZstdDictionary dict = ZstdDictionary.train(sampleRecords, ZstdByteSize.ofKiB(16));
 
 try (ZstdCompressContext cctx = new ZstdCompressContext();
      ZstdDecompressContext dctx = new ZstdDecompressContext()) {
@@ -124,8 +124,8 @@ hands zstd the segment address directly: no copy in, no copy out, no GC churn.
 try (Arena arena = Arena.ofConfined();
      ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     MemorySegment frame = reader.mmapSlice();           // already native
-    long n = Zstd.decompressedSize(frame);              // read header, no copy
-    MemorySegment out = arena.allocate(n);              // becomes the backing buffer
+    ZstdByteSize n = Zstd.decompressedSize(frame);      // read header, no copy
+    MemorySegment out = arena.allocate(n.value());      // becomes the backing buffer
     dctx.decompress(out, frame);                        // native → native
 }
 ```
@@ -144,7 +144,7 @@ The segment-API map:
 | decompress + dict      | `ZstdDecompressContext.decompress(byte[], int, ZstdDecompressDictionary)` | `ZstdDecompressContext.decompress(dst, src, ZstdDecompressDictionary)` |
 | size output (no copy)  | frame header via `Zstd.decompress(byte[])`      | `Zstd.decompressedSize(MemorySegment)`             |
 
-Size `dst` with `Zstd.compressBound(srcSize)` for compression, or
+Size `dst` with `Zstd.compressBound(new ZstdByteSize(srcSize))` for compression, or
 `Zstd.decompressedSize(frame)` for decompression.
 
 ## Let the codec size and allocate the output
@@ -231,7 +231,7 @@ can't size the arena (see [the explanation](zero-copy.md)). Tell the encoder the
 total up front and it stamps the content size into the header:
 
 ```java
-try (var zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), data.length)) {
+try (var zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), new ZstdByteSize(data.length))) {
     zout.write(data);                                 // pledge must equal bytes written
 }
 MemorySegment src = MemorySegment.ofBuffer(mmap);     // downstream, in a mapped reader

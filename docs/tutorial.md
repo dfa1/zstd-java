@@ -97,8 +97,8 @@ the `MemorySegment` overloads hand zstd the segment address directly, so there i
 try (Arena arena = Arena.ofConfined();
      ZstdDecompressContext dctx = new ZstdDecompressContext()) {
     MemorySegment frame = reader.mmapSlice();   // already native — never touches the heap
-    long n = Zstd.decompressedSize(frame);      // read the header, no copy
-    MemorySegment out = arena.allocate(n);      // this segment *is* the output buffer
+    ZstdByteSize n = Zstd.decompressedSize(frame); // read the header, no copy
+    MemorySegment out = arena.allocate(n.value()); // this segment *is* the output buffer
     dctx.decompress(out, frame);                // native → native
 }
 ```

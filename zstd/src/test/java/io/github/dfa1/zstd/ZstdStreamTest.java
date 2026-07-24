@@ -78,7 +78,7 @@ class ZstdStreamTest {
             byte[] frame = streamCompress(original, new ZstdCompressionLevel(6));
 
             // Then the one-shot decompressor reads it (frame stores no size -> give a bound)
-            assertThat(Zstd.decompress(frame, original.length)).isEqualTo(original);
+            assertThat(Zstd.decompress(frame, new ZstdByteSize(original.length))).isEqualTo(original);
         }
 
         @Test
@@ -188,13 +188,13 @@ class ZstdStreamTest {
             // Given a stream told the exact total up front
             byte[] original = "pledged payload ".repeat(300).getBytes(StandardCharsets.UTF_8);
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
-            try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), original.length)) {
+            try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), new ZstdByteSize(original.length))) {
                 zout.write(original);
             }
             byte[] frame = sink.toByteArray();
 
             // Then the frame header carries the size, so size-less decompress works
-            assertThat(ZstdFrame.header(frame).contentSize()).hasValue(original.length);
+            assertThat(ZstdFrame.header(frame).contentSize()).hasValue(new ZstdByteSize(original.length));
             assertThat(Zstd.decompress(frame)).isEqualTo(original);
         }
 
@@ -221,7 +221,7 @@ class ZstdStreamTest {
             // Given a streamed frame that pledged its total up front
             byte[] original = "pledge enables zero-copy ".repeat(500).getBytes(StandardCharsets.UTF_8);
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
-            try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), original.length)) {
+            try (ZstdOutputStream zout = ZstdOutputStream.withPledgedSize(sink, new ZstdCompressionLevel(6), new ZstdByteSize(original.length))) {
                 zout.write(original);
             }
             byte[] frame = sink.toByteArray();

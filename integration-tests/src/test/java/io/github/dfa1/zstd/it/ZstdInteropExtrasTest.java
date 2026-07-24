@@ -3,6 +3,7 @@ package io.github.dfa1.zstd.it;
 import com.github.luben.zstd.ZstdCompressCtx;
 import io.github.dfa1.zstd.ZstdDictionaryId;
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdByteSize;
 import io.github.dfa1.zstd.ZstdCompressionLevel;
 import io.github.dfa1.zstd.ZstdDictionary;
 import io.github.dfa1.zstd.ZstdException;
@@ -210,7 +211,7 @@ class ZstdInteropExtrasTest {
 
             // Then
             assertThat(header.frameType()).isEqualTo(ZstdFrameType.STANDARD);
-            assertThat(header.contentSize()).hasValue(data.length);
+            assertThat(header.contentSize()).hasValue(new ZstdByteSize(data.length));
         }
 
         @Test
@@ -235,7 +236,7 @@ class ZstdInteropExtrasTest {
             for (int i = 0; i < 3000; i++) {
                 samples.add(sample(i));
             }
-            return ZstdDictionary.train(samples, 8 * 1024);
+            return ZstdDictionary.train(samples, ZstdByteSize.ofKiB(8));
         }
 
         private byte[] sample(int i) {

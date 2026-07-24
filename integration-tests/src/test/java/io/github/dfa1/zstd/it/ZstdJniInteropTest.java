@@ -3,6 +3,7 @@ package io.github.dfa1.zstd.it;
 import com.github.luben.zstd.ZstdDictCompress;
 import com.github.luben.zstd.ZstdDictDecompress;
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdByteSize;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressDictionary;
 import io.github.dfa1.zstd.ZstdCompressionLevel;
@@ -54,7 +55,7 @@ class ZstdJniInteropTest {
     @MethodSource("payloadsAndLevels")
     void jniCompressJavaDecompress(int level, byte[] data) {
         byte[] frame = com.github.luben.zstd.Zstd.compress(data, level);
-        assertThat(Zstd.decompress(frame, data.length)).isEqualTo(data);
+        assertThat(Zstd.decompress(frame, new ZstdByteSize(data.length))).isEqualTo(data);
     }
 
     @ParameterizedTest
@@ -127,7 +128,7 @@ class ZstdJniInteropTest {
                 zout.setWorkers(2);
                 zout.write(data);
             }
-            assertThat(Zstd.decompress(sink.toByteArray(), data.length)).isEqualTo(data);
+            assertThat(Zstd.decompress(sink.toByteArray(), new ZstdByteSize(data.length))).isEqualTo(data);
         }
 
         @Test
@@ -212,7 +213,7 @@ class ZstdJniInteropTest {
             for (int i = 0; i < 3000; i++) {
                 samples.add(sample(i));
             }
-            return ZstdDictionary.train(samples, 8 * 1024);
+            return ZstdDictionary.train(samples, ZstdByteSize.ofKiB(8));
         }
 
         private byte[] sample(int i) {

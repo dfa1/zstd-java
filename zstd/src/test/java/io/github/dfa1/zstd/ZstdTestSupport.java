@@ -56,7 +56,7 @@ final class ZstdTestSupport {
         for (int i = 0; i < sampleCount; i++) {
             samples.add(sample(i));
         }
-        return ZstdDictionary.train(samples, 8 * 1024);
+        return ZstdDictionary.train(samples, ZstdByteSize.ofKiB(8));
     }
 
     /// `n` pseudo-random bytes from a fixed `seed`, so a failure reproduces.

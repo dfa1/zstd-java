@@ -4,6 +4,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 import io.airlift.compress.v3.zstd.ZstdJavaCompressor;
 import io.github.dfa1.zstd.Zstd;
+import io.github.dfa1.zstd.ZstdByteSize;
 import io.github.dfa1.zstd.ZstdCompressContext;
 import io.github.dfa1.zstd.ZstdCompressionLevel;
 import java.lang.foreign.Arena;
@@ -36,6 +37,8 @@ import org.openjdk.jmh.annotations.Warmup;
 @Measurement(iterations = 5)
 public class CompressBenchmark {
 
+    // 1 KiB, 64 KiB, 1 MiB, 64 MiB — JMH @Param requires compile-time constant
+    // Strings, so these can't be expressed via ZstdByteSize.ofKiB/ofMiB.
     @Param({"1024", "65536", "1048576", "67108864"})
     private int size;
 
@@ -57,7 +60,7 @@ public class CompressBenchmark {
     @Setup(Level.Trial)
     public void setup() {
         src = BenchData.generate(size);
-        int bound = (int) Zstd.compressBound(size);
+        int bound = Zstd.compressBound(new ZstdByteSize(size)).toIntExact();
 
         ffmCtx = new ZstdCompressContext().level(new ZstdCompressionLevel(level));
         ffmDst = new byte[bound];

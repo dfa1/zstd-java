@@ -83,7 +83,7 @@ class ZstdFrameTest {
         @Test
         void boundsTheDecompressedSize() {
             byte[] frame = Zstd.compress(PAYLOAD);
-            assertThat(ZstdFrame.decompressedBound(frame)).isGreaterThanOrEqualTo(PAYLOAD.length);
+            assertThat(ZstdFrame.decompressedBound(frame).value()).isGreaterThanOrEqualTo(PAYLOAD.length);
         }
 
         @Test
@@ -106,7 +106,7 @@ class ZstdFrameTest {
             byte[] frame = Zstd.compress(PAYLOAD);
 
             // Then the exact decompressed size is the payload length
-            assertThat(ZstdFrame.decompressedSize(frame)).isEqualTo(PAYLOAD.length);
+            assertThat(ZstdFrame.decompressedSize(frame)).isEqualTo(new ZstdByteSize(PAYLOAD.length));
         }
 
         @Test
@@ -119,7 +119,7 @@ class ZstdFrameTest {
 
             // Then the total is the sum of both decompressed sizes
             assertThat(ZstdFrame.decompressedSize(both.toByteArray()))
-                    .isEqualTo((long) PAYLOAD.length + second.length);
+                    .isEqualTo(new ZstdByteSize((long) PAYLOAD.length + second.length));
         }
 
         @Test
@@ -275,7 +275,7 @@ class ZstdFrameTest {
 
             // Then it is a standard frame storing the content size, no checksum, no dict
             assertThat(header.frameType()).isEqualTo(ZstdFrameType.STANDARD);
-            assertThat(header.contentSize()).hasValue(PAYLOAD.length);
+            assertThat(header.contentSize()).hasValue(new ZstdByteSize(PAYLOAD.length));
             assertThat(header.hasChecksum()).isFalse();
             assertThat(header.dictId()).isEqualTo(ZstdDictionaryId.NONE);
             assertThat(header.windowSize()).isPositive();
@@ -310,6 +310,37 @@ class ZstdFrameTest {
 
             // Then it fails instead of returning a bogus header
             assertThatThrownBy(result).isInstanceOf(ZstdException.class);
+        }
+
+        @Test
+        void contentSizeIsEmptyForAContentSizeWithTheSignBitSet() {
+            // Given a frame header whose 8-byte Frame_Content_Size field reads as
+            // Long.MIN_VALUE — zstd stores it as `unsigned long long`, so this is the
+            // real value 2^63, unrepresentable as a size in this library
+            byte[] frame = frameHeaderDeclaringContentSize(Long.MIN_VALUE);
+
+            // When the header is parsed and its content size read
+            ZstdFrameHeader header = ZstdFrame.header(frame);
+
+            // Then contentSize() reports absent instead of leaking an
+            // IllegalArgumentException out of ZstdByteSize's non-negative guard
+            assertThat(header.contentSize()).isEmpty();
+        }
+
+        // A minimal single-segment zstd frame header (magic + descriptor + 8-byte
+        // Frame_Content_Size) declaring `contentSize`; enough for the content-size
+        // read, which happens before any block is decoded.
+        private static byte[] frameHeaderDeclaringContentSize(long contentSize) {
+            byte[] f = new byte[13];
+            f[0] = (byte) 0x28;             // magic 0xFD2FB528, little-endian
+            f[1] = (byte) 0xB5;
+            f[2] = (byte) 0x2F;
+            f[3] = (byte) 0xFD;
+            f[4] = (byte) 0xE0;             // descriptor: FCS_flag=3 (8 bytes) | single-segment
+            for (int i = 0; i < 8; i++) {   // 8-byte little-endian content size
+                f[5 + i] = (byte) (contentSize >>> (8 * i));
+            }
+            return f;
         }
     }
 

@@ -100,10 +100,10 @@ class ZstdTest {
         @ValueSource(longs = {0, 1, 1024, 1_000_000})
         void neverUndersizesTheDestination(long srcSize) {
             // When the worst-case bound is queried
-            long bound = Zstd.compressBound(srcSize);
+            ZstdByteSize bound = Zstd.compressBound(new ZstdByteSize(srcSize));
 
             // Then it is at least the input size
-            assertThat(bound).isGreaterThanOrEqualTo(srcSize);
+            assertThat(bound.value()).isGreaterThanOrEqualTo(srcSize);
         }
     }
 
@@ -128,7 +128,7 @@ class ZstdTest {
             byte[] frame = Zstd.compress("0123456789".getBytes(StandardCharsets.UTF_8));
 
             // When decompressing into too small a buffer
-            ThrowingCallable result = () -> Zstd.decompress(frame, 1);
+            ThrowingCallable result = () -> Zstd.decompress(frame, new ZstdByteSize(1));
 
             // Then it fails
             assertThatThrownBy(result).isInstanceOf(ZstdException.class);
@@ -267,7 +267,7 @@ class ZstdTest {
             assertThat(bomb).hasSizeLessThan(1024); // huge amplification ratio
 
             // When decompressed with a small bound (the safe path for untrusted input)
-            ThrowingCallable result = () -> Zstd.decompress(bomb, 64 * 1024);
+            ThrowingCallable result = () -> Zstd.decompress(bomb, ZstdByteSize.ofKiB(64));
 
             // Then it is refused instead of allocating the full expansion
             assertThatThrownBy(result).isInstanceOf(ZstdException.class);
@@ -298,6 +298,23 @@ class ZstdTest {
             assertThatThrownBy(result)
                     .isInstanceOf(ZstdException.class)
                     .hasMessageContaining("exceeds the maximum array length");
+        }
+
+        @Test
+        void rejectsAFrameDeclaringAContentSizeWithTheSignBitSet() {
+            // Given a frame header whose 8-byte Frame_Content_Size field reads as
+            // Long.MIN_VALUE — zstd stores it as `unsigned long long`, so this is the
+            // real value 2^63, not a negative size
+            byte[] frame = frameHeaderDeclaringContentSize(Long.MIN_VALUE);
+
+            // When decompressed via the size-trusting overload
+            ThrowingCallable result = () -> Zstd.decompress(frame);
+
+            // Then it fails with a ZstdException, not an IllegalArgumentException
+            // leaking out of ZstdByteSize's own non-negative guard
+            assertThatThrownBy(result)
+                    .isInstanceOf(ZstdException.class)
+                    .hasMessageContaining("not a valid zstd frame content size");
         }
 
         // A minimal single-segment zstd frame header (magic + descriptor + 8-byte

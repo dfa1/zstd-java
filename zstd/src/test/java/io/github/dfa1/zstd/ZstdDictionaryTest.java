@@ -32,7 +32,7 @@ class ZstdDictionaryTest {
         for (int i = 0; i < 4000; i++) {
             samples.add(sample(i));
         }
-        sut = ZstdDictionary.train(samples, 16 * 1024);
+        sut = ZstdDictionary.train(samples, ZstdByteSize.ofKiB(16));
     }
 
     @Nested
@@ -41,7 +41,7 @@ class ZstdDictionaryTest {
         @Test
         void fastCoverRoundTrips() {
             // Given a fast-COVER-trained dictionary
-            ZstdDictionary dict = ZstdDictionary.trainFastCover(samples, 16 * 1024);
+            ZstdDictionary dict = ZstdDictionary.trainFastCover(samples, ZstdByteSize.ofKiB(16));
             assertThat(dict.size()).isGreaterThan(0);
 
             // Then records round-trip and compress smaller than dictionaryless
@@ -62,7 +62,7 @@ class ZstdDictionaryTest {
         @Test
         void coverRoundTrips() {
             // COVER is slower, so train on a subset to keep the test quick
-            ZstdDictionary dict = ZstdDictionary.trainCover(samples.subList(0, 1000), 8 * 1024);
+            ZstdDictionary dict = ZstdDictionary.trainCover(samples.subList(0, 1000), ZstdByteSize.ofKiB(8));
             assertThat(dict.size()).isGreaterThan(0);
 
             byte[] sample = samples.get(5);
@@ -76,7 +76,7 @@ class ZstdDictionaryTest {
         @Test
         void coverFailsWithoutSamples() {
             // When COVER-training on no samples
-            ThrowingCallable result = () -> ZstdDictionary.trainCover(List.of(), 4096);
+            ThrowingCallable result = () -> ZstdDictionary.trainCover(List.of(), new ZstdByteSize(4096));
 
             // Then it fails fast with the empty-samples guard
             assertThatThrownBy(result)
@@ -87,7 +87,7 @@ class ZstdDictionaryTest {
         @Test
         void fastCoverFailsWithoutSamples() {
             // When fast-COVER-training on no samples
-            ThrowingCallable result = () -> ZstdDictionary.trainFastCover(List.of(), 4096);
+            ThrowingCallable result = () -> ZstdDictionary.trainFastCover(List.of(), new ZstdByteSize(4096));
 
             // Then it fails fast with the empty-samples guard
             assertThatThrownBy(result)
@@ -106,7 +106,7 @@ class ZstdDictionaryTest {
                     .getBytes(StandardCharsets.UTF_8);
 
             ZstdDictionary dict =
-                    ZstdDictionary.finalizeFrom(content, samples, 16 * 1024, new ZstdCompressionLevel(0));
+                    ZstdDictionary.finalizeFrom(content, samples, ZstdByteSize.ofKiB(16), new ZstdCompressionLevel(0));
 
             // Then it carries a header and round-trips a sample
             assertThat(dict.size()).isGreaterThan(0);
@@ -130,7 +130,7 @@ class ZstdDictionaryTest {
         void finalizeFailsWithoutSamples() {
             // When finalizing raw content with no tuning samples
             ThrowingCallable result =
-                    () -> ZstdDictionary.finalizeFrom(new byte[]{1, 2, 3}, List.of(), 4096, new ZstdCompressionLevel(0));
+                    () -> ZstdDictionary.finalizeFrom(new byte[]{1, 2, 3}, List.of(), new ZstdByteSize(4096), new ZstdCompressionLevel(0));
 
             // Then it fails fast with the empty-samples guard
             assertThatThrownBy(result)
@@ -169,7 +169,7 @@ class ZstdDictionaryTest {
         @Test
         void failsWithoutSamples() {
             // When training on no samples
-            ThrowingCallable result = () -> ZstdDictionary.train(List.of(), 4096);
+            ThrowingCallable result = () -> ZstdDictionary.train(List.of(), new ZstdByteSize(4096));
 
             // Then it fails fast with the empty-samples guard, before reaching ZDICT
             assertThatThrownBy(result)
@@ -183,7 +183,7 @@ class ZstdDictionaryTest {
             List<byte[]> tooFew = List.of(new byte[]{1, 2, 3});
 
             // When training
-            ThrowingCallable result = () -> ZstdDictionary.train(tooFew, 112_640);
+            ThrowingCallable result = () -> ZstdDictionary.train(tooFew, new ZstdByteSize(112_640));
 
             // Then the failure carries the native ZDICT error name, not an empty string
             assertThatThrownBy(result)

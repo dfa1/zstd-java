@@ -21,7 +21,7 @@ class ZstdErrorTest {
             byte[] frame = Zstd.compress(PAYLOAD);
 
             // When it fails / Then the category is DST_SIZE_TOO_SMALL
-            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(frame, 1));
+            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(frame, new ZstdByteSize(1)));
             assertThat(ex.code()).isEqualTo(ZstdErrorCode.DST_SIZE_TOO_SMALL);
         }
 
@@ -31,7 +31,7 @@ class ZstdErrorTest {
             byte[] frame = Zstd.compress(PAYLOAD);
 
             // When it fails
-            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(frame, 1));
+            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(frame, new ZstdByteSize(1)));
 
             // Then the message is the descriptive native error name, not an empty string
             assertThat(ex).hasMessageContaining("too small");
@@ -52,7 +52,7 @@ class ZstdErrorTest {
             byte[] garbage = "definitely not a zstd frame at all".getBytes(StandardCharsets.UTF_8);
 
             // Then the error carries a real native category, not UNKNOWN
-            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(garbage, 1024));
+            ZstdException ex = catchThrowableOfType(ZstdException.class, () -> Zstd.decompress(garbage, new ZstdByteSize(1024)));
             assertThat(ex.code()).isNotIn(ZstdErrorCode.UNKNOWN, ZstdErrorCode.NO_ERROR);
         }
     }

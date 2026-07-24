@@ -93,9 +93,9 @@ public final class ZstdCompressDictionary extends NativeObject {
     /// Current native memory used by this digested dictionary, in bytes.
     ///
     /// @return the live dictionary size
-    public long sizeOf() {
+    public ZstdByteSize sizeOf() {
         try {
-            return (long) Bindings.SIZEOF_CDICT.invokeExact(ptr());
+            return new ZstdByteSize((long) Bindings.SIZEOF_CDICT.invokeExact(ptr()));
         } catch (Throwable t) {
             throw NativeCall.rethrow(t);
         }

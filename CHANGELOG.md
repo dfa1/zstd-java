@@ -6,6 +6,8 @@ git tags, which trigger publication to Maven Central.
 
 ## [Unreleased]
 
+## [0.11] - 2026-07-24
+
 ### Changed
 - **Breaking:** every public API that took or returned a naked `int`/`long` byte
   size or count now takes/returns a `ZstdByteSize` value type, which rejects
